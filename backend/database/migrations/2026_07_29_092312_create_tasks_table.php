@@ -18,11 +18,14 @@ return new class extends Migration
             $table->enum('priority', ['low', 'medium', 'high', 'urgent'])->default('medium');
             
             $table->timestamp('due_date')->nullable(); 
+            $table->timestamp('completed_at')->nullable();
             
             $table->foreignId('project_id')->constrained()->onDelete('cascade'); 
             $table->foreignId('assigned_to')->nullable()->constrained('users')->onDelete('set null'); 
             $table->foreignId('created_by')->constrained('users')->onDelete('cascade'); 
             
+            $table->softDeletes();
+
             $table->timestamps();
         });
     }

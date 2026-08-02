@@ -15,6 +15,8 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->timestamps();
 
+            $table->string('role')->default('member');
+
             $table->unique(['project_id', 'user_id']);
         });
     }

@@ -11,13 +11,16 @@ return new class extends Migration
     {
         Schema::create('activity_logs', function (Blueprint $table) {
             $table->id();
-            $table->string('action'); 
-            $table->text('description'); 
-            
-            
-            $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null'); 
-            $table->nullableMorphs('subject'); 
-            
+    $table->string('action');
+    $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
+    $table->nullableMorphs('subject');
+    $table->text('description')->nullable();
+    $table->json('metadata')->nullable();
+    
+    
+    
+    $table->foreignId('project_id')->nullable()->constrained()->onDelete('cascade');
+    $table->foreignId('task_id')->nullable()->constrained()->onDelete('cascade');
             $table->timestamps();
 
             
@@ -29,6 +32,6 @@ return new class extends Migration
     
     public function down(): void
     {
-        Schema::dropIfExists('activitylogs');
+        Schema::dropIfExists('activity_logs');
     }
 };
