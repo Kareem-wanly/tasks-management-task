@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Models\Role;
 use Illuminate\Http\JsonResponse;
 use Illuminate\support\Facades\Hash;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
@@ -38,5 +40,45 @@ class AuthController extends Controller
             'token_type'   => 'Bearer',
             'user'         => new UserResource($user->load('roles')),
         ], 201); // Return a 201 Created response
+    }
+
+    public function login(Request $request): JsonResponse
+    {
+    $credentials = $request->validate([
+        'email'    => ['required', 'string', 'email'],
+        'password' => ['required', 'string'],
+    ]);
+
+    if (!Auth::attempt($credentials)) {
+        return response()->json([
+            'message' => 'Invalid login credentials'
+        ], 401);
+    }
+
+    $user = User::where('email', $request->email)->firstOrFail();
+    $token = $user->createToken('auth_token')->plainTextToken;
+
+    return response()->json([
+        'message'      => 'Logged in successfully',
+        'access_token' => $token,
+        'token_type'   => 'Bearer',
+        'user'         => new UserResource($user->load('roles')),
+    ]);
+    }
+
+public function me(Request $request): JsonResponse
+    {
+    return response()->json([
+        'user' => new UserResource($request->user()->load('roles')),
+    ]);
+    }
+
+public function logout(Request $request): JsonResponse
+    {
+    $request->user()->currentAccessToken()->delete();
+
+    return response()->json([
+        'message' => 'Logged out successfully',
+    ]);
     }
 }
