@@ -125,5 +125,7 @@ class DatabaseSeeder extends Seeder
             'metadata' => ['project_title' => $project->title],
             'project_id' => $project->id,
         ]);
+
+        $this->call(RolesAndPermissionsSeeder::class);
     }
 }
