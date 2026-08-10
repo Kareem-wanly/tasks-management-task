@@ -14,7 +14,6 @@ class UpdateRoleRequest extends FormRequest
 
     public function rules(): array
     {
-        // جلب معرف الدور بشكل آمن سواء كان المار عبارة عن موديل أو ID
         $roleId = is_object($this->role) ? $this->role->id : $this->role;
 
         return [
