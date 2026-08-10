@@ -50,11 +50,29 @@ class User extends Authenticatable
 
     public function hasPermission(string $permissionName): bool
     {
-        return $this->getEffectivePermissions()->contains('name', $permissionName);
+        return $this->roles()
+            ->whereHas('permissions', function ($q) use ($permissionName) {
+                $q->where('permissions.name', $permissionName);
+            })
+            ->exists();
     }
 
+    
     public function hasRole(string $roleName): bool
     {
-        return $this->roles->contains('name', $roleName);
+        return $this->roles()->where('name', $roleName)->exists();
     }
+
+    public function projects()
+    {
+    return $this->belongsToMany(Project::class, 'project_user');
+    }
+
+    public function assignedTasks()
+    {
+        return $this->hasMany(Task::class, 'assigned_to');
+    }
+
+
+
 }

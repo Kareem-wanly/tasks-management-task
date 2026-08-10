@@ -22,31 +22,26 @@ class Project extends Model
         'due_date',
     ];
 
-    
     protected $casts = [
         'start_date' => 'date',
-        'due_date' => 'date',
+        'due_date'   => 'date',
     ];
 
-    
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');
     }
 
-    
     public function members(): BelongsToMany
     {
-        return $this->belongsToMany(User::class)->withPivot('role')->withTimestamps();
+        return $this->belongsToMany(User::class, 'project_user')->withTimestamps();
     }
 
-    
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);
     }
 
-    
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);

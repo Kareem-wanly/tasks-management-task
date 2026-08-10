@@ -13,10 +13,14 @@ class UserResource extends JsonResource
             'id'                    => $this->id,
             'name'                  => $this->name,
             'email'                 => $this->email,
-            'roles'                 => $this->roles->pluck('name'),
-            'effective_permissions' => $this->getEffectivePermissions()->pluck('name'),
-            'created_at'            => $this->created_at?->toISOString(), // Format the created_at timestamp
-            'updated_at'            => $this->updated_at?->toISOString(), // Format the updated_at timestamp
+            'roles'                 => $this->whenLoaded('roles', function () {
+                                            return $this->roles->pluck('name');
+                                       }),
+            'effective_permissions' => $this->when($this->relationLoaded('roles'), function () {
+                                            return $this->getEffectivePermissions()->pluck('name');
+                                       }),
+            'created_at'            => $this->created_at?->toISOString(),
+            'updated_at'            => $this->updated_at?->toISOString(),
         ];
     }
 }
