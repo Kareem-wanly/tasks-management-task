@@ -18,7 +18,6 @@ class ProjectController extends Controller
     $user = $request->user();
     $query = Project::query();
 
-    // Filter projects based on user role and membership
     if (!$user->hasRole('Administrator')) {
         $query->where(function ($q) use ($user) {
             $q->where('owner_id', $user->id)
@@ -195,40 +194,93 @@ class ProjectController extends Controller
     ]);
 }
     public function getMembers(Project $project): JsonResponse
-    {
-        $this->authorize('view', $project);
+{
+    $this->authorize('view', $project);
 
-        return response()->json([
-            'data' => $project->members()->get(['users.id', 'name', 'email'])
-        ]);
-    }
+    return response()->json([
+        'success' => true,
+        'message' => 'Project members retrieved successfully',
+        'data'    => $project->members()->get(['users.id', 'name', 'email'])
+    ]);
+}
 
     public function addMember(Request $request, Project $project): JsonResponse
-    {
-        $this->authorize('update', $project);
+{
+    
+    $this->authorize('update', $project);
 
-        $validated = $request->validate([
-            'user_id' => ['required', 'integer', 'exists:users,id'],
-        ]);
+    $validated = $request->validate([
+        'user_id' => ['required', 'integer', 'exists:users,id'],
+    ]);
 
-        $project->members()->syncWithoutDetaching([$validated['user_id']]);
+    $userId = (int) $validated['user_id'];
 
+    
+    if ($project->members()->where('users.id', $userId)->exists()) {
         return response()->json([
-            'message' => 'Member added to project successfully',
-            'data'    => $project->load('members:id,name,email')
+            'success' => false,
+            'message' => 'User is already a member of this project.',
+            'errors'  => [
+                'user_id' => ['The specified user is already attached to this project.']
+            ]
+        ], 422);
+    }
+
+    
+    $project->members()->attach($userId);
+
+    
+    if (class_exists(\App\Models\ActivityLog::class)) {
+        \App\Models\ActivityLog::create([
+            'user_id'     => $request->user()->id,
+            'project_id'  => $project->id,
+            'action'      => 'member_added',
+            'description' => "User ID {$userId} was added to project '{$project->title}' by User ID {$request->user()->id}.",
         ]);
     }
 
-    public function removeMember(Project $project, int $userId): JsonResponse
-    {
-        $this->authorize('update', $project);
+    return response()->json([
+        'success' => true,
+        'message' => 'Member added to project successfully',
+        'data'    => $project->load(['owner:id,name,email', 'members:id,name,email'])
+    ], 200);
+}
 
-        $project->members()->detach($userId);
+    public function removeMember(Request $request, Project $project, int $userId): JsonResponse
+{
+    
+    $this->authorize('update', $project);
 
+
+    if (!$project->members()->where('users.id', $userId)->exists()) {
         return response()->json([
-            'message' => 'Member removed from project successfully'
+            'success' => false,
+            'message' => 'User is not a member of this project.',
+            'errors'  => [
+                'user_id' => ['The specified user is not attached to this project.']
+            ]
+        ], 404);
+    }
+
+    
+    $project->members()->detach($userId);
+
+    
+    if (class_exists(\App\Models\ActivityLog::class)) {
+        \App\Models\ActivityLog::create([
+            'user_id'     => $request->user()->id,
+            'project_id'  => $project->id,
+            'action'      => 'member_removed',
+            'description' => "User ID {$userId} was removed from project '{$project->title}' by User ID {$request->user()->id}.",
         ]);
     }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Member removed from project successfully',
+        'data'    => $project->load(['owner:id,name,email', 'members:id,name,email'])
+    ]);
+}
 
     public function archive(Request $request, Project $project): JsonResponse
 {
@@ -248,4 +300,43 @@ class ProjectController extends Controller
         'data'    => $project->fresh(['owner:id,name,email', 'members:id,name,email'])
     ]);
 }
+
+    public function activities(Project $project): JsonResponse
+{
+    $this->authorize('view', $project);
+
+    $activities = \App\Models\ActivityLog::where('project_id', $project->id)
+        ->with('user:id,name,email')
+        ->latest()
+        ->get();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Project activity logs retrieved successfully',
+        'data'    => $activities
+    ]);
+}
+
+    public function allActivities(Request $request): JsonResponse
+{
+    $this->authorize('viewAny', Project::class);
+
+    $activities = \App\Models\ActivityLog::with('user:id,name,email')
+        ->latest()
+        ->paginate((int) $request->query('per_page', 15));
+
+    return response()->json([
+        'success' => true,
+        'message' => 'All activity logs retrieved successfully',
+        'data'    => $activities->items(),
+        'meta'    => [
+            'current_page' => $activities->currentPage(),
+            'last_page'    => $activities->lastPage(),
+            'per_page'     => $activities->perPage(),
+            'total'        => $activities->total(),
+        ]
+    ]);
+}
+
+
 }
