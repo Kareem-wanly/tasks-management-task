@@ -8,54 +8,69 @@ use App\Models\User;
 class TaskPolicy
 {
 
-    public function create(User $user): bool
-{
-    return $user->hasPermission('tasks.create');
-}
     
     public function before(User $user, string $ability): ?bool
     {
-        if ($user->hasPermission('projects.edit')) {
+        if ($user->hasRole('Administrator') || $user->hasPermission('projects.update')) {
             return true;
         }
 
         return null; 
     }
 
-    
     private function isProjectMember(User $user, Task $task): bool
-{
-    return $task->project->created_by === $user->id 
-        || $task->project->members()->where('users.id', $user->id)->exists();
-}
+    {
+        return $task->project->owner_id === $user->id 
+            || $task->project->members()->where('users.id', $user->id)->exists();
+    }
 
-    
     private function isAssignee(User $user, Task $task): bool
     {
         return $task->assigned_to === $user->id;
     }
 
-    
     public function view(User $user, Task $task): bool
     {
-        return $user->hasPermission('tasks.view') || $this->isProjectMember($user, $task);
+        return $user->hasPermission('tasks.view') && $this->isProjectMember($user, $task);
     }
 
-    
-    public function update(User $user, Task $task): bool
+    public function create(User $user): bool
     {
-        if (!$user->hasPermission('tasks.edit') || !$this->isProjectMember($user, $task)) {
+        return $user->hasPermission('tasks.create');
+    }
+
+    public function update(User $user, Task $task): bool
+{
+    if (!$this->isProjectMember($user, $task)) {
+        return false;
+    }
+
+    return $task->project->owner_id === $user->id 
+        || $task->created_by === $user->id 
+        || $user->hasPermission('tasks.manage');
+}
+
+
+    public function updateStatus(User $user, Task $task): bool
+    {
+        if (!$this->isProjectMember($user, $task)) {
             return false;
         }
 
-        return $this->isAssignee($user, $task) || $user->hasPermission('projects.edit');
+        return $this->isAssignee($user, $task) 
+            || $task->project->owner_id === $user->id 
+            || $user->hasPermission('tasks.change_status');
     }
 
-    
+
     public function delete(User $user, Task $task): bool
-    {
-        return $user->hasPermission('tasks.delete') 
-            && $this->isProjectMember($user, $task) 
-            && $user->hasPermission('projects.edit');
+{
+    if (!$this->isProjectMember($user, $task)) {
+        return false;
     }
+
+    return $task->project->owner_id === $user->id 
+        || $task->created_by === $user->id 
+        || $user->hasPermission('tasks.delete');
+}
 }

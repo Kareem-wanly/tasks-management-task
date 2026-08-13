@@ -10,28 +10,26 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserRoleController;
 use Illuminate\Support\Facades\Route;
 
-
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
-
 Route::middleware('auth:sanctum')->group(function () {
 
-    // 1. Authentication & Profile Management
+    // 1. Authentication & Profile
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/me', [AuthController::class, 'updateProfile']);
     Route::put('/me/password', [AuthController::class, 'updatePassword']);
 
-    // 2. User Management & User Roles
+    // 2. User & User Roles Management
     Route::get('/users', [UserController::class, 'index']);
-    Route::post('/users', [UserController::class, 'store']); // لإتاحة إنشاء مستخدم من قبل الأدمن (users.create)
+    Route::post('/users', [UserController::class, 'store']); 
     Route::get('/users/{user}', [UserController::class, 'show']);
     Route::put('/users/{user}', [UserController::class, 'update']);
     Route::delete('/users/{user}', [UserController::class, 'destroy']);
     
     Route::get('/users/{user}/roles', [UserRoleController::class, 'index']);
-    Route::put('/users/{user}/roles', [UserRoleController::class, 'syncRoles']); // مطابقة مع HTTP PUT في كراسة الشروط
+    Route::put('/users/{user}/roles', [UserRoleController::class, 'syncRoles']); 
 
     // 3. Roles & Permissions Management
     Route::get('/permissions', [PermissionController::class, 'index']);
@@ -41,7 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/roles/{role}', [RoleController::class, 'show']);
     Route::put('/roles/{role}', [RoleController::class, 'update']);
     Route::delete('/roles/{role}', [RoleController::class, 'destroy']);
-    Route::put('/roles/{role}/permissions', [RoleController::class, 'syncPermissions']); // مطابقة مع HTTP PUT في كراسة الشروط
+    Route::put('/roles/{role}/permissions', [RoleController::class, 'syncPermissions']); 
 
     // 4. Projects Management & Members
     Route::get('/projects', [ProjectController::class, 'index']);
@@ -54,13 +52,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/projects/{project}/members', [ProjectController::class, 'getMembers']);
     Route::post('/projects/{project}/members', [ProjectController::class, 'addMember']);
     Route::delete('/projects/{project}/members/{user}', [ProjectController::class, 'removeMember']);
-    
-    Route::get('/projects/{project}/tasks', [TaskController::class, 'indexByProject']);
 
     // 5. Tasks Management
-    Route::get('/tasks', [TaskController::class, 'index']);
-    Route::post('/tasks', [TaskController::class, 'store']);
-    Route::post('/projects/{project}/tasks', [TaskController::class, 'storeByProject']);
+    Route::get('/tasks', [TaskController::class, 'index']); 
+    Route::get('/projects/{project}/tasks', [TaskController::class, 'indexByProject']); 
+    Route::post('/projects/{project}/tasks', [TaskController::class, 'storeByProject']); 
+    
     Route::get('/tasks/{task}', [TaskController::class, 'show']);
     Route::put('/tasks/{task}', [TaskController::class, 'update']);
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy']);
@@ -73,6 +70,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
 
     // 7. Activity Logs
-    Route::get('/activities', [ProjectController::class, 'allActivities']);
+    Route::get('/activities', [ProjectController::class, 'index']); 
     Route::get('/projects/{project}/activities', [ProjectController::class, 'activities']);
 });

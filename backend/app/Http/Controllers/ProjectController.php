@@ -11,6 +11,8 @@ class ProjectController extends Controller
 {
     use AuthorizesRequests;
 
+
+    
     public function index(Request $request): JsonResponse
 {
     $this->authorize('viewAny', Project::class);
@@ -77,7 +79,7 @@ class ProjectController extends Controller
         ]
     ]);
 }
-
+    
     public function show(Project $project): JsonResponse
 {
     
