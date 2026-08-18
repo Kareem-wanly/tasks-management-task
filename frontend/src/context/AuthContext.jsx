@@ -1,13 +1,28 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import authApi from '../api/authApi';
 
-const AuthContext = createContext(null); 
+const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null); 
+  const [user, setUser] = useState(null);
   const [roles, setRoles] = useState([]);
   const [permissions, setPermissions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const extractUserMeta = (userData) => {
+    let userRoles = [];
+    let userPermissions = [];
+
+    if (userData?.roles && Array.isArray(userData.roles)) {
+      userRoles = userData.roles.map((r) => (typeof r === 'object' ? r.name : r));
+    }
+
+    if (userData?.permissions && Array.isArray(userData.permissions)) {
+      userPermissions = userData.permissions.map((p) => (typeof p === 'object' ? p.name : p));
+    }
+
+    return { userRoles, userPermissions };
+  };
 
   const restoreAuthentication = async () => {
     const token = localStorage.getItem('auth_token');
@@ -18,12 +33,14 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const response = await authApi.getCurrentUser();
-      const { user: userData, roles: userRoles, permissions: userPermissions } = response.data;
+      const res = await authApi.getCurrentUser();
+      const payload = res.data || res;
+      const currentUser = payload.user || payload;
+      const { userRoles, userPermissions } = extractUserMeta(currentUser);
 
-      setUser(userData);
-      setRoles(userRoles || []);
-      setPermissions(userPermissions || []);
+      setUser(currentUser);
+      setRoles(userRoles);
+      setPermissions(userPermissions);
     } catch (error) {
       console.error('Session restoration failed:', error);
       localStorage.removeItem('auth_token');
@@ -40,32 +57,44 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (credentials) => {
-    const response = await authApi.login(credentials);
-    const { token, user: userData, roles: userRoles, permissions: userPermissions } = response.data;
+    const res = await authApi.login(credentials);
+    const payload = res.data || res;
+
+    // استخراج التوكن سواء كان اسمه access_token أو token
+    const token = payload.access_token || payload.token;
+    const currentUser = payload.user;
 
     if (token) {
       localStorage.setItem('auth_token', token);
     }
 
-    setUser(userData);
-    setRoles(userRoles || []);
-    setPermissions(userPermissions || []);
+    const { userRoles, userPermissions } = extractUserMeta(currentUser);
 
-    return response.data;
+    setUser(currentUser);
+    setRoles(userRoles);
+    setPermissions(userPermissions);
+
+    return payload;
   };
 
   const register = async (userData) => {
-    const response = await authApi.register(userData);
-    const { token, user: createdUser, roles: userRoles, permissions: userPermissions } = response.data;
+    const res = await authApi.register(userData);
+    const payload = res.data || res;
+
+    const token = payload.access_token || payload.token;
+    const currentUser = payload.user;
 
     if (token) {
       localStorage.setItem('auth_token', token);
-      setUser(createdUser);
-      setRoles(userRoles || []);
-      setPermissions(userPermissions || []);
     }
 
-    return response.data;
+    const { userRoles, userPermissions } = extractUserMeta(currentUser);
+
+    setUser(currentUser);
+    setRoles(userRoles);
+    setPermissions(userPermissions);
+
+    return payload;
   };
 
   const logout = async () => {
@@ -81,20 +110,18 @@ export function AuthProvider({ children }) {
     }
   };
 
-
   const can = (permission) => {
     if (!permission) return false;
-    if (roles.includes('admin')) return true;
+    if (roles.includes('Admin') || roles.includes('admin')) return true;
     return permissions.includes(permission);
   };
 
- 
   const hasRole = (role) => {
     if (!role) return false;
     if (Array.isArray(role)) {
-      return role.some((r) => roles.includes(r));
+      return role.some((r) => roles.map((x) => x.toLowerCase()).includes(r.toLowerCase()));
     }
-    return roles.includes(role);
+    return roles.map((x) => x.toLowerCase()).includes(role.toLowerCase());
   };
 
   const value = {
