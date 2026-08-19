@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import './LoginPage.css';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -11,22 +12,56 @@ export default function LoginPage() {
     email: '',
     password: '',
   });
-  const [error, setError] = useState('');
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [generalError, setGeneralError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const from = location.state?.from?.pathname || '/';
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-    if (error) setError('');
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+    if (generalError) {
+      setGeneralError('');
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!formData.email.trim()) {
+      errors.email = 'Email address is required.';
+    } else if (!emailRegex.test(formData.email.trim())) {
+      errors.email = 'Please enter a valid email address.';
+    }
+
+    if (!formData.password) {
+      errors.password = 'Password is required.';
+    } else if (formData.password.length < 6) {
+      errors.password = 'Password must be at least 6 characters.';
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+
+    if (isSubmitting) return;
+
+    setGeneralError('');
+    setFieldErrors({});
+
+    if (!validateForm()) return;
+
     setIsSubmitting(true);
 
     try {
@@ -34,71 +69,118 @@ export default function LoginPage() {
       navigate(from, { replace: true });
     } catch (err) {
       console.error('Login error:', err);
-      setError(
-        err.message || err.data?.message || 'An error occurred during login, please try again.'
-      );
+
+      if (err.errors && Object.keys(err.errors).length > 0) {
+        const formattedErrors = {};
+        Object.entries(err.errors).forEach(([key, messages]) => {
+          formattedErrors[key] = Array.isArray(messages) ? messages[0] : messages;
+        });
+        setFieldErrors(formattedErrors);
+      } else {
+        setGeneralError(
+          err.message || err.data?.message || 'Invalid email or password. Please try again.'
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-md">
-        <div>
-          <h2 className="text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            or{' '}
-            <Link to="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
-              Create a new account
-            </Link>
-          </p>
+    <div className="login-container">
+      <div className="login-card">
+        {/* Header */}
+        <div className="login-header">
+          <div className="login-logo">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <h1 className="login-title">Sign in to your account</h1>
+          <p className="login-subtitle">Welcome back! Please enter your details.</p>
         </div>
 
-        {error && (
-          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg text-center">
-            {error}
+        {/* General Error Alert */}
+        {generalError && (
+          <div className="error-alert">
+            {generalError}
           </div>
         )}
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Email address</label>
+        <form className="login-form" onSubmit={handleSubmit} noValidate>
+          {/* Email Field */}
+          <div className="form-group">
+            <label className="form-label" htmlFor="email">
+              Email address
+            </label>
+            <div className="input-wrapper">
               <input
+                id="email"
                 type="email"
                 name="email"
-                required
                 value={formData.email}
                 onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="name@example.com"
+                disabled={isSubmitting}
+                placeholder="you@company.com"
+                className={`form-input ${fieldErrors.email ? 'input-error' : ''}`}
               />
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Password</label>
-              <input
-                type="password"
-                name="password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="••••••••"
-              />
-            </div>
+            {fieldErrors.email && (
+              <p className="field-error-text">{fieldErrors.email}</p>
+            )}
           </div>
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
-          >
-            {isSubmitting ? 'Checking...' : 'Sign in to your account'}
+          {/* Password Field */}
+          <div className="form-group">
+            <label className="form-label" htmlFor="password">
+              Password
+            </label>
+            <div className="input-wrapper">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                disabled={isSubmitting}
+                placeholder="••••••••"
+                className={`form-input password-input ${fieldErrors.password ? 'input-error' : ''}`}
+              />
+              <button
+                type="button"
+                className="toggle-password-btn"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex="-1"
+                aria-label="Toggle password visibility"
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            {fieldErrors.password && (
+              <p className="field-error-text">{fieldErrors.password}</p>
+            )}
+          </div>
+
+          {/* Submit Button */}
+          <button type="submit" className="submit-btn" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <span className="spinner" />
+                <span>Signing in...</span>
+              </>
+            ) : (
+              'Sign in'
+            )}
           </button>
         </form>
+
+        {/* Footer */}
+        <div className="login-footer">
+          Don't have an account?{' '}
+          <Link to="/register" className="signup-link">
+            Sign up
+          </Link>
+        </div>
       </div>
     </div>
   );
