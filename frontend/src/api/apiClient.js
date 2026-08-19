@@ -1,6 +1,5 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
-
 function getHeaders(customHeaders = {}) {
   const headers = {
     'Accept': 'application/json',
@@ -16,30 +15,12 @@ function getHeaders(customHeaders = {}) {
   return headers;
 }
 
-
-async function initCsrf() {
-  const rootUrl = BASE_URL.replace(/\/api\/?$/, '');
-  try {
-    await fetch(`${rootUrl}/sanctum/csrf-cookie`, {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
-  } catch (err) {
-    console.warn('Could not initialize CSRF cookie:', err);
-  }
-}
-
-
 async function request(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
   const config = {
     method: options.method || 'GET',
     headers: getHeaders(options.headers),
-    credentials: 'include', 
     ...options,
   };
 
@@ -51,6 +32,7 @@ async function request(endpoint, options = {}) {
   try {
     response = await fetch(url, config);
   } catch (networkError) {
+    console.error('Fetch error:', networkError);
     const error = new Error('Could not connect to the server. Please check your internet connection.');
     error.status = 0;
     error.isNetworkError = true;
@@ -75,7 +57,7 @@ async function request(endpoint, options = {}) {
     const error = new Error(data?.message || 'An error occurred while processing the request.');
     error.status = response.status;
     error.data = data;
-    error.errors = data?.errors || {}; 
+    error.errors = data?.errors || {};
 
     switch (response.status) {
       case 401: // Unauthenticated
@@ -96,7 +78,7 @@ async function request(endpoint, options = {}) {
         error.message = data?.message || 'Please ensure that the data entered is correct.';
         break;
 
-      case 500: 
+      case 500:
         error.message = 'An internal server error occurred. Please try again later.';
         break;
 
@@ -110,15 +92,13 @@ async function request(endpoint, options = {}) {
   return data;
 }
 
-
 const apiClient = {
   get: (endpoint, options = {}) => request(endpoint, { ...options, method: 'GET' }),
   post: (endpoint, body, options = {}) => request(endpoint, { ...options, method: 'POST', body }),
   put: (endpoint, body, options = {}) => request(endpoint, { ...options, method: 'PUT', body }),
   patch: (endpoint, body, options = {}) => request(endpoint, { ...options, method: 'PATCH', body }),
   delete: (endpoint, options = {}) => request(endpoint, { ...options, method: 'DELETE' }),
-  initCsrf,
 };
 
 export default apiClient;
-export { BASE_URL, request, initCsrf };
+export { BASE_URL, request };
