@@ -3,6 +3,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import projectsApi from '../../api/projectsApi';
 import apiClient from '../../api/apiClient';
+import ProjectFormModal from './ProjectFormModal';
+import ConfirmModal from './ConfirmModal';
 import './ProjectsPage.css';
 
 export default function ProjectsPage() {
@@ -24,6 +26,17 @@ export default function ProjectsPage() {
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState('table');
   const [searchInput, setSearchInput] = useState(currentSearch);
+
+  const [formModalOpen, setFormModalOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState(null);
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const [archiveModalOpen, setArchiveModalOpen] = useState(false);
+  const [projectToArchive, setProjectToArchive] = useState(null);
+  const [archiveLoading, setArchiveLoading] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -50,43 +63,43 @@ export default function ProjectsPage() {
     fetchUsers();
   }, []);
 
-  useEffect(() => {
-    async function fetchProjects() {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const params = {
-          page: currentPage,
-          per_page: 10,
-          sort: currentSort,
-          direction: currentDirection,
-        };
+      const params = {
+        page: currentPage,
+        per_page: 10,
+        sort: currentSort,
+        direction: currentDirection,
+      };
 
-        if (currentSearch) params.search = currentSearch;
-        if (currentStatus) params.status = currentStatus;
-        if (currentMember) params.member_id = currentMember;
+      if (currentSearch) params.search = currentSearch;
+      if (currentStatus) params.status = currentStatus;
+      if (currentMember) params.member_id = currentMember;
 
-        const res = await projectsApi.getAll(params);
+      const res = await projectsApi.getAll(params);
 
-        const projectList = res?.data?.data || res?.data || (Array.isArray(res) ? res : []);
-        const paginationMeta = res?.data?.meta || res?.meta || {
-          current_page: currentPage,
-          last_page: 1,
-          total: Array.isArray(projectList) ? projectList.length : 0,
-          per_page: 10,
-        };
+      const projectList = res?.data?.data || res?.data || (Array.isArray(res) ? res : []);
+      const paginationMeta = res?.data?.meta || res?.meta || {
+        current_page: currentPage,
+        last_page: 1,
+        total: Array.isArray(projectList) ? projectList.length : 0,
+        per_page: 10,
+      };
 
-        setProjects(Array.isArray(projectList) ? projectList : []);
-        setMeta(paginationMeta);
-      } catch (err) {
-        console.error('Failed to load projects:', err);
-        setError('Failed to load projects. Please try again.');
-      } finally {
-        setLoading(false);
-      }
+      setProjects(Array.isArray(projectList) ? projectList : []);
+      setMeta(paginationMeta);
+    } catch (err) {
+      console.error('Failed to load projects:', err);
+      setError('Failed to load projects. Please try again.');
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useEffect(() => {
     fetchProjects();
   }, [searchParams]);
 
@@ -110,6 +123,63 @@ export default function ProjectsPage() {
     newParams.set('direction', newDirection);
     newParams.set('page', '1');
     setSearchParams(newParams);
+  };
+
+  const handleOpenCreate = () => {
+    setSelectedProject(null);
+    setFormModalOpen(true);
+  };
+
+  const handleOpenEdit = (project, e) => {
+    e?.stopPropagation();
+    setSelectedProject(project);
+    setFormModalOpen(true);
+  };
+
+  const handleOpenDelete = (project, e) => {
+    e?.stopPropagation();
+    setProjectToDelete(project);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!projectToDelete) return;
+    try {
+      setDeleteLoading(true);
+      await projectsApi.delete(projectToDelete.id);
+      setDeleteModalOpen(false);
+      setProjectToDelete(null);
+      fetchProjects();
+    } catch (err) {
+      alert(err.data?.message || err.message || 'Failed to delete project.');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleOpenArchive = (project, e) => {
+    e?.stopPropagation();
+    setProjectToArchive(project);
+    setArchiveModalOpen(true);
+  };
+
+  const handleConfirmArchive = async () => {
+    if (!projectToArchive) return;
+    try {
+      setArchiveLoading(true);
+      if (projectsApi.archive) {
+        await projectsApi.archive(projectToArchive.id);
+      } else {
+        await projectsApi.update(projectToArchive.id, { status: 'archived' });
+      }
+      setArchiveModalOpen(false);
+      setProjectToArchive(null);
+      fetchProjects();
+    } catch (err) {
+      alert(err.data?.message || err.message || 'Failed to archive project.');
+    } finally {
+      setArchiveLoading(false);
+    }
   };
 
   const formatDate = (dateStr) => {
@@ -145,8 +215,8 @@ export default function ProjectsPage() {
           <h1>Projects</h1>
           <p>Manage, track, and collaborate on your team projects.</p>
         </div>
-        {can && can('projects.create') && (
-          <button className="btn-primary" onClick={() => navigate('/projects/create')}>
+        {can('projects.create') && (
+          <button className="btn-primary" onClick={handleOpenCreate}>
             + Create Project
           </button>
         )}
@@ -215,19 +285,16 @@ export default function ProjectsPage() {
             {currentDirection === 'asc' ? '↑ ASC' : '↓ DESC'}
           </button>
 
-          {/* أزرار التبديل بين الجدول والبطاقات */}
           <div className="view-toggle">
             <button
               className={`toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
               onClick={() => setViewMode('table')}
-              title="Table View"
             >
               Table
             </button>
             <button
               className={`toggle-btn ${viewMode === 'cards' ? 'active' : ''}`}
               onClick={() => setViewMode('cards')}
-              title="Cards View"
             >
               Cards
             </button>
@@ -291,12 +358,35 @@ export default function ProjectsPage() {
                     </div>
                   </td>
                   <td className="text-right" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      className="btn-table-action"
-                      onClick={() => navigate(`/projects/${project.id}`)}
-                    >
-                      View Details →
-                    </button>
+                    <div className="actions-cell">
+                      {can('projects.update') && (
+                        <button
+                          className="btn-action edit"
+                          onClick={(e) => handleOpenEdit(project, e)}
+                          title="Edit Project"
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {can('projects.archive') && project.status !== 'archived' && (
+                        <button
+                          className="btn-action archive"
+                          onClick={(e) => handleOpenArchive(project, e)}
+                          title="Archive Project"
+                        >
+                          Archive
+                        </button>
+                      )}
+                      {can('projects.delete') && (
+                        <button
+                          className="btn-action delete"
+                          onClick={(e) => handleOpenDelete(project, e)}
+                          title="Delete Project"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -328,16 +418,41 @@ export default function ProjectsPage() {
                   <span className="date-label">Due:</span> {formatDate(project.due_date)}
                 </div>
               </div>
-              <div className="project-card-footer">
+              <div className="project-card-footer" onClick={(e) => e.stopPropagation()}>
                 <span className="owner-tag">Owner: {project.owner?.name || 'N/A'}</span>
-                <span className="view-link">Details →</span>
+                <div className="actions-cell">
+                  {can('projects.update') && (
+                    <button
+                      className="btn-action edit"
+                      onClick={(e) => handleOpenEdit(project, e)}
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {can('projects.archive') && project.status !== 'archived' && (
+                    <button
+                      className="btn-action archive"
+                      onClick={(e) => handleOpenArchive(project, e)}
+                    >
+                      Archive
+                    </button>
+                  )}
+                  {can('projects.delete') && (
+                    <button
+                      className="btn-action delete"
+                      onClick={(e) => handleOpenDelete(project, e)}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
         </div>
       )}
 
-\      {!loading && meta.total > 0 && (
+      {!loading && meta.total > 0 && (
         <div className="pagination-bar">
           <span className="pagination-info">
             Showing {(meta.current_page - 1) * meta.per_page + 1} to{' '}
@@ -367,6 +482,35 @@ export default function ProjectsPage() {
           </div>
         </div>
       )}
+
+      <ProjectFormModal
+        isOpen={formModalOpen}
+        onClose={() => setFormModalOpen(false)}
+        onSuccess={fetchProjects}
+        project={selectedProject}
+      />
+
+      <ConfirmModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Project"
+        message={`Are you sure you want to delete "${projectToDelete?.title}"? This action cannot be undone.`}
+        confirmText="Delete Project"
+        danger={true}
+        loading={deleteLoading}
+      />
+
+      <ConfirmModal
+        isOpen={archiveModalOpen}
+        onClose={() => setArchiveModalOpen(false)}
+        onConfirm={handleConfirmArchive}
+        title="Archive Project"
+        message={`Are you sure you want to archive "${projectToArchive?.title}"? It will be hidden from active lists.`}
+        confirmText="Archive Project"
+        danger={false}
+        loading={archiveLoading}
+      />
     </div>
   );
 }
