@@ -17,7 +17,6 @@
   font-size: 0.95rem;
 }
 
-/* 8. Summary Cards Grid */
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -91,7 +90,6 @@
   color: var(--danger);
 }
 
-/* 9. Charts Grid */
 .charts-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -131,7 +129,6 @@
   color: var(--slate-500);
 }
 
-/* Native SVG Donut Chart */
 .donut-chart-wrapper {
   position: relative;
   width: 170px;
@@ -209,7 +206,6 @@
 .legend-dot.progress { background-color: var(--primary-500); }
 .legend-dot.completed { background-color: var(--success); }
 
-/* Priority Bars */
 .priority-bars-list {
   display: flex;
   flex-direction: column;
@@ -258,7 +254,6 @@
 .fill-low { background-color: var(--slate-400); }
 .fill-project { background-color: var(--primary-600); }
 
-/* Project Progress */
 .project-progress-list {
   display: flex;
   flex-direction: column;
@@ -323,7 +318,6 @@
   to { transform: rotate(360deg); }
 }
 
-/* Responsiveness */
 @media (max-width: 900px) {
   .charts-grid {
     grid-template-columns: 1fr;
