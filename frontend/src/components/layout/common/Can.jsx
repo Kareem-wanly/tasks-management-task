@@ -1,23 +1,19 @@
-import { useAuth } from '../../context/AuthContext';
-
+import { useAuth } from '../../../context/AuthContext';
 
 export default function Can({ permission, role, children, fallback = null }) {
-  const { can, hasRole } = useAuth();
+  const auth = useAuth();
 
-  let hasPermissionAccess = true;
-  let hasRoleAccess = true;
+  const hasPermission = permission
+    ? (auth.can ? auth.can(permission) : auth.permissions?.includes(permission))
+    : true;
 
-  if (permission) {
-    hasPermissionAccess = can(permission);
+  const hasRequiredRole = role
+    ? (auth.hasRole ? auth.hasRole(role) : auth.roles?.includes(role))
+    : true;
+
+  if (!hasPermission || !hasRequiredRole) {
+    return fallback;
   }
 
-  if (role) {
-    hasRoleAccess = hasRole(role);
-  }
-
-  if (hasPermissionAccess && hasRoleAccess) {
-    return <>{children}</>;
-  }
-
-  return fallback;
+  return children;
 }

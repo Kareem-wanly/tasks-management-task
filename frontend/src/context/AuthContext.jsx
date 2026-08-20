@@ -15,10 +15,26 @@ export function AuthProvider({ children }) {
 
     if (userData?.roles && Array.isArray(userData.roles)) {
       userRoles = userData.roles.map((r) => (typeof r === 'object' ? r.name : r));
+
+      userData.roles.forEach((role) => {
+        if (role && typeof role === 'object' && Array.isArray(role.permissions)) {
+          role.permissions.forEach((p) => {
+            const permName = typeof p === 'object' ? p.name : p;
+            if (permName && !userPermissions.includes(permName)) {
+              userPermissions.push(permName);
+            }
+          });
+        }
+      });
     }
 
     if (userData?.permissions && Array.isArray(userData.permissions)) {
-      userPermissions = userData.permissions.map((p) => (typeof p === 'object' ? p.name : p));
+      userData.permissions.forEach((p) => {
+        const permName = typeof p === 'object' ? p.name : p;
+        if (permName && !userPermissions.includes(permName)) {
+          userPermissions.push(permName);
+        }
+      });
     }
 
     return { userRoles, userPermissions };
@@ -60,9 +76,8 @@ export function AuthProvider({ children }) {
     const res = await authApi.login(credentials);
     const payload = res.data || res;
 
-    // استخراج التوكن سواء كان اسمه access_token أو token
     const token = payload.access_token || payload.token;
-    const currentUser = payload.user;
+    const currentUser = payload.user || payload;
 
     if (token) {
       localStorage.setItem('auth_token', token);
@@ -82,7 +97,7 @@ export function AuthProvider({ children }) {
     const payload = res.data || res;
 
     const token = payload.access_token || payload.token;
-    const currentUser = payload.user;
+    const currentUser = payload.user || payload;
 
     if (token) {
       localStorage.setItem('auth_token', token);
@@ -110,19 +125,34 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const can = (permission) => {
-    if (!permission) return false;
-    if (roles.includes('Admin') || roles.includes('admin')) return true;
-    return permissions.includes(permission);
-  };
-
   const hasRole = (role) => {
     if (!role) return false;
+    const normalizedRoles = roles.map((r) => String(r).toLowerCase());
     if (Array.isArray(role)) {
-      return role.some((r) => roles.map((x) => x.toLowerCase()).includes(r.toLowerCase()));
+      return role.some((r) => normalizedRoles.includes(String(r).toLowerCase()));
     }
-    return roles.map((x) => x.toLowerCase()).includes(role.toLowerCase());
+    return normalizedRoles.includes(String(role).toLowerCase());
   };
+
+  const can = (permissionName) => {
+  if (!user) return false;
+
+  const roles = user.roles || [];
+  const isAdmin = roles.some((r) => 
+    typeof r === 'string' ? r === 'Administrator' : r.name === 'Administrator'
+  );
+  if (isAdmin) return true;
+
+  const permissions = user.effective_permissions || user.permissions || [];
+
+  if (Array.isArray(permissions)) {
+    return permissions.some((p) => 
+      typeof p === 'string' ? p === permissionName : p.name === permissionName
+    );
+  }
+
+  return false;
+};
 
   const value = {
     user,

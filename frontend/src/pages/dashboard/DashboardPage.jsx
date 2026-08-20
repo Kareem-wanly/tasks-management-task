@@ -1,65 +1,275 @@
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import Can from '../../components/common/Can';
+import projectsApi from '../../api/projectsApi';
+import tasksApi from '../../api/tasksApi';
+import './DashboardPage.css';
 
 export default function DashboardPage() {
-  const { user, roles, permissions, logout } = useAuth();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [projects, setProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
+
+  useEffect(() => {
+    async function fetchDashboardData() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const [projectsRes, tasksRes] = await Promise.all([
+          projectsApi.getAll({ per_page: 100 }),
+          tasksApi.getAll({ per_page: 100 }),
+        ]);
+
+        const projectsData = projectsRes?.data || projectsRes || [];
+        const tasksData = tasksRes?.data || tasksRes || [];
+
+        setProjects(Array.isArray(projectsData) ? projectsData : []);
+        setTasks(Array.isArray(tasksData) ? tasksData : []);
+      } catch (err) {
+        console.error('Failed to load dashboard data:', err);
+        setError('Failed to load dashboard metrics. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchDashboardData();
+  }, []);
+
+  const totalProjects = projects.length;
+  const activeProjects = projects.filter((p) => p.status === 'active').length;
+  const myTasks = tasks.filter((t) => t.assigned_to === user?.id);
+  const inProgressTasks = tasks.filter((t) => t.status === 'in_progress').length;
+  const completedTasks = tasks.filter((t) => t.status === 'completed').length;
+  const overdueTasks = tasks.filter(
+    (t) => t.is_overdue || (t.due_date && t.status !== 'completed' && new Date(t.due_date) < new Date())
+  ).length;
+
+  const priorityCounts = {
+    high: tasks.filter((t) => t.priority === 'high').length,
+    medium: tasks.filter((t) => t.priority === 'medium').length,
+    low: tasks.filter((t) => t.priority === 'low').length,
+  };
+
+  const statusCounts = {
+    todo: tasks.filter((t) => t.status === 'todo' || t.status === 'pending').length,
+    in_progress: inProgressTasks,
+    completed: completedTasks,
+  };
+  const totalStatusTasks = tasks.length || 1;
+
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+  const todoStroke = (statusCounts.todo / totalStatusTasks) * circumference;
+  const inProgressStroke = (statusCounts.in_progress / totalStatusTasks) * circumference;
+  const completedStroke = (statusCounts.completed / totalStatusTasks) * circumference;
+
+  if (loading) {
+    return (
+      <div className="dashboard-loading">
+        <div className="spinner" />
+        <span>Loading analytics...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return <div className="dashboard-error">{error}</div>;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-md p-6">
-        <div className="flex justify-between items-center pb-4 border-b">
-          <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-          <button
-            onClick={logout}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm"
-          >
-            Logout
-          </button>
-        </div>
-
-        <div className="mt-6 space-y-4">
-          <p className="text-gray-700">
-            Welcome, <span className="font-semibold text-indigo-600">{user?.name}</span> ({user?.email})
-          </p>
-
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-semibold text-gray-700 mb-2">Roles:</h3>
-            <div className="flex gap-2">
-              {roles?.length ? (
-                roles.map((r, i) => (
-                  <span key={i} className="px-2.5 py-1 bg-indigo-100 text-indigo-800 text-xs font-semibold rounded-full">
-                    {r}
-                  </span>
-                ))
-              ) : (
-                <span className="text-sm text-gray-500">No specific roles assigned</span>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-semibold text-gray-700 mb-2">Permissions:</h3>
-            <div className="flex flex-wrap gap-2">
-              {permissions?.length ? (
-                permissions.map((p, i) => (
-                  <span key={i} className="px-2.5 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
-                    {p}
-                  </span>
-                ))
-              ) : (
-                <span className="text-sm text-gray-500">No specific permissions assigned</span>
-              )}
-            </div>
-          </div>
-
-          
-          <Can role="admin">
-            <div className="p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg text-sm">
-              This element is only visible to administrators (Admin).
-            </div>
-          </Can>
-        </div>
+    <div className="dashboard-container">
+      <div className="dashboard-header">
+        <h1>Dashboard Overview</h1>
+        <p>Welcome back, <strong>{user?.name}</strong>. Here is your system performance summary.</p>
       </div>
+
+      <section className="metrics-grid">
+        <div className="metric-card">
+          <span className="metric-title">Accessible Projects</span>
+          <span className="metric-value">{totalProjects}</span>
+          <span className="metric-badge primary">Total Access</span>
+        </div>
+
+        <div className="metric-card">
+          <span className="metric-title">Active Projects</span>
+          <span className="metric-value">{activeProjects}</span>
+          <span className="metric-badge info">In Progress</span>
+        </div>
+
+        <div className="metric-card">
+          <span className="metric-title">Assigned to Me</span>
+          <span className="metric-value">{myTasks.length}</span>
+          <span className="metric-badge neutral">Personal Queue</span>
+        </div>
+
+        <div className="metric-card">
+          <span className="metric-title">Tasks In Progress</span>
+          <span className="metric-value">{inProgressTasks}</span>
+          <span className="metric-badge warning">Underway</span>
+        </div>
+
+        <div className="metric-card">
+          <span className="metric-title">Completed Tasks</span>
+          <span className="metric-value">{completedTasks}</span>
+          <span className="metric-badge success">Done</span>
+        </div>
+
+        <div className="metric-card">
+          <span className="metric-title">Overdue Tasks</span>
+          <span className="metric-value danger-text">{overdueTasks}</span>
+          <span className="metric-badge danger">Action Needed</span>
+        </div>
+      </section>
+
+      <section className="charts-grid">
+        <div className="chart-card">
+          <div className="chart-card-header">
+            <h3>Tasks by Status</h3>
+            <span className="chart-total-count">{tasks.length} Total</span>
+          </div>
+
+          <div className="donut-chart-wrapper">
+            <svg viewBox="0 0 100 100" className="donut-svg">
+              <circle
+                cx="50"
+                cy="50"
+                r={radius}
+                className="donut-segment segment-todo"
+                strokeDasharray={`${todoStroke} ${circumference}`}
+                strokeDashoffset="0"
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r={radius}
+                className="donut-segment segment-progress"
+                strokeDasharray={`${inProgressStroke} ${circumference}`}
+                strokeDashoffset={-todoStroke}
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r={radius}
+                className="donut-segment segment-completed"
+                strokeDasharray={`${completedStroke} ${circumference}`}
+                strokeDashoffset={-(todoStroke + inProgressStroke)}
+              />
+            </svg>
+
+            <div className="donut-center-label">
+              <span className="donut-center-val">{completedTasks}</span>
+              <span className="donut-center-text">Completed</span>
+            </div>
+          </div>
+
+          <div className="chart-legend">
+            <div className="legend-item">
+              <span className="legend-dot todo" />
+              <span>To Do ({statusCounts.todo})</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot progress" />
+              <span>In Progress ({statusCounts.in_progress})</span>
+            </div>
+            <div className="legend-item">
+              <span className="legend-dot completed" />
+              <span>Completed ({statusCounts.completed})</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Tasks by Priority Chart (Plain CSS) */}
+        <div className="chart-card">
+          <div className="chart-card-header">
+            <h3>Tasks by Priority</h3>
+            <span className="chart-total-count">{tasks.length} Total</span>
+          </div>
+
+          <div className="priority-bars-list">
+            <div className="priority-bar-item">
+              <div className="bar-info">
+                <span className="priority-label high">High Priority</span>
+                <span className="bar-count">{priorityCounts.high}</span>
+              </div>
+              <div className="bar-track">
+                <div
+                  className="bar-fill fill-high"
+                  style={{ width: `${tasks.length ? (priorityCounts.high / tasks.length) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="priority-bar-item">
+              <div className="bar-info">
+                <span className="priority-label medium">Medium Priority</span>
+                <span className="bar-count">{priorityCounts.medium}</span>
+              </div>
+              <div className="bar-track">
+                <div
+                  className="bar-fill fill-medium"
+                  style={{ width: `${tasks.length ? (priorityCounts.medium / tasks.length) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="priority-bar-item">
+              <div className="bar-info">
+                <span className="priority-label low">Low Priority</span>
+                <span className="bar-count">{priorityCounts.low}</span>
+              </div>
+              <div className="bar-track">
+                <div
+                  className="bar-fill fill-low"
+                  style={{ width: `${tasks.length ? (priorityCounts.low / tasks.length) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="chart-card full-width">
+          <div className="chart-card-header">
+            <h3>Project Completion Progress</h3>
+          </div>
+
+          <div className="project-progress-list">
+            {projects.length === 0 ? (
+              <p className="empty-text">No active projects available.</p>
+            ) : (
+              projects.slice(0, 5).map((project) => {
+                const projectTasks = tasks.filter((t) => t.project_id === project.id);
+                const projCompleted = projectTasks.filter((t) => t.status === 'completed').length;
+                const progressPercent = projectTasks.length
+                  ? Math.round((projCompleted / projectTasks.length) * 100)
+                  : project.status === 'completed'
+                  ? 100
+                  : 0;
+
+                return (
+                  <div key={project.id} className="project-progress-row">
+                    <div className="project-row-details">
+                      <span className="project-row-title">{project.title}</span>
+                      <span className="project-row-stats">
+                        {projCompleted} of {projectTasks.length} tasks done ({progressPercent}%)
+                      </span>
+                    </div>
+                    <div className="bar-track">
+                      <div
+                        className="bar-fill fill-project"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
