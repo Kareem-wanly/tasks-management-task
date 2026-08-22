@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import projectsApi from '../../api/projectsApi';
-import apiClient from '../../api/apiClient';
 import ProjectFormModal from './ProjectFormModal';
 import ConfirmModal from './ConfirmModal';
+import AddMemberModal from './AddMemberModal';
 import './ProjectDetailsPage.css';
 
 export default function ProjectDetailsPage() {
@@ -22,7 +22,11 @@ export default function ProjectDetailsPage() {
   const [archiveModalOpen, setArchiveModalOpen] = useState(false);
   const [archiveLoading, setArchiveLoading] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('tasks'); 
+  const [addMemberModalOpen, setAddMemberModalOpen] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState(null);
+  const [removeMemberLoading, setRemoveMemberLoading] = useState(false);
+
+  const [activeTab, setActiveTab] = useState('tasks'); // 'tasks' | 'members' | 'activity'
 
   const fetchProjectDetails = async () => {
     try {
@@ -70,6 +74,20 @@ export default function ProjectDetailsPage() {
     } finally {
       setArchiveLoading(false);
       setArchiveModalOpen(false);
+    }
+  };
+
+  const handleConfirmRemoveMember = async () => {
+    if (!memberToRemove) return;
+    try {
+      setRemoveMemberLoading(true);
+      await projectsApi.removeMember(project.id, memberToRemove.id);
+      setMemberToRemove(null);
+      fetchProjectDetails();
+    } catch (err) {
+      alert(err.data?.message || err.message || 'Failed to remove member from project.');
+    } finally {
+      setRemoveMemberLoading(false);
     }
   };
 
@@ -154,6 +172,7 @@ export default function ProjectDetailsPage() {
 
   const members = project.members || [];
   const activities = project.activities || project.activity_logs || [];
+  const canManageMembers = can('projects.manage_members');
 
   return (
     <div className="project-details-container">
@@ -261,7 +280,7 @@ export default function ProjectDetailsPage() {
             className={`tab-btn ${activeTab === 'members' ? 'active' : ''}`}
             onClick={() => setActiveTab('members')}
           >
-            Members ({members.length})
+            Members ({members.length + (project.owner ? 1 : 0)})
           </button>
           <button
             className={`tab-btn ${activeTab === 'activity' ? 'active' : ''}`}
@@ -272,6 +291,7 @@ export default function ProjectDetailsPage() {
         </div>
 
         <div className="tab-content">
+          {/* تبويب المهام */}
           {activeTab === 'tasks' && (
             <div className="tasks-tab-view">
               {tasks.length === 0 ? (
@@ -318,6 +338,15 @@ export default function ProjectDetailsPage() {
 
           {activeTab === 'members' && (
             <div className="members-tab-view">
+              <div className="tab-actions-bar">
+                <h4>Team Members</h4>
+                {canManageMembers && (
+                  <button className="btn-primary btn-sm" onClick={() => setAddMemberModalOpen(true)}>
+                    + Add Member
+                  </button>
+                )}
+              </div>
+
               <div className="members-grid">
                 {project.owner && (
                   <div className="member-card owner-card">
@@ -342,6 +371,16 @@ export default function ProjectDetailsPage() {
                       <span className="member-email">{member.email}</span>
                       <span className="member-role-badge">Team Member</span>
                     </div>
+
+                    {canManageMembers && (
+                      <button
+                        className="btn-member-remove"
+                        title="Remove member from project"
+                        onClick={() => setMemberToRemove(member)}
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                 ))}
 
@@ -387,6 +426,26 @@ export default function ProjectDetailsPage() {
         onClose={() => setEditModalOpen(false)}
         onSuccess={fetchProjectDetails}
         project={project}
+      />
+
+      <AddMemberModal
+        isOpen={addMemberModalOpen}
+        onClose={() => setAddMemberModalOpen(false)}
+        onSuccess={fetchProjectDetails}
+        projectId={project.id}
+        existingMembers={members}
+        ownerId={project.owner?.id}
+      />
+
+      <ConfirmModal
+        isOpen={!!memberToRemove}
+        onClose={() => setMemberToRemove(null)}
+        onConfirm={handleConfirmRemoveMember}
+        title="Remove Team Member"
+        message={`Are you sure you want to remove ${memberToRemove?.name} from this project?`}
+        confirmText="Remove Member"
+        danger={true}
+        loading={removeMemberLoading}
       />
 
       <ConfirmModal
