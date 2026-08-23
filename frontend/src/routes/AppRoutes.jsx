@@ -26,7 +26,6 @@ export default function AppRoutes() {
         <Route path="/" element={<AppLayout />}>
           <Route index element={<DashboardPage />} />
           
-          {/* Projects */}
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="projects/:id" element={<ProjectDetailsPage />} />
           

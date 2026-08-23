@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import projectsApi from '../../api/projectsApi';
+import tasksApi from '../../api/tasksApi';
 import ProjectFormModal from './ProjectFormModal';
 import ConfirmModal from './ConfirmModal';
 import AddMemberModal from './AddMemberModal';
+import TaskFormModal from './TaskFormModal';
 import './ProjectDetailsPage.css';
 
 export default function ProjectDetailsPage() {
@@ -13,6 +15,7 @@ export default function ProjectDetailsPage() {
   const { can } = useAuth();
 
   const [project, setProject] = useState(null);
+  const [projectTasks, setProjectTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -26,15 +29,25 @@ export default function ProjectDetailsPage() {
   const [memberToRemove, setMemberToRemove] = useState(null);
   const [removeMemberLoading, setRemoveMemberLoading] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('tasks'); // 'tasks' | 'members' | 'activity'
+  const [createTaskModalOpen, setCreateTaskModalOpen] = useState(false);
+
+  const [activeTab, setActiveTab] = useState('tasks');
 
   const fetchProjectDetails = async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await projectsApi.getById(id);
-      const data = res?.data?.data || res?.data || res;
-      setProject(data);
+
+      const [projectRes, tasksRes] = await Promise.all([
+        projectsApi.getById(id),
+        tasksApi.getByProject(id).catch(() => ({ data: [] })),
+      ]);
+
+      const projectData = projectRes?.data?.data || projectRes?.data || projectRes;
+      const tasksData = tasksRes?.data?.data || tasksRes?.data || tasksRes || [];
+
+      setProject(projectData);
+      setProjectTasks(Array.isArray(tasksData) ? tasksData : (projectData.tasks || []));
     } catch (err) {
       console.error('Failed to load project details:', err);
       setError(err.data?.message || err.message || 'Failed to load project details.');
@@ -117,9 +130,11 @@ export default function ProjectDetailsPage() {
       case 'in_progress':
         return 'status-badge active';
       case 'completed':
+      case 'done':
         return 'status-badge completed';
       case 'on_hold':
       case 'pending':
+      case 'todo':
         return 'status-badge on-hold';
       case 'archived':
         return 'status-badge archived';
@@ -163,16 +178,19 @@ export default function ProjectDetailsPage() {
     );
   }
 
-  const tasks = project.tasks || [];
+  const tasks = projectTasks;
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.status === 'completed' || t.status === 'done').length;
   const inProgressTasks = tasks.filter((t) => t.status === 'in_progress').length;
   const pendingTasks = tasks.filter((t) => t.status === 'todo' || t.status === 'pending' || !t.status).length;
   const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  const members = project.members || [];
+  const members = (project.members || []).filter((m) => m.id !== project.owner?.id);
+  const allProjectUsers = project.owner ? [project.owner, ...members] : members;
+  
   const activities = project.activities || project.activity_logs || [];
   const canManageMembers = can('projects.manage_members');
+  const canCreateTasks = can('tasks.create');
 
   return (
     <div className="project-details-container">
@@ -232,7 +250,7 @@ export default function ProjectDetailsPage() {
             </div>
             <div className="date-item">
               <span className="date-label">Total Members</span>
-              <span className="date-val">{members.length + (project.owner ? 1 : 0)}</span>
+              <span className="date-val">{allProjectUsers.length}</span>
             </div>
           </div>
         </div>
@@ -280,7 +298,7 @@ export default function ProjectDetailsPage() {
             className={`tab-btn ${activeTab === 'members' ? 'active' : ''}`}
             onClick={() => setActiveTab('members')}
           >
-            Members ({members.length + (project.owner ? 1 : 0)})
+            Members ({allProjectUsers.length})
           </button>
           <button
             className={`tab-btn ${activeTab === 'activity' ? 'active' : ''}`}
@@ -291,9 +309,17 @@ export default function ProjectDetailsPage() {
         </div>
 
         <div className="tab-content">
-          {/* تبويب المهام */}
           {activeTab === 'tasks' && (
             <div className="tasks-tab-view">
+              <div className="tab-actions-bar">
+                <h4>Project Tasks</h4>
+                {canCreateTasks && (
+                  <button className="btn-primary btn-sm" onClick={() => setCreateTaskModalOpen(true)}>
+                    + Create Task
+                  </button>
+                )}
+              </div>
+
               {tasks.length === 0 ? (
                 <div className="tab-empty-state">
                   <span className="empty-icon">📝</span>
@@ -314,10 +340,14 @@ export default function ProjectDetailsPage() {
                     <tbody>
                       {tasks.map((task) => (
                         <tr key={task.id}>
-                          <td className="font-semibold">{task.title}</td>
+                          <td className="font-semibold">
+                            <Link to={`/tasks/${task.id}`} className="task-title-link">
+                              {task.title}
+                            </Link>
+                          </td>
                           <td>
                             <span className={getStatusBadgeClass(task.status)}>
-                              {task.status?.replace('_', ' ') || 'pending'}
+                              {task.status?.replace('_', ' ') || 'todo'}
                             </span>
                           </td>
                           <td>
@@ -435,6 +465,14 @@ export default function ProjectDetailsPage() {
         projectId={project.id}
         existingMembers={members}
         ownerId={project.owner?.id}
+      />
+
+      <TaskFormModal
+        isOpen={createTaskModalOpen}
+        onClose={() => setCreateTaskModalOpen(false)}
+        onSuccess={fetchProjectDetails}
+        projectId={project.id}
+        members={allProjectUsers}
       />
 
       <ConfirmModal
