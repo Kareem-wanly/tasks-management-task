@@ -90,7 +90,7 @@ class TaskController extends Controller
 {
     $this->authorize('view', $task);
 
-    $taskData = $task->load(['project:id,title', 'assignee:id,name,email'])->toArray();
+    $taskData = $task->load(['project:id,title', 'assignee:id,name,email', 'comments.user:id,name,email'])->toArray();
     
     
     $taskData['is_overdue'] = $task->due_date && $task->status !== 'completed' && $task->due_date < now();
@@ -108,7 +108,7 @@ class TaskController extends Controller
         'title'       => ['required', 'string', 'max:255'],
         'description' => ['nullable', 'string'],
         'status'      => ['required', 'string', 'in:todo,in_progress,review,completed'],
-        'priority'    => ['sometimes', 'string', 'in:low,medium,high'],
+        'priority'    => ['sometimes', 'string', 'in:low,medium,high,urgent'],
         'project_id'  => ['required', 'integer', 'exists:projects,id'],
         'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
         'due_date'    => ['nullable', 'date'],
@@ -173,6 +173,7 @@ class TaskController extends Controller
         'title'       => ['sometimes', 'string', 'max:255'],
         'description' => ['nullable', 'string'],
         'status'      => ['sometimes', 'string', 'in:todo,in_progress,review,completed'],
+        'priority'    => ['sometimes', 'string', 'in:low,medium,high,urgent'],
         'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
         'due_date'    => ['nullable', 'date'],
     ]);

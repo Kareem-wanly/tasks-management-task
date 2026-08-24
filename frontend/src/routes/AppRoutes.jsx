@@ -11,6 +11,7 @@ import ForbiddenPage from '../pages/errors/ForbiddenPage';
 import NotFoundPage from '../pages/errors/NotFoundPage';
 import DashboardPage from '../pages/dashboard/DashboardPage';
 import TasksPage from '../pages/tasks/TasksPage';
+import TaskDetailsPage from '../pages/tasks/TaskDetailsPage';
 
 function UsersPage() { return <h2>Users Page</h2>; }
 function RolesPage() { return <h2>Roles Page</h2>; }
@@ -30,6 +31,8 @@ export default function AppRoutes() {
           <Route path="projects/:id" element={<ProjectDetailsPage />} />
           
           <Route path="tasks" element={<TasksPage />} />
+
+          <Route path="/tasks/:id" element={<TaskDetailsPage />} />
 
           <Route element={<PermissionRoute requiredPermission="users.view" />}>
             <Route path="users" element={<UsersPage />} />
