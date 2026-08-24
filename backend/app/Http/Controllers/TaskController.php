@@ -30,7 +30,15 @@ class TaskController extends Controller
         $query->where('priority', $request->query('priority'));
     }
 
-    if ($request->filled('assigned_to')) {
+    $user = $request->user();
+
+    $isAdmin = $user->role === 'admin' 
+        || (isset($user->is_admin) && $user->is_admin) 
+        || (is_object($user->role) && $user->role->name === 'admin');
+
+    if (!$isAdmin) {
+        $query->where('assigned_to', $user->id);
+    } elseif ($request->filled('assigned_to')) {
         $query->where('assigned_to', $request->query('assigned_to'));
     }
 

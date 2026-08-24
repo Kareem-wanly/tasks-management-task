@@ -8,9 +8,18 @@ import ConfirmModal from './ConfirmModal';
 import './ProjectsPage.css';
 
 export default function ProjectsPage() {
-  const { can } = useAuth();
+  const { user, can } = useAuth() || {};
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const checkPermission = (perm) => {
+    if (typeof can === 'function') return can(perm);
+    if (user?.role === 'admin' || user?.is_admin || user?.role?.name === 'admin') return true;
+    if (Array.isArray(user?.permissions)) {
+      return user.permissions.includes(perm) || user.permissions.some((p) => (p.name || p) === perm);
+    }
+    return false;
+  };
 
   const currentSearch = searchParams.get('search') || '';
   const currentStatus = searchParams.get('status') || '';
@@ -49,19 +58,26 @@ export default function ProjectsPage() {
   }, [searchInput]);
 
   useEffect(() => {
+    const canViewUsers = checkPermission('users.view') || checkPermission('projects.create');
+    if (!canViewUsers) return;
+
+    let isMounted = true;
     async function fetchUsers() {
       try {
         const res = await apiClient.get('/users?per_page=100');
         const usersData = res?.data?.data || res?.data || res || [];
-        if (Array.isArray(usersData)) {
+        if (isMounted && Array.isArray(usersData)) {
           setMembers(usersData);
         }
       } catch (err) {
-        console.log('Member filter info:', err.message);
       }
     }
     fetchUsers();
-  }, []);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   const fetchProjects = async () => {
     try {
@@ -215,7 +231,7 @@ export default function ProjectsPage() {
           <h1>Projects</h1>
           <p>Manage, track, and collaborate on your team projects.</p>
         </div>
-        {can('projects.create') && (
+        {checkPermission('projects.create') && (
           <button className="btn-primary" onClick={handleOpenCreate}>
             + Create Project
           </button>
@@ -226,6 +242,8 @@ export default function ProjectsPage() {
         <div className="search-box">
           <input
             type="text"
+            id="projects-search-input"
+            name="search"
             placeholder="Search projects by title or description..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -239,6 +257,8 @@ export default function ProjectsPage() {
 
         <div className="filters-group">
           <select
+            id="projects-status-filter"
+            name="status"
             value={currentStatus}
             onChange={(e) => updateFilter('status', e.target.value)}
             className="filter-select"
@@ -253,6 +273,8 @@ export default function ProjectsPage() {
 
           {members.length > 0 && (
             <select
+              id="projects-member-filter"
+              name="member_id"
               value={currentMember}
               onChange={(e) => updateFilter('member_id', e.target.value)}
               className="filter-select"
@@ -267,6 +289,8 @@ export default function ProjectsPage() {
           )}
 
           <select
+            id="projects-sort-filter"
+            name="sort"
             value={currentSort}
             onChange={(e) => updateFilter('sort', e.target.value)}
             className="filter-select"
@@ -359,7 +383,7 @@ export default function ProjectsPage() {
                   </td>
                   <td className="text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="actions-cell">
-                      {can('projects.update') && (
+                      {checkPermission('projects.update') && (
                         <button
                           className="btn-action edit"
                           onClick={(e) => handleOpenEdit(project, e)}
@@ -368,7 +392,7 @@ export default function ProjectsPage() {
                           Edit
                         </button>
                       )}
-                      {can('projects.archive') && project.status !== 'archived' && (
+                      {checkPermission('projects.archive') && project.status !== 'archived' && (
                         <button
                           className="btn-action archive"
                           onClick={(e) => handleOpenArchive(project, e)}
@@ -377,7 +401,7 @@ export default function ProjectsPage() {
                           Archive
                         </button>
                       )}
-                      {can('projects.delete') && (
+                      {checkPermission('projects.delete') && (
                         <button
                           className="btn-action delete"
                           onClick={(e) => handleOpenDelete(project, e)}
@@ -421,7 +445,7 @@ export default function ProjectsPage() {
               <div className="project-card-footer" onClick={(e) => e.stopPropagation()}>
                 <span className="owner-tag">Owner: {project.owner?.name || 'N/A'}</span>
                 <div className="actions-cell">
-                  {can('projects.update') && (
+                  {checkPermission('projects.update') && (
                     <button
                       className="btn-action edit"
                       onClick={(e) => handleOpenEdit(project, e)}
@@ -429,7 +453,7 @@ export default function ProjectsPage() {
                       Edit
                     </button>
                   )}
-                  {can('projects.archive') && project.status !== 'archived' && (
+                  {checkPermission('projects.archive') && project.status !== 'archived' && (
                     <button
                       className="btn-action archive"
                       onClick={(e) => handleOpenArchive(project, e)}
@@ -437,7 +461,7 @@ export default function ProjectsPage() {
                       Archive
                     </button>
                   )}
-                  {can('projects.delete') && (
+                  {checkPermission('projects.delete') && (
                     <button
                       className="btn-action delete"
                       onClick={(e) => handleOpenDelete(project, e)}
