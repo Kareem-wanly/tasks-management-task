@@ -30,7 +30,15 @@ class TaskController extends Controller
         $query->where('priority', $request->query('priority'));
     }
 
-    if ($request->filled('assigned_to')) {
+    $user = $request->user();
+
+    $isAdmin = $user->role === 'admin' 
+        || (isset($user->is_admin) && $user->is_admin) 
+        || (is_object($user->role) && $user->role->name === 'admin');
+
+    if (!$isAdmin) {
+        $query->where('assigned_to', $user->id);
+    } elseif ($request->filled('assigned_to')) {
         $query->where('assigned_to', $request->query('assigned_to'));
     }
 
@@ -143,7 +151,7 @@ class TaskController extends Controller
         'completed_at' => $completedAt,
         ]);
 
-    $task = Task::create($validated + ['created_by' => $request->user()->id]);
+    //$task = Task::create($validated + ['created_by' => $request->user()->id]);
 
     return response()->json([
         'message' => 'Task created successfully',

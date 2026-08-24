@@ -1,11 +1,14 @@
 import apiClient from './apiClient';
 
 const tasksApi = {
-
   getAll: async (params = {}) => {
     const queryParams = new URLSearchParams(params).toString();
     const endpoint = queryParams ? `/tasks?${queryParams}` : '/tasks';
     return await apiClient.get(endpoint);
+  },
+
+  getByProject: async (projectId) => {
+    return await apiClient.get(`/projects/${projectId}/tasks`);
   },
 
   getById: async (id) => {
@@ -13,8 +16,8 @@ const tasksApi = {
   },
 
 
-  create: async (taskData) => {
-    return await apiClient.post('/tasks', taskData);
+  create: async (projectId, taskData) => {
+    return await apiClient.post(`/projects/${projectId}/tasks`, taskData);
   },
 
 
