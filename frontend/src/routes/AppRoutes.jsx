@@ -13,8 +13,8 @@ import DashboardPage from '../pages/dashboard/DashboardPage';
 import TasksPage from '../pages/tasks/TasksPage';
 import TaskDetailsPage from '../pages/tasks/TaskDetailsPage';
 import UsersPage from '../pages/users/UsersPage';
+import RolesPage from '../pages/roles/RolesPage';
 
-function RolesPage() { return <h2>Roles Page</h2>; }
 
 export default function AppRoutes() {
   return (
