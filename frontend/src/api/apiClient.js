@@ -1,26 +1,27 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
-function getHeaders(customHeaders = {}) {
-  const headers = {
-    'Accept': 'application/json',
-    'Content-Type': 'application/json',
-    ...customHeaders,
-  };
-
-  const token = localStorage.getItem('auth_token');
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  return headers;
-}
 
 async function request(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
+  const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+
+  const headers = {
+    'Accept': 'application/json',
+    ...options.headers,
+  };
+
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const config = {
     method: options.method || 'GET',
-    headers: getHeaders(options.headers),
+    headers,
     ...options,
   };
 
@@ -60,21 +61,23 @@ async function request(endpoint, options = {}) {
     error.errors = data?.errors || {};
 
     switch (response.status) {
-      case 401: // Unauthenticated
+      case 401: 
         localStorage.removeItem('auth_token');
+        localStorage.removeItem('token');
         localStorage.removeItem('auth_user');
+        localStorage.removeItem('user');
         window.dispatchEvent(new Event('auth:unauthorized'));
         break;
 
-      case 403: // Forbidden
+      case 403: 
         error.message = data?.message || 'You are not authorized to perform this action.';
         break;
 
-      case 404: // Not Found
+      case 404: 
         error.message = data?.message || 'The requested resource was not found.';
         break;
 
-      case 422: // Validation Error
+      case 422: 
         error.message = data?.message || 'Please ensure that the data entered is correct.';
         break;
 
