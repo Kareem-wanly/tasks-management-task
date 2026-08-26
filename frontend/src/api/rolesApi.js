@@ -2,8 +2,10 @@ import apiClient from './apiClient';
 
 const rolesApi = {
 
-  getAll: async () => {
-    return await apiClient.get('/roles');
+  getAll: async (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    const endpoint = queryParams ? `/roles?${queryParams}` : '/roles';
+    return await apiClient.get(endpoint);
   },
 
 
