@@ -62,19 +62,17 @@ class RolesAndPermissionsSeeder extends Seeder
         $pmRole     = Role::firstOrCreate(['name' => 'Project Manager', 'display_name' => 'Project Manager', 'description' => 'Can manage assigned projects and tasks']);
         $memberRole = Role::firstOrCreate(['name' => 'Member', 'display_name' => 'Team Member', 'description' => 'Can view projects and work on assigned tasks']);
 
-        // 1. Admin krijgt alle permissies
         $allPermissionIds = Permission::pluck('id')->toArray();
         $adminRole->permissions()->sync($allPermissionIds);
 
-        // 2. Project Manager permissies
         $pmPermissionNames = [
+            'users.view',
             'projects.view', 'projects.create', 'projects.update', 'projects.delete', 'projects.archive', 'projects.manage_members',
             'tasks.view', 'tasks.create', 'tasks.update', 'tasks.delete', 'tasks.assign', 'tasks.change_status',
             'comments.view', 'comments.create', 'comments.update', 'comments.delete'
         ];
         $pmRole->permissions()->sync(Permission::whereIn('name', $pmPermissionNames)->pluck('id'));
 
-        // 3. Member permissies
         $memberPermissionNames = [
             'projects.view',
             'tasks.view', 'tasks.update', 'tasks.change_status',
@@ -82,7 +80,6 @@ class RolesAndPermissionsSeeder extends Seeder
         ];
         $memberRole->permissions()->sync(Permission::whereIn('name', $memberPermissionNames)->pluck('id'));
 
-        // 4. Admin User
         $adminUser = User::firstOrCreate(
             ['email' => 'admin@example.com'],
             [
