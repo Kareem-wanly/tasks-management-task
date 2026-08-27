@@ -54,9 +54,11 @@ class TaskController extends Controller
         $query->whereDate('due_date', '>=', $request->query('due_date_from'));
     }
 
-    if ($request->filled('due_date_to')) {
-        $query->whereDate('due_date', '<=', $request->query('due_date_to'));
-    }
+    if ($request->boolean('overdue') || $request->query('overdue') === 'true') {
+    $query->where('status', '!=', 'completed')
+          ->whereNotNull('due_date')
+          ->whereDate('due_date', '<', now()->toDateString());
+}
 
     $sortBy = $request->query('sort_by', 'created_at');
     $sortOrder = strtolower($request->query('sort_order', 'desc'));

@@ -2,6 +2,7 @@ import { useReducer, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import tasksApi from '../../api/tasksApi';
 import projectsApi from '../../api/projectsApi';
+import usersApi from '../../api/usersApi';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import useDebounce from '../../hooks/useDebounce';
@@ -12,6 +13,7 @@ import './TasksPage.css';
 const initialState = {
   tasks: [],
   projects: [],
+  users: [],
   loading: true,
   error: null,
   actionLoading: false,
@@ -20,6 +22,9 @@ const initialState = {
     status: '',
     priority: '',
     project_id: '',
+    assigned_to: '',
+    due_date: '',
+    overdue_only: '',
   },
   sorting: {
     sortBy: 'created_at',
@@ -62,12 +67,33 @@ function tasksReducer(state, action) {
     case 'SET_PROJECTS':
       return { ...state, projects: action.payload };
 
+    case 'SET_USERS':
+      return { ...state, users: action.payload };
+
     case 'SET_FILTER':
       return {
         ...state,
         filters: {
           ...state.filters,
           [action.field]: action.value,
+        },
+        pagination: {
+          ...state.pagination,
+          current_page: 1,
+        },
+      };
+
+    case 'RESET_FILTERS':
+      return {
+        ...state,
+        filters: {
+          search: '',
+          status: '',
+          priority: '',
+          project_id: '',
+          assigned_to: '',
+          due_date: '',
+          overdue_only: '',
         },
         pagination: {
           ...state.pagination,
@@ -94,28 +120,16 @@ function tasksReducer(state, action) {
       };
 
     case 'OPEN_CREATE_MODAL':
-      return {
-        ...state,
-        modals: { ...state.modals, isCreateOpen: true },
-      };
+      return { ...state, modals: { ...state.modals, isCreateOpen: true } };
 
     case 'CLOSE_CREATE_MODAL':
-      return {
-        ...state,
-        modals: { ...state.modals, isCreateOpen: false },
-      };
+      return { ...state, modals: { ...state.modals, isCreateOpen: false } };
 
     case 'OPEN_DELETE_MODAL':
-      return {
-        ...state,
-        modals: { ...state.modals, taskToDelete: action.payload },
-      };
+      return { ...state, modals: { ...state.modals, taskToDelete: action.payload } };
 
     case 'CLOSE_DELETE_MODAL':
-      return {
-        ...state,
-        modals: { ...state.modals, taskToDelete: null },
-      };
+      return { ...state, modals: { ...state.modals, taskToDelete: null } };
 
     case 'SET_ACTION_LOADING':
       return { ...state, actionLoading: action.payload };
@@ -126,17 +140,18 @@ function tasksReducer(state, action) {
 }
 
 export default function TasksPage() {
-  const { user } = useAuth() || {};
+  const { user, can } = useAuth() || {};
   const { showToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const checkPermission = (permission) => {
+    if (typeof can === 'function') return can(permission);
     if (!user) return false;
-    if (user.role === 'admin' || user.is_admin || user.role?.name === 'admin') return true;
+    if (user.role === 'admin' || user.is_admin || user.role?.name === 'admin' || user.role?.name === 'Administrator') return true;
     if (Array.isArray(user.permissions)) {
       return user.permissions.includes(permission) || user.permissions.some((p) => (p.name || p) === permission);
     }
-    return true;
+    return false;
   };
 
   const [state, dispatch] = useReducer(tasksReducer, {
@@ -146,6 +161,9 @@ export default function TasksPage() {
       status: searchParams.get('status') || '',
       priority: searchParams.get('priority') || '',
       project_id: searchParams.get('project_id') || '',
+      assigned_to: searchParams.get('assigned_to') || '',
+      due_date: searchParams.get('due_date') || '',
+      overdue_only: searchParams.get('overdue') || '',
     },
     sorting: {
       sortBy: searchParams.get('sort')?.split('-')[0] || 'created_at',
@@ -157,24 +175,30 @@ export default function TasksPage() {
     },
   });
 
-  const { tasks, projects, loading, error, actionLoading, filters, sorting, pagination, modals } = state;
+  const { tasks, projects, users, loading, error, actionLoading, filters, sorting, pagination, modals } = state;
 
   const debouncedSearch = useDebounce(filters.search, 400);
 
   useEffect(() => {
     let isMounted = true;
-    const fetchProjectsList = async () => {
+    const fetchMetadata = async () => {
       try {
-        const res = await projectsApi.getAll({ per_page: 100 });
+        const [projRes, userRes] = await Promise.all([
+          projectsApi.getAll({ per_page: 150 }),
+          usersApi && usersApi.getAll ? usersApi.getAll({ per_page: 150 }) : Promise.resolve({ data: [] }),
+        ]);
+
         if (isMounted) {
-          const list = res.data?.data || res.data || [];
-          dispatch({ type: 'SET_PROJECTS', payload: Array.isArray(list) ? list : [] });
+          const projList = projRes.data?.data || projRes.data || [];
+          const userList = userRes.data?.data || userRes.data || [];
+          dispatch({ type: 'SET_PROJECTS', payload: Array.isArray(projList) ? projList : [] });
+          dispatch({ type: 'SET_USERS', payload: Array.isArray(userList) ? userList : [] });
         }
       } catch (err) {
-        console.error('Failed to fetch projects for filter:', err);
+        console.error('Failed to fetch filter metadata:', err);
       }
     };
-    fetchProjectsList();
+    fetchMetadata();
     return () => { isMounted = false; };
   }, []);
 
@@ -184,6 +208,10 @@ export default function TasksPage() {
     if (filters.status) params.status = filters.status;
     if (filters.priority) params.priority = filters.priority;
     if (filters.project_id) params.project_id = filters.project_id;
+    if (filters.assigned_to) params.assigned_to = filters.assigned_to;
+    if (filters.due_date) params.due_date = filters.due_date;
+    if (filters.overdue_only) params.overdue = 'true';
+
     if (sorting.sortBy !== 'created_at' || sorting.sortDir !== 'desc') {
       params.sort = `${sorting.sortBy}-${sorting.sortDir}`;
     }
@@ -192,7 +220,18 @@ export default function TasksPage() {
     }
 
     setSearchParams(params, { replace: true });
-  }, [debouncedSearch, filters.status, filters.priority, filters.project_id, sorting, pagination.current_page, setSearchParams]);
+  }, [
+    debouncedSearch,
+    filters.status,
+    filters.priority,
+    filters.project_id,
+    filters.assigned_to,
+    filters.due_date,
+    filters.overdue_only,
+    sorting,
+    pagination.current_page,
+    setSearchParams,
+  ]);
 
   const fetchTasks = useCallback(async () => {
     dispatch({ type: 'FETCH_INIT' });
@@ -200,17 +239,20 @@ export default function TasksPage() {
       const params = {
         page: pagination.current_page,
         per_page: pagination.per_page,
-        sort: sorting.sortBy,
-        direction: sorting.sortDir,
+        sort_by: sorting.sortBy,       
+        sort_order: sorting.sortDir,   
       };
 
-      if (user?.id && user.role !== 'admin' && !user.is_admin) {
-        params.assigned_to = user.id;
-      }
       if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       if (filters.status) params.status = filters.status;
       if (filters.priority) params.priority = filters.priority;
       if (filters.project_id) params.project_id = filters.project_id;
+      if (filters.assigned_to) params.assigned_to = filters.assigned_to;
+      if (filters.due_date) params.due_date = filters.due_date;
+
+      if (filters.overdue_only) {
+  params.overdue = 'true';
+}
 
       const res = await tasksApi.getAll(params);
       const data = res.data?.data || res.data || [];
@@ -233,7 +275,19 @@ export default function TasksPage() {
         payload: err.data?.message || 'Failed to load tasks.',
       });
     }
-  }, [pagination.current_page, pagination.per_page, sorting.sortBy, sorting.sortDir, debouncedSearch, filters.status, filters.priority, filters.project_id, user]);
+  }, [
+    pagination.current_page,
+    pagination.per_page,
+    sorting.sortBy,
+    sorting.sortDir,
+    debouncedSearch,
+    filters.status,
+    filters.priority,
+    filters.project_id,
+    filters.assigned_to,
+    filters.due_date,
+    filters.overdue_only,
+  ]);
 
   useEffect(() => {
     fetchTasks();
@@ -277,12 +331,32 @@ export default function TasksPage() {
     return <span className={`badge ${p.class}`}>{p.label}</span>;
   };
 
+  const formatDate = (dateStr) => {
+    if (!dateStr) return 'No date';
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? dateStr : date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const hasActiveFilters = Boolean(
+    filters.search ||
+    filters.status ||
+    filters.priority ||
+    filters.project_id ||
+    filters.assigned_to ||
+    filters.due_date ||
+    filters.overdue_only
+  );
+
   return (
     <div className="tasks-page-container">
       <div className="page-header">
         <div>
-          <h1>My Tasks</h1>
-          <p className="subtitle">Manage, filter, and track tasks assigned to you</p>
+          <h1>Tasks Management</h1>
+          <p className="subtitle">Search, filter, and track all project tasks</p>
         </div>
         {checkPermission('tasks.create') && (
           <button className="btn-primary" onClick={() => dispatch({ type: 'OPEN_CREATE_MODAL' })}>
@@ -298,7 +372,7 @@ export default function TasksPage() {
               type="text"
               id="task-search-input"
               name="search"
-              placeholder="Search tasks by title..."
+              placeholder="Search by title..."
               value={filters.search}
               onChange={(e) => dispatch({ type: 'SET_FILTER', field: 'search', value: e.target.value })}
               className="form-control"
@@ -317,6 +391,23 @@ export default function TasksPage() {
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.title || p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-item">
+            <select
+              id="task-assignee-filter"
+              name="assigned_to"
+              value={filters.assigned_to}
+              onChange={(e) => dispatch({ type: 'SET_FILTER', field: 'assigned_to', value: e.target.value })}
+              className="form-control"
+            >
+              <option value="">All Assignees</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
                 </option>
               ))}
             </select>
@@ -355,6 +446,31 @@ export default function TasksPage() {
           </div>
 
           <div className="filter-item">
+            <input
+              type="date"
+              id="task-due-date-filter"
+              name="due_date"
+              value={filters.due_date}
+              onChange={(e) => dispatch({ type: 'SET_FILTER', field: 'due_date', value: e.target.value })}
+              className="form-control"
+              title="Filter by exact Due Date"
+            />
+          </div>
+
+          <div className="filter-item">
+            <select
+              id="task-overdue-filter"
+              name="overdue_only"
+              value={filters.overdue_only}
+              onChange={(e) => dispatch({ type: 'SET_FILTER', field: 'overdue_only', value: e.target.value })}
+              className="form-control"
+            >
+              <option value="">All Deadlines</option>
+              <option value="true">⚠️ Overdue Only</option>
+            </select>
+          </div>
+
+          <div className="filter-item">
             <select
               id="task-sort-filter"
               name="sort"
@@ -372,6 +488,19 @@ export default function TasksPage() {
             </select>
           </div>
         </div>
+
+        {hasActiveFilters && (
+          <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ fontSize: '0.8rem', padding: '4px 10px' }}
+              onClick={() => dispatch({ type: 'RESET_FILTERS' })}
+            >
+              Reset Filters
+            </button>
+          </div>
+        )}
       </div>
 
       {error && <div className="alert alert-danger mb-3">{error}</div>}
@@ -385,7 +514,7 @@ export default function TasksPage() {
           <div className="empty-state">
             <div className="empty-icon">📋</div>
             <h3>No tasks found</h3>
-            <p>You have no tasks assigned to you matching the selected filters.</p>
+            <p>No tasks matching the selected filters were found.</p>
           </div>
         ) : (
           <div className="table-responsive">
@@ -437,9 +566,9 @@ export default function TasksPage() {
                         {task.assigned_user || task.assignee ? (
                           <div className="assignee-cell">
                             <span className="user-avatar-sm">
-                              {(task.assigned_user?.name || task.assignee?.name || 'U')[0].toUpperCase()}
+                              {((task.assigned_user || task.assignee).name || 'U')[0].toUpperCase()}
                             </span>
-                            <span>{task.assigned_user?.name || task.assignee?.name}</span>
+                            <span>{(task.assigned_user || task.assignee).name}</span>
                           </div>
                         ) : (
                           <span className="text-muted">Unassigned</span>
@@ -448,7 +577,7 @@ export default function TasksPage() {
                       <td>
                         {task.due_date ? (
                           <span style={{ color: isOverdue ? '#dc2626' : 'inherit', fontWeight: isOverdue ? '600' : 'normal' }}>
-                            {task.due_date.split('T')[0]} {isOverdue && '⚠️'}
+                            {formatDate(task.due_date)} {isOverdue && '⚠️'}
                           </span>
                         ) : (
                           <span className="text-muted">No date</span>
