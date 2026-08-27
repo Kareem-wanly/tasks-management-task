@@ -7,8 +7,6 @@ use App\Models\User;
 
 class TaskPolicy
 {
-
-    
     public function before(User $user, string $ability): ?bool
     {
         if ($user->hasRole('Administrator') || $user->hasPermission('projects.update')) {
@@ -16,6 +14,11 @@ class TaskPolicy
         }
 
         return null; 
+    }
+
+    public function viewAny(User $user): bool
+    {
+        return $user->hasPermission('tasks.view');
     }
 
     private function isProjectMember(User $user, Task $task): bool
@@ -40,16 +43,15 @@ class TaskPolicy
     }
 
     public function update(User $user, Task $task): bool
-{
-    if (!$this->isProjectMember($user, $task)) {
-        return false;
+    {
+        if (!$this->isProjectMember($user, $task)) {
+            return false;
+        }
+
+        return $task->project->owner_id === $user->id 
+            || $task->created_by === $user->id 
+            || $user->hasPermission('tasks.manage');
     }
-
-    return $task->project->owner_id === $user->id 
-        || $task->created_by === $user->id 
-        || $user->hasPermission('tasks.manage');
-}
-
 
     public function updateStatus(User $user, Task $task): bool
     {
@@ -62,15 +64,14 @@ class TaskPolicy
             || $user->hasPermission('tasks.change_status');
     }
 
-
     public function delete(User $user, Task $task): bool
-{
-    if (!$this->isProjectMember($user, $task)) {
-        return false;
-    }
+    {
+        if (!$this->isProjectMember($user, $task)) {
+            return false;
+        }
 
-    return $task->project->owner_id === $user->id 
-        || $task->created_by === $user->id 
-        || $user->hasPermission('tasks.delete');
-}
+        return $task->project->owner_id === $user->id 
+            || $task->created_by === $user->id 
+            || $user->hasPermission('tasks.delete');
+    }
 }

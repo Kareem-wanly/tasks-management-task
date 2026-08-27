@@ -14,32 +14,47 @@ class RoleController extends Controller
     use AuthorizesRequests;
 
     public function index(): JsonResponse
-    {
-        $this->authorize('viewAny', Role::class);
+{
+    $this->authorize('viewAny', Role::class);
 
-        $roles = Role::with('permissions:id,name,description')->get();
+   
+    $roles = Role::with('permissions:id,name,description')
+        ->withCount(['permissions', 'users'])
+        ->get();
 
-        return response()->json([
-            'roles' => $roles,
-        ]);
-    }
+    return response()->json([
+        'data'  => $roles,
+        'roles' => $roles,
+    ]);
+}
 
     public function store(Request $request): JsonResponse
-    {
-        $this->authorize('create', Role::class);
+{
+    $this->authorize('create', Role::class);
 
-        $validated = $request->validate([
-            'name'         => ['required', 'string', 'max:255', 'unique:roles,name'],
-            'display_name' => ['required', 'string', 'max:255'],
-        ]);
+    $validated = $request->validate([
+        'name'          => ['required', 'string', 'max:255', 'unique:roles,name'],
+        'display_name'  => ['required', 'string', 'max:255'],
+        'description'   => ['nullable', 'string'],
+        'permissions'   => ['nullable', 'array'],
+        'permissions.*' => ['integer', 'exists:permissions,id'],
+    ]);
 
-        $role = Role::create($validated);
+    $role = Role::create([
+        'name'         => $validated['name'],
+        'display_name' => $validated['display_name'],
+        'description'  => $validated['description'] ?? null,
+    ]);
 
-        return response()->json([
-            'message' => 'Role created successfully',
-            'data'    => $role,
-        ], 201);
+    if (!empty($validated['permissions'])) {
+        $role->permissions()->sync($validated['permissions']);
     }
+
+    return response()->json([
+        'message' => 'Role created successfully',
+        'data'    => $role->load('permissions:id,name,description')->loadCount(['permissions', 'users']),
+    ], 201);
+}
 
     public function show(Role $role): JsonResponse
     {

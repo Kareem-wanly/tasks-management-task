@@ -30,7 +30,15 @@ class TaskController extends Controller
         $query->where('priority', $request->query('priority'));
     }
 
-    if ($request->filled('assigned_to')) {
+    $user = $request->user();
+
+    $isAdmin = $user->role === 'admin' 
+        || (isset($user->is_admin) && $user->is_admin) 
+        || (is_object($user->role) && $user->role->name === 'admin');
+
+    if (!$isAdmin) {
+        $query->where('assigned_to', $user->id);
+    } elseif ($request->filled('assigned_to')) {
         $query->where('assigned_to', $request->query('assigned_to'));
     }
 
@@ -46,9 +54,11 @@ class TaskController extends Controller
         $query->whereDate('due_date', '>=', $request->query('due_date_from'));
     }
 
-    if ($request->filled('due_date_to')) {
-        $query->whereDate('due_date', '<=', $request->query('due_date_to'));
-    }
+    if ($request->boolean('overdue') || $request->query('overdue') === 'true') {
+    $query->where('status', '!=', 'completed')
+          ->whereNotNull('due_date')
+          ->whereDate('due_date', '<', now()->toDateString());
+}
 
     $sortBy = $request->query('sort_by', 'created_at');
     $sortOrder = strtolower($request->query('sort_order', 'desc'));
@@ -82,7 +92,7 @@ class TaskController extends Controller
 {
     $this->authorize('view', $task);
 
-    $taskData = $task->load(['project:id,title', 'assignee:id,name,email'])->toArray();
+    $taskData = $task->load(['project:id,title', 'assignee:id,name,email', 'comments.user:id,name,email'])->toArray();
     
     
     $taskData['is_overdue'] = $task->due_date && $task->status !== 'completed' && $task->due_date < now();
@@ -100,7 +110,7 @@ class TaskController extends Controller
         'title'       => ['required', 'string', 'max:255'],
         'description' => ['nullable', 'string'],
         'status'      => ['required', 'string', 'in:todo,in_progress,review,completed'],
-        'priority'    => ['sometimes', 'string', 'in:low,medium,high'],
+        'priority'    => ['sometimes', 'string', 'in:low,medium,high,urgent'],
         'project_id'  => ['required', 'integer', 'exists:projects,id'],
         'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
         'due_date'    => ['nullable', 'date'],
@@ -143,7 +153,7 @@ class TaskController extends Controller
         'completed_at' => $completedAt,
         ]);
 
-    $task = Task::create($validated + ['created_by' => $request->user()->id]);
+    //$task = Task::create($validated + ['created_by' => $request->user()->id]);
 
     return response()->json([
         'message' => 'Task created successfully',
@@ -165,6 +175,7 @@ class TaskController extends Controller
         'title'       => ['sometimes', 'string', 'max:255'],
         'description' => ['nullable', 'string'],
         'status'      => ['sometimes', 'string', 'in:todo,in_progress,review,completed'],
+        'priority'    => ['sometimes', 'string', 'in:low,medium,high,urgent'],
         'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
         'due_date'    => ['nullable', 'date'],
     ]);
