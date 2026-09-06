@@ -1,11 +1,25 @@
 import { useState, useEffect } from 'react';
 import usersApi from '../../api/usersApi';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext'; 
 import './UserModal.css';
 
 export default function UserModal({ isOpen, userToEdit, roles = [], onClose, onSuccess }) {
+  const { user, can } = useAuth() || {};
   const { showToast } = useToast(); 
   const isEditing = Boolean(userToEdit);
+
+  const checkPermission = (permission) => {
+    if (typeof can === 'function') return can(permission);
+    if (!user) return false;
+    if (user.role === 'admin' || user.is_admin || user.role?.name === 'admin' || user.role?.name === 'Administrator') return true;
+    if (Array.isArray(user.permissions)) {
+      return user.permissions.includes(permission) || user.permissions.some((p) => (p.name || p) === permission);
+    }
+    return false;
+  };
+
+  const canAssignRole = checkPermission('roles.assign') || checkPermission('users.update');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -55,9 +69,14 @@ export default function UserModal({ isOpen, userToEdit, roles = [], onClose, onS
     const payload = {
       name: formData.name,
       email: formData.email,
-      role_id: formData.role_id ? Number(formData.role_id) : null,
       is_active: formData.is_active,
     };
+
+    if (canAssignRole) {
+      payload.role_id = formData.role_id ? Number(formData.role_id) : null;
+    } else if (isEditing) {
+      payload.role_id = userToEdit.role_id || userToEdit.role?.id || null;
+    }
 
     if (!isEditing || formData.password) {
       payload.password = formData.password;
@@ -109,6 +128,7 @@ export default function UserModal({ isOpen, userToEdit, roles = [], onClose, onS
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className={validationErrors.name ? 'input-error' : ''}
               required
+              disabled={saving}
             />
             {validationErrors.name && (
               <span className="error-text">{validationErrors.name[0]}</span>
@@ -124,6 +144,7 @@ export default function UserModal({ isOpen, userToEdit, roles = [], onClose, onS
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className={validationErrors.email ? 'input-error' : ''}
               required
+              disabled={saving}
             />
             {validationErrors.email && (
               <span className="error-text">{validationErrors.email[0]}</span>
@@ -137,6 +158,7 @@ export default function UserModal({ isOpen, userToEdit, roles = [], onClose, onS
               onChange={(e) => setFormData({ ...formData, role_id: e.target.value })}
               className={validationErrors.role_id ? 'input-error' : ''}
               required
+              disabled={saving || !canAssignRole}
             >
               <option value="">Select a role...</option>
               {roles.map((r) => (
@@ -145,6 +167,11 @@ export default function UserModal({ isOpen, userToEdit, roles = [], onClose, onS
                 </option>
               ))}
             </select>
+            {!canAssignRole && (
+              <small style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                🔒 Requires <code>roles.assign</code> permission to change roles.
+              </small>
+            )}
             {validationErrors.role_id && (
               <span className="error-text">{validationErrors.role_id[0]}</span>
             )}
@@ -162,6 +189,7 @@ export default function UserModal({ isOpen, userToEdit, roles = [], onClose, onS
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 className={validationErrors.password ? 'input-error' : ''}
                 required={!isEditing}
+                disabled={saving}
               />
               {validationErrors.password && (
                 <span className="error-text">{validationErrors.password[0]}</span>
@@ -178,6 +206,7 @@ export default function UserModal({ isOpen, userToEdit, roles = [], onClose, onS
                 value={formData.password_confirmation}
                 onChange={(e) => setFormData({ ...formData, password_confirmation: e.target.value })}
                 required={!isEditing || Boolean(formData.password)}
+                disabled={saving}
               />
             </div>
           </div>
@@ -188,6 +217,7 @@ export default function UserModal({ isOpen, userToEdit, roles = [], onClose, onS
                 type="checkbox"
                 checked={formData.is_active}
                 onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                disabled={saving}
               />
               <span>Account is Active</span>
             </label>

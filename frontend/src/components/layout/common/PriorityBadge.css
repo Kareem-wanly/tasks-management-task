@@ -1,0 +1,60 @@
+.priority-badge-common {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: inherit;
+  font-weight: 600;
+  border-radius: 4px;
+  line-height: 1;
+  white-space: nowrap;
+  width: fit-content;
+  border: 1px solid transparent;
+}
+
+/* الأحجام */
+.priority-size-sm {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.priority-size-md {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.8125rem;
+}
+
+.priority-badge-icon {
+  font-size: 0.75em;
+  display: flex;
+  align-items: center;
+}
+
+/* درجات الأولوية */
+.priority-urgent {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border-color: #fca5a5;
+}
+
+.priority-high {
+  background-color: #ffedd5;
+  color: #c2410c;
+  border-color: #fdba74;
+}
+
+.priority-medium {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  border-color: #7dd3fc;
+}
+
+.priority-low {
+  background-color: #f1f5f9;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+.priority-neutral {
+  background-color: #f8fafc;
+  color: #64748b;
+  border-color: #e2e8f0;
+}
