@@ -20,6 +20,7 @@ class RoleController extends Controller
         $roles = Role::with('permissions:id,name,description')->get();
 
         return response()->json([
+            'data'  => $roles,
             'roles' => $roles,
         ]);
     }

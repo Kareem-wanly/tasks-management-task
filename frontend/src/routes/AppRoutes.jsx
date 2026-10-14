@@ -12,8 +12,9 @@ import NotFoundPage from '../pages/errors/NotFoundPage';
 import DashboardPage from '../pages/dashboard/DashboardPage';
 import TasksPage from '../pages/tasks/TasksPage';
 import TaskDetailsPage from '../pages/tasks/TaskDetailsPage';
+import UsersPage from '../pages/users/UsersPage';
 
-function UsersPage() { return <h2>Users Page</h2>; }
+
 function RolesPage() { return <h2>Roles Page</h2>; }
 
 export default function AppRoutes() {
@@ -31,6 +32,7 @@ export default function AppRoutes() {
           <Route path="projects/:id" element={<ProjectDetailsPage />} />
           
           <Route path="tasks" element={<TasksPage />} />
+          <Route path="tasks/:id" element={<TaskDetailsPage />} />
 
           <Route path="/tasks/:id" element={<TaskDetailsPage />} />
 

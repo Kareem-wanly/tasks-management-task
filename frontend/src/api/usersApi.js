@@ -27,6 +27,15 @@ const usersApi = {
   delete: async (id) => {
     return await apiClient.delete(`/users/${id}`);
   },
+
+  getUserRoles: async (id) => {
+    return await apiClient.get(`/users/${id}/roles`);
+  },
+
+  syncRoles: async (id, roles) => {
+    return await apiClient.put(`/users/${id}/roles`, { roles });
+  },
+
 };
 
 export default usersApi;
