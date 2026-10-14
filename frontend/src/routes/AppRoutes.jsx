@@ -16,10 +16,6 @@ import UsersPage from '../pages/users/UsersPage';
 import RolesPage from '../pages/roles/RolesPage';
 
 import RoleFormPage from '../pages/roles/RoleFormPage';
-
-
-
-
 export default function AppRoutes() {
   return (
     <Routes>
@@ -36,6 +32,8 @@ export default function AppRoutes() {
           
           <Route path="tasks" element={<TasksPage />} />
           <Route path="tasks/:id" element={<TaskDetailsPage />} />
+
+          <Route path="/tasks/:id" element={<TaskDetailsPage />} />
 
           <Route element={<PermissionRoute requiredPermission="users.view" />}>
             <Route path="users" element={<UsersPage />} />
