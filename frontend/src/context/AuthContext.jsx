@@ -134,17 +134,25 @@ export function AuthProvider({ children }) {
     return normalizedRoles.includes(String(role).toLowerCase());
   };
 
-  const can = (permission) => {
-    if (!permission) return false;
+  const can = (permissionName) => {
+  if (!user) return false;
 
-    if (hasRole(['admin', 'administrator'])) return true;
+  const roles = user.roles || [];
+  const isAdmin = roles.some((r) => 
+    typeof r === 'string' ? r === 'Administrator' : r.name === 'Administrator'
+  );
+  if (isAdmin) return true;
 
-    if (Array.isArray(permission)) {
-      return permission.some((p) => permissions.includes(p));
-    }
+  const permissions = user.effective_permissions || user.permissions || [];
 
-    return permissions.includes(permission);
-  };
+  if (Array.isArray(permissions)) {
+    return permissions.some((p) => 
+      typeof p === 'string' ? p === permissionName : p.name === permissionName
+    );
+  }
+
+  return false;
+};
 
   const value = {
     user,

@@ -1,10 +1,7 @@
 import apiClient from './apiClient';
 
 const projectsApi = {
-  /**
-   * جلب قائمة المشاريع مع دعم الفلاتر والبحث والترقيم
-   * @param {Object} params - { page, search, status, sort_by }
-   */
+
   getAll: async (params = {}) => {
     const queryParams = new URLSearchParams(params).toString();
     const endpoint = queryParams ? `/projects?${queryParams}` : '/projects';
@@ -30,6 +27,9 @@ const projectsApi = {
   delete: async (id) => {
     return await apiClient.delete(`/projects/${id}`);
   },
+
+  archive: (id) => apiClient.patch(`/projects/${id}/archive`),
+
 };
 
 export default projectsApi;
