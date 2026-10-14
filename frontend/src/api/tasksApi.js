@@ -34,6 +34,15 @@ const tasksApi = {
   delete: async (id) => {
     return await apiClient.delete(`/tasks/${id}`);
   },
+
+  addComment: async (taskId, body) => {
+    return await apiClient.post(`/tasks/${taskId}/comments`, { body });
+  },
+
+  deleteComment: async (commentId) => {
+    return await apiClient.delete(`/comments/${commentId}`);
+  }
+
 };
 
 export default tasksApi;

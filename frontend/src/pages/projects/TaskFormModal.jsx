@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import tasksApi from '../../api/tasksApi';
 import projectsApi from '../../api/projectsApi';
 
-export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = null }) {
+export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = null, task = null }) {
+  const isEdit = Boolean(task);
   const [projects, setProjects] = useState([]);
   const [members, setMembers] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
@@ -22,18 +23,30 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
   useEffect(() => {
     if (!isOpen) return;
 
-    setFormData({
-      project_id: projectId || '',
-      title: '',
-      description: '',
-      status: 'todo',
-      priority: 'medium',
-      assigned_to: '',
-      due_date: '',
-    });
+    if (task) {
+      setFormData({
+        project_id: projectId || task.project_id || task.project?.id || '',
+        title: task.title || '',
+        description: task.description || '',
+        status: task.status ? String(task.status).toLowerCase() : 'todo',
+        priority: task.priority ? String(task.priority).toLowerCase() : 'medium',
+        assigned_to: task.assigned_to || task.assignee?.id || '',
+        due_date: task.due_date ? task.due_date.split('T')[0] : '',
+      });
+    } else {
+      setFormData({
+        project_id: projectId || '',
+        title: '',
+        description: '',
+        status: 'todo',
+        priority: 'medium',
+        assigned_to: '',
+        due_date: '',
+      });
+    }
     setErrors({});
 
-    if (!projectId) {
+    if (!projectId && !task?.project_id && !task?.project?.id) {
       setLoadingProjects(true);
       projectsApi
         .getAll({ per_page: 100 })
@@ -44,10 +57,10 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
         .catch((err) => console.error('Failed to load projects:', err))
         .finally(() => setLoadingProjects(false));
     }
-  }, [isOpen, projectId]);
+  }, [isOpen, projectId, task]);
 
   useEffect(() => {
-    const activeProjectId = projectId || formData.project_id;
+    const activeProjectId = projectId || formData.project_id || task?.project_id || task?.project?.id;
     if (!activeProjectId) {
       setMembers([]);
       return;
@@ -69,7 +82,7 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
         setMembers(allMembers);
       })
       .catch((err) => console.error('Failed to load project members:', err));
-  }, [formData.project_id, projectId]);
+  }, [formData.project_id, projectId, task]);
 
   if (!isOpen) return null;
 
@@ -86,9 +99,9 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
     setSubmitting(true);
     setErrors({});
 
-    const activeProjectId = projectId || formData.project_id;
+    const activeProjectId = projectId || formData.project_id || task?.project_id || task?.project?.id;
 
-    if (!activeProjectId) {
+    if (!isEdit && !activeProjectId) {
       setErrors({ project_id: ['Please select a project for this task.'] });
       setSubmitting(false);
       return;
@@ -104,19 +117,23 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
         due_date: formData.due_date || null,
       };
 
-      if (typeof tasksApi.createForProject === 'function') {
-        await tasksApi.createForProject(activeProjectId, payload);
+      if (isEdit) {
+        await tasksApi.update(task.id, payload);
       } else {
-        await tasksApi.create(activeProjectId, payload);
+        if (typeof tasksApi.createForProject === 'function') {
+          await tasksApi.createForProject(activeProjectId, payload);
+        } else {
+          await tasksApi.create(activeProjectId, payload);
+        }
       }
 
       onSuccess();
     } catch (err) {
-      console.error('Task creation error:', err);
+      console.error('Task form submit error:', err);
       if (err.status === 422 && err.data?.errors) {
         setErrors(err.data.errors);
       } else {
-        setErrors({ general: err.data?.message || 'Failed to create task.' });
+        setErrors({ general: err.data?.message || `Failed to ${isEdit ? 'update' : 'create'} task.` });
       }
     } finally {
       setSubmitting(false);
@@ -127,7 +144,7 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
         <div className="modal-header">
-          <h3>Create New Task</h3>
+          <h3>{isEdit ? 'Edit Task' : 'Create New Task'}</h3>
           <button className="modal-close-btn" onClick={onClose} disabled={submitting}>
             ✕
           </button>
@@ -140,7 +157,7 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
         )}
 
         <form onSubmit={handleSubmit}>
-          {!projectId && (
+          {!projectId && !isEdit && (
             <div className="form-group" style={{ marginBottom: '1rem' }}>
               <label htmlFor="project_id" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: '500' }}>
                 Project *
@@ -250,7 +267,7 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
                 name="assigned_to"
                 value={formData.assigned_to}
                 onChange={handleChange}
-                disabled={submitting || (!projectId && !formData.project_id)}
+                disabled={submitting || (!projectId && !formData.project_id && !task?.project_id && !task?.project?.id)}
                 className="form-control"
               >
                 <option value="">Unassigned</option>
@@ -284,7 +301,7 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
               Cancel
             </button>
             <button type="submit" className="btn-primary" disabled={submitting}>
-              {submitting ? 'Creating...' : 'Create Task'}
+              {submitting ? (isEdit ? 'Saving...' : 'Creating...') : (isEdit ? 'Save Changes' : 'Create Task')}
             </button>
           </div>
         </form>
