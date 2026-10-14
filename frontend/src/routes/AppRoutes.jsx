@@ -3,14 +3,14 @@ import ProtectedRoute from './ProtectedRoute';
 import PermissionRoute from './PermissionRoute';
 
 import AppLayout from '../components/layout/AppLayout';
-
+import ProjectsPage from '../pages/projects/ProjectsPage'; 
 import LoginPage from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
 import ForbiddenPage from '../pages/errors/ForbiddenPage';
 import NotFoundPage from '../pages/errors/NotFoundPage';
 import DashboardPage from '../pages/dashboard/DashboardPage';
 
-function ProjectsPage() { return <h2>Projects Page</h2>; }
+
 function TasksPage() { return <h2>Tasks Page</h2>; }
 function UsersPage() { return <h2>Users Page</h2>; }
 function RolesPage() { return <h2>Roles Page</h2>; }
