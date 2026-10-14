@@ -182,7 +182,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Tasks by Priority Chart (Plain CSS) */}
         <div className="chart-card">
           <div className="chart-card-header">
             <h3>Tasks by Priority</h3>

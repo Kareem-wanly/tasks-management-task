@@ -143,7 +143,7 @@ class TaskController extends Controller
         'completed_at' => $completedAt,
         ]);
 
-    $task = Task::create($validated + ['created_by' => $request->user()->id]);
+    //$task = Task::create($validated + ['created_by' => $request->user()->id]);
 
     return response()->json([
         'message' => 'Task created successfully',

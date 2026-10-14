@@ -138,9 +138,10 @@ export default function ProjectFormModal({ isOpen, onClose, onSuccess, project =
                 disabled={submitting}
               >
                 <option value="active">Active</option>
-                <option value="in_progress">In Progress</option>
-                <option value="on_hold">On Hold</option>
-                <option value="completed">Completed</option>
+  <option value="in_progress">In Progress</option>
+  <option value="on_hold">On Hold</option>
+  <option value="completed">Completed</option>
+  <option value="archived">Archived</option>
               </select>
               {errors.status && <span className="field-error-text">{errors.status[0]}</span>}
             </div>

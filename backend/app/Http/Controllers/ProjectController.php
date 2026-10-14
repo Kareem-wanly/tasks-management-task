@@ -102,10 +102,11 @@ class ProjectController extends Controller
     $this->authorize('create', Project::class);
 
     
-    $validated = $request->validate([
+   $validated = $request->validate([
         'title'       => ['required_without:name', 'nullable', 'string', 'max:255'],
         'name'        => ['required_without:title', 'nullable', 'string', 'max:255'],
         'description' => ['nullable', 'string'],
+        'status'      => ['sometimes', 'string', 'in:active,in_progress,on_hold,completed,archived'],
         'start_date'  => ['nullable', 'date'],
         'due_date'    => ['nullable', 'date', 'after_or_equal:start_date'],
     ]);
@@ -119,7 +120,7 @@ class ProjectController extends Controller
         'start_date'  => $validated['start_date'] ?? null,
         'due_date'    => $validated['due_date'] ?? null,
         'owner_id'    => $request->user()->id,
-        'status'      => 'active',
+        'status'      => $validated['status'] ?? 'active',
     ]);
 
     
@@ -140,13 +141,13 @@ class ProjectController extends Controller
 
     
     $validated = $request->validate([
-        'title'       => ['sometimes', 'nullable', 'string', 'max:255'],
-        'name'        => ['sometimes', 'nullable', 'string', 'max:255'],
-        'description' => ['nullable', 'string'],
-        'status'      => ['sometimes', 'string', 'in:active,completed,archived'],
-        'start_date'  => ['nullable', 'date'],
-        'due_date'    => ['nullable', 'date', 'after_or_equal:start_date'],
-    ]);
+    'title'       => ['sometimes', 'nullable', 'string', 'max:255'],
+    'name'        => ['sometimes', 'nullable', 'string', 'max:255'],
+    'description' => ['nullable', 'string'],
+    'status'      => ['sometimes', 'string', 'in:active,in_progress,on_hold,completed,archived'], 
+    'start_date'  => ['nullable', 'date'],
+    'due_date'    => ['nullable', 'date', 'after_or_equal:start_date'],
+]);
 
     if (isset($validated['name']) && !isset($validated['title'])) {
         $validated['title'] = $validated['name'];
