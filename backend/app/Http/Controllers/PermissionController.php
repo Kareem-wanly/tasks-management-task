@@ -21,6 +21,7 @@ class PermissionController extends Controller
 
         return response()->json([
             'permissions' => $permissions,
+            'data' => $permissions,
         ]);
     }
 }
