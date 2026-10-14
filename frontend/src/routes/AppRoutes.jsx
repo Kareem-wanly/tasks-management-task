@@ -10,8 +10,8 @@ import RegisterPage from '../pages/auth/RegisterPage';
 import ForbiddenPage from '../pages/errors/ForbiddenPage';
 import NotFoundPage from '../pages/errors/NotFoundPage';
 import DashboardPage from '../pages/dashboard/DashboardPage';
+import TasksPage from '../pages/tasks/TasksPage';
 
-function TasksPage() { return <h2>Tasks Page</h2>; }
 function UsersPage() { return <h2>Users Page</h2>; }
 function RolesPage() { return <h2>Roles Page</h2>; }
 
