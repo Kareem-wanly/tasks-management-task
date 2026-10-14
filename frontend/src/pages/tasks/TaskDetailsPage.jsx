@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import tasksApi from '../../api/tasksApi';
+import commentsApi from '../../api/commentsApi';
 import { useAuth } from '../../context/AuthContext';
 import TaskFormModal from '../projects/TaskFormModal';
 import ConfirmModal from '../projects/ConfirmModal';
@@ -13,7 +14,7 @@ export default function TaskDetailsPage() {
 
   const checkPermission = (permission) => {
     if (typeof can === 'function') return can(permission);
-    if (user?.role === 'admin' || user?.is_admin || user?.role?.name === 'admin') return true;
+    if (user?.role === 'admin' || user?.is_admin || user?.role?.name === 'admin' || user?.role?.name === 'Administrator') return true;
     if (Array.isArray(user?.permissions)) {
       return user.permissions.includes(permission) || user.permissions.some((p) => (p.name || p) === permission);
     }
@@ -32,6 +33,11 @@ export default function TaskDetailsPage() {
   const [commentBody, setCommentBody] = useState('');
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [commentError, setCommentError] = useState(null);
+
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editCommentText, setEditCommentText] = useState('');
+  const [updatingComment, setUpdatingComment] = useState(false);
+
   const [commentToDelete, setCommentToDelete] = useState(null);
   const [deleteCommentLoading, setDeleteCommentLoading] = useState(false);
 
@@ -59,7 +65,11 @@ export default function TaskDetailsPage() {
     try {
       setStatusLoading(true);
       await tasksApi.updateStatus(task.id, newStatus);
-      setTask((prev) => ({ ...prev, status: newStatus }));
+      setTask((prev) => ({
+        ...prev,
+        status: newStatus,
+        completed_at: newStatus === 'completed' ? new Date().toISOString() : null,
+      }));
     } catch (err) {
       alert(err.data?.message || 'Failed to update task status.');
     } finally {
@@ -87,7 +97,10 @@ export default function TaskDetailsPage() {
     try {
       setCommentSubmitting(true);
       setCommentError(null);
-      const res = await tasksApi.addComment(task.id, commentBody.trim());
+      const res = commentsApi?.create
+        ? await commentsApi.create(task.id, { body: commentBody.trim() })
+        : await tasksApi.addComment(task.id, commentBody.trim());
+
       const newComment = res.data?.data || res.data || res;
 
       setTask((prev) => ({
@@ -103,11 +116,40 @@ export default function TaskDetailsPage() {
     }
   };
 
+  const handleUpdateComment = async (commentId) => {
+    if (!editCommentText.trim()) return;
+    try {
+      setUpdatingComment(true);
+      if (commentsApi?.update) {
+        await commentsApi.update(commentId, { body: editCommentText.trim() });
+      } else if (tasksApi?.updateComment) {
+        await tasksApi.updateComment(commentId, editCommentText.trim());
+      }
+
+      setTask((prev) => ({
+        ...prev,
+        comments: (prev.comments || []).map((c) =>
+          c.id === commentId ? { ...c, body: editCommentText.trim() } : c
+        ),
+      }));
+      setEditingCommentId(null);
+      setEditCommentText('');
+    } catch (err) {
+      alert(err.data?.message || 'Failed to update comment.');
+    } finally {
+      setUpdatingComment(false);
+    }
+  };
+
   const handleDeleteComment = async () => {
     if (!commentToDelete) return;
     try {
       setDeleteCommentLoading(true);
-      await tasksApi.deleteComment(commentToDelete.id);
+      if (commentsApi?.delete) {
+        await commentsApi.delete(commentToDelete.id);
+      } else {
+        await tasksApi.deleteComment(commentToDelete.id);
+      }
       setTask((prev) => ({
         ...prev,
         comments: (prev.comments || []).filter((c) => c.id !== commentToDelete.id),
@@ -165,10 +207,11 @@ export default function TaskDetailsPage() {
     task.status !== 'completed' &&
     new Date(task.due_date) < new Date().setHours(0, 0, 0, 0);
 
-  const canEdit = checkPermission('tasks.update');
-  const canDelete = checkPermission('tasks.delete');
-  const canChangeStatus = checkPermission('tasks.change_status') || canEdit;
+  const canEditTask = checkPermission('tasks.update');
+  const canDeleteTask = checkPermission('tasks.delete');
+  const canChangeStatus = checkPermission('tasks.change_status') || canEditTask;
   const canCreateComment = checkPermission('comments.create');
+  const canManageAllComments = checkPermission('comments.manage_all');
 
   return (
     <div className="task-details-container">
@@ -181,7 +224,7 @@ export default function TaskDetailsPage() {
         {task.project ? (
           <>
             <Link to={`/projects/${task.project.id}`} className="crumb-link">
-              {task.project.title}
+              {task.project.title || task.project.name}
             </Link>
             <span className="crumb-sep">/</span>
           </>
@@ -210,13 +253,13 @@ export default function TaskDetailsPage() {
           </div>
 
           <div className="task-header-actions">
-            {canEdit && (
+            {canEditTask && (
               <button className="task-btn task-btn-edit" onClick={() => setIsEditOpen(true)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 Edit Task
               </button>
             )}
-            {canDelete && (
+            {canDeleteTask && (
               <button className="task-btn task-btn-delete" onClick={() => setIsDeleteOpen(true)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                 Delete
@@ -261,12 +304,9 @@ export default function TaskDetailsPage() {
                 </div>
               ) : (
                 task.comments.map((comment) => {
-                  const isOwner = user?.id === comment.user_id || user?.id === comment.user?.id;
-                  const canDeleteComment =
-                    isOwner ||
-                    checkPermission('comments.manage_all') ||
-                    user?.role === 'admin' ||
-                    user?.is_admin;
+                  const isOwner = Number(user?.id) === Number(comment.user_id || comment.user?.id);
+                  const canEditComment = (isOwner && checkPermission('comments.update')) || canManageAllComments;
+                  const canDeleteComment = (isOwner && checkPermission('comments.delete')) || canManageAllComments;
 
                   return (
                     <div key={comment.id} className="comment-bubble-item">
@@ -275,21 +315,73 @@ export default function TaskDetailsPage() {
                       </div>
                       <div className="comment-bubble-content">
                         <div className="comment-meta-row">
-                          <span className="comment-author-name">{comment.user?.name || 'Team Member'}</span>
+                          <span className="comment-author-name">
+                            {comment.user?.name || 'Team Member'} {isOwner && <small>(You)</small>}
+                          </span>
                           <span className="comment-time">{formatDateTime(comment.created_at)}</span>
-                          {canDeleteComment && (
-                            <button
-                              className="comment-btn-remove"
-                              title="Delete comment"
-                              onClick={() => setCommentToDelete(comment)}
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                            </button>
-                          )}
+
+                          <div className="comment-actions-group" style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+                            {canEditComment && !editingCommentId && (
+                              <button
+                                className="comment-btn-edit"
+                                title="Edit comment"
+                                style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }}
+                                onClick={() => {
+                                  setEditingCommentId(comment.id);
+                                  setEditCommentText(comment.body);
+                                }}
+                              >
+                                Edit
+                              </button>
+                            )}
+                            {canDeleteComment && (
+                              <button
+                                className="comment-btn-remove"
+                                title="Delete comment"
+                                onClick={() => setCommentToDelete(comment)}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <div className="comment-text-body">
-                          {comment.body}
-                        </div>
+
+                        {editingCommentId === comment.id ? (
+                          <div className="comment-inline-edit" style={{ marginTop: '8px' }}>
+                            <textarea
+                              rows="3"
+                              value={editCommentText}
+                              onChange={(e) => setEditCommentText(e.target.value)}
+                              style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                            />
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                              <button
+                                type="button"
+                                className="task-btn task-btn-primary"
+                                style={{ padding: '4px 12px', fontSize: '0.8rem' }}
+                                disabled={updatingComment || !editCommentText.trim()}
+                                onClick={() => handleUpdateComment(comment.id)}
+                              >
+                                {updatingComment ? 'Saving...' : 'Save'}
+                              </button>
+                              <button
+                                type="button"
+                                className="task-btn task-btn-secondary"
+                                style={{ padding: '4px 12px', fontSize: '0.8rem' }}
+                                onClick={() => {
+                                  setEditingCommentId(null);
+                                  setEditCommentText('');
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="comment-text-body">
+                            {comment.body}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -372,7 +464,6 @@ export default function TaskDetailsPage() {
 
           <div className="task-card">
             <h3 className="sidebar-section-title">Task Information</h3>
-            
             <div className="meta-list">
               <div className="meta-row">
                 <div className="meta-key">
@@ -382,7 +473,7 @@ export default function TaskDetailsPage() {
                 <div className="meta-val">
                   {task.project ? (
                     <Link to={`/projects/${task.project.id}`} className="project-pill-link">
-                      {task.project.title}
+                      {task.project.title || task.project.name}
                     </Link>
                   ) : (
                     <span className="empty-text">None</span>
@@ -396,12 +487,12 @@ export default function TaskDetailsPage() {
                   Assignee
                 </div>
                 <div className="meta-val">
-                  {task.assignee ? (
+                  {task.assignee || task.assigned_user ? (
                     <div className="assignee-tag">
                       <span className="assignee-avatar">
-                        {(task.assignee.name || 'U')[0].toUpperCase()}
+                        {((task.assignee || task.assigned_user).name || 'U')[0].toUpperCase()}
                       </span>
-                      <span className="assignee-name">{task.assignee.name}</span>
+                      <span className="assignee-name">{(task.assignee || task.assigned_user).name}</span>
                     </div>
                   ) : (
                     <span className="empty-text">Unassigned</span>
@@ -420,6 +511,23 @@ export default function TaskDetailsPage() {
                   </span>
                 </div>
               </div>
+
+              {task.completed_at && (
+                <div className="meta-row">
+                  <div className="meta-key">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                      <polyline points="22 4 12 14.01 9 11.01" />
+                    </svg>
+                    Completed Date
+                  </div>
+                  <div className="meta-val">
+                    <span className="date-badge" style={{ color: '#059669', background: '#ecfdf5', fontWeight: '600' }}>
+                      {formatDate(task.completed_at)}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               <div className="meta-row">
                 <div className="meta-key">

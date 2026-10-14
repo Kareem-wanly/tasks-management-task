@@ -1,9 +1,24 @@
 import { useState, useEffect } from 'react';
 import tasksApi from '../../api/tasksApi';
 import projectsApi from '../../api/projectsApi';
+import { useAuth } from '../../context/AuthContext';
 
 export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = null, task = null }) {
+  const { user, can } = useAuth() || {};
   const isEdit = Boolean(task);
+
+  const checkPermission = (permission) => {
+    if (typeof can === 'function') return can(permission);
+    if (!user) return false;
+    if (user.role === 'admin' || user.is_admin || user.role?.name === 'admin' || user.role?.name === 'Administrator') return true;
+    if (Array.isArray(user.permissions)) {
+      return user.permissions.includes(permission) || user.permissions.some((p) => (p.name || p) === permission);
+    }
+    return false;
+  };
+
+  const canAssign = checkPermission('tasks.assign');
+
   const [projects, setProjects] = useState([]);
   const [members, setMembers] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
@@ -49,7 +64,7 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
     if (!projectId && !task?.project_id && !task?.project?.id) {
       setLoadingProjects(true);
       projectsApi
-        .getAll({ per_page: 100 })
+        .getAll({ per_page: 150 })
         .then((res) => {
           const list = res.data?.data || res.data || [];
           setProjects(Array.isArray(list) ? list : []);
@@ -109,11 +124,12 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
 
     try {
       const payload = {
-        title: formData.title,
-        description: formData.description || null,
+        project_id: Number(activeProjectId),
+        title: formData.title.trim(),
+        description: formData.description?.trim() || null,
         status: formData.status,
         priority: formData.priority,
-        assigned_to: formData.assigned_to ? Number(formData.assigned_to) : null,
+        assigned_to: canAssign && formData.assigned_to ? Number(formData.assigned_to) : (isEdit ? (task.assigned_to || null) : null),
         due_date: formData.due_date || null,
       };
 
@@ -122,7 +138,7 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
       } else {
         if (typeof tasksApi.createForProject === 'function') {
           await tasksApi.createForProject(activeProjectId, payload);
-        } else {
+        } else if (typeof tasksApi.create === 'function') {
           await tasksApi.create(activeProjectId, payload);
         }
       }
@@ -142,7 +158,7 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '540px' }}>
         <div className="modal-header">
           <h3>{isEdit ? 'Edit Task' : 'Create New Task'}</h3>
           <button className="modal-close-btn" onClick={onClose} disabled={submitting}>
@@ -159,7 +175,7 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
         <form onSubmit={handleSubmit}>
           {!projectId && !isEdit && (
             <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label htmlFor="project_id" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: '500' }}>
+              <label htmlFor="project_id" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: '600', fontSize: '0.875rem' }}>
                 Project *
               </label>
               <select
@@ -183,7 +199,7 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
           )}
 
           <div className="form-group" style={{ marginBottom: '1rem' }}>
-            <label htmlFor="title" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: '500' }}>
+            <label htmlFor="title" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: '600', fontSize: '0.875rem' }}>
               Task Title *
             </label>
             <input
@@ -192,7 +208,7 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
               name="title"
               value={formData.title}
               onChange={handleChange}
-              placeholder="e.g. Integrate Payment Gateway"
+              placeholder="e.g. Implement authentication endpoints"
               required
               disabled={submitting}
               className="form-control"
@@ -201,7 +217,7 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
           </div>
 
           <div className="form-group" style={{ marginBottom: '1rem' }}>
-            <label htmlFor="description" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: '500' }}>
+            <label htmlFor="description" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: '600', fontSize: '0.875rem' }}>
               Description
             </label>
             <textarea
@@ -210,7 +226,7 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
               value={formData.description}
               onChange={handleChange}
               rows="3"
-              placeholder="Task details and scope..."
+              placeholder="Provide context and requirements..."
               disabled={submitting}
               className="form-control"
             />
@@ -219,7 +235,7 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
             <div className="form-group">
-              <label htmlFor="status" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: '500' }}>
+              <label htmlFor="status" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: '600', fontSize: '0.875rem' }}>
                 Status
               </label>
               <select
@@ -238,7 +254,7 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
             </div>
 
             <div className="form-group">
-              <label htmlFor="priority" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: '500' }}>
+              <label htmlFor="priority" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: '600', fontSize: '0.875rem' }}>
                 Priority
               </label>
               <select
@@ -259,7 +275,7 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
             <div className="form-group">
-              <label htmlFor="assigned_to" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: '500' }}>
+              <label htmlFor="assigned_to" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: '600', fontSize: '0.875rem' }}>
                 Assignee
               </label>
               <select
@@ -267,7 +283,7 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
                 name="assigned_to"
                 value={formData.assigned_to}
                 onChange={handleChange}
-                disabled={submitting || (!projectId && !formData.project_id && !task?.project_id && !task?.project?.id)}
+                disabled={submitting || !canAssign || (!projectId && !formData.project_id && !task?.project_id && !task?.project?.id)}
                 className="form-control"
               >
                 <option value="">Unassigned</option>
@@ -277,10 +293,16 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
                   </option>
                 ))}
               </select>
+              {!canAssign && (
+                <small style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                  🔒 Requires <code>tasks.assign</code> permission.
+                </small>
+              )}
+              {errors.assigned_to && <span className="error-text" style={{ color: '#dc2626', fontSize: '0.8rem' }}>{errors.assigned_to[0]}</span>}
             </div>
 
             <div className="form-group">
-              <label htmlFor="due_date" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: '500' }}>
+              <label htmlFor="due_date" style={{ display: 'block', marginBottom: '0.35rem', fontWeight: '600', fontSize: '0.875rem' }}>
                 Due Date
               </label>
               <input
