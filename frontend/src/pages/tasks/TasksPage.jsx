@@ -1,15 +1,134 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useReducer, useEffect, useCallback } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import tasksApi from '../../api/tasksApi';
 import projectsApi from '../../api/projectsApi';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import useDebounce from '../../hooks/useDebounce';
 import TaskFormModal from '../projects/TaskFormModal';
 import ConfirmModal from '../projects/ConfirmModal';
 import './TasksPage.css';
 
+const initialState = {
+  tasks: [],
+  projects: [],
+  loading: true,
+  error: null,
+  actionLoading: false,
+  filters: {
+    search: '',
+    status: '',
+    priority: '',
+    project_id: '',
+  },
+  sorting: {
+    sortBy: 'created_at',
+    sortDir: 'desc',
+  },
+  pagination: {
+    current_page: 1,
+    last_page: 1,
+    per_page: 10,
+    total: 0,
+  },
+  modals: {
+    isCreateOpen: false,
+    taskToDelete: null,
+  },
+};
+
+function tasksReducer(state, action) {
+  switch (action.type) {
+    case 'FETCH_INIT':
+      return { ...state, loading: true, error: null };
+
+    case 'FETCH_TASKS_SUCCESS':
+      return {
+        ...state,
+        loading: false,
+        tasks: action.payload.tasks,
+        pagination: {
+          ...state.pagination,
+          current_page: action.payload.current_page,
+          last_page: action.payload.last_page,
+          per_page: action.payload.per_page,
+          total: action.payload.total,
+        },
+      };
+
+    case 'FETCH_TASKS_FAILURE':
+      return { ...state, loading: false, error: action.payload };
+
+    case 'SET_PROJECTS':
+      return { ...state, projects: action.payload };
+
+    case 'SET_FILTER':
+      return {
+        ...state,
+        filters: {
+          ...state.filters,
+          [action.field]: action.value,
+        },
+        pagination: {
+          ...state.pagination,
+          current_page: 1,
+        },
+      };
+
+    case 'SET_SORT':
+      return {
+        ...state,
+        sorting: {
+          sortBy: action.payload.sortBy,
+          sortDir: action.payload.sortDir,
+        },
+      };
+
+    case 'SET_PAGE':
+      return {
+        ...state,
+        pagination: {
+          ...state.pagination,
+          current_page: action.payload,
+        },
+      };
+
+    case 'OPEN_CREATE_MODAL':
+      return {
+        ...state,
+        modals: { ...state.modals, isCreateOpen: true },
+      };
+
+    case 'CLOSE_CREATE_MODAL':
+      return {
+        ...state,
+        modals: { ...state.modals, isCreateOpen: false },
+      };
+
+    case 'OPEN_DELETE_MODAL':
+      return {
+        ...state,
+        modals: { ...state.modals, taskToDelete: action.payload },
+      };
+
+    case 'CLOSE_DELETE_MODAL':
+      return {
+        ...state,
+        modals: { ...state.modals, taskToDelete: null },
+      };
+
+    case 'SET_ACTION_LOADING':
+      return { ...state, actionLoading: action.payload };
+
+    default:
+      return state;
+  }
+}
+
 export default function TasksPage() {
-  const navigate = useNavigate();
   const { user } = useAuth() || {};
+  const { showToast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const checkPermission = (permission) => {
     if (!user) return false;
@@ -20,27 +139,27 @@ export default function TasksPage() {
     return true;
   };
 
-  const [tasks, setTasks] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [priorityFilter, setPriorityFilter] = useState('');
-  const [projectFilter, setProjectFilter] = useState('');
-  const [sortBy, setSortBy] = useState('created_at');
-  const [sortDir, setSortDir] = useState('desc');
-  const [pagination, setPagination] = useState({
-    current_page: 1,
-    last_page: 1,
-    per_page: 10,
-    total: 0,
+  const [state, dispatch] = useReducer(tasksReducer, {
+    ...initialState,
+    filters: {
+      search: searchParams.get('search') || '',
+      status: searchParams.get('status') || '',
+      priority: searchParams.get('priority') || '',
+      project_id: searchParams.get('project_id') || '',
+    },
+    sorting: {
+      sortBy: searchParams.get('sort')?.split('-')[0] || 'created_at',
+      sortDir: searchParams.get('sort')?.split('-')[1] || 'desc',
+    },
+    pagination: {
+      ...initialState.pagination,
+      current_page: parseInt(searchParams.get('page') || '1', 10),
+    },
   });
 
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [taskToDelete, setTaskToDelete] = useState(null);
-  const [actionLoading, setActionLoading] = useState(false);
+  const { tasks, projects, loading, error, actionLoading, filters, sorting, pagination, modals } = state;
+
+  const debouncedSearch = useDebounce(filters.search, 400);
 
   useEffect(() => {
     let isMounted = true;
@@ -49,7 +168,7 @@ export default function TasksPage() {
         const res = await projectsApi.getAll({ per_page: 100 });
         if (isMounted) {
           const list = res.data?.data || res.data || [];
-          setProjects(Array.isArray(list) ? list : []);
+          dispatch({ type: 'SET_PROJECTS', payload: Array.isArray(list) ? list : [] });
         }
       } catch (err) {
         console.error('Failed to fetch projects for filter:', err);
@@ -59,68 +178,80 @@ export default function TasksPage() {
     return () => { isMounted = false; };
   }, []);
 
+  useEffect(() => {
+    const params = {};
+    if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+    if (filters.status) params.status = filters.status;
+    if (filters.priority) params.priority = filters.priority;
+    if (filters.project_id) params.project_id = filters.project_id;
+    if (sorting.sortBy !== 'created_at' || sorting.sortDir !== 'desc') {
+      params.sort = `${sorting.sortBy}-${sorting.sortDir}`;
+    }
+    if (pagination.current_page > 1) {
+      params.page = pagination.current_page.toString();
+    }
+
+    setSearchParams(params, { replace: true });
+  }, [debouncedSearch, filters.status, filters.priority, filters.project_id, sorting, pagination.current_page, setSearchParams]);
+
   const fetchTasks = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    dispatch({ type: 'FETCH_INIT' });
     try {
       const params = {
         page: pagination.current_page,
         per_page: pagination.per_page,
-        sort: sortBy,
-        direction: sortDir,
+        sort: sorting.sortBy,
+        direction: sorting.sortDir,
       };
 
       if (user?.id && user.role !== 'admin' && !user.is_admin) {
         params.assigned_to = user.id;
       }
-      if (search.trim()) params.search = search.trim();
-      if (statusFilter) params.status = statusFilter;
-      if (priorityFilter) params.priority = priorityFilter;
-      if (projectFilter) params.project_id = projectFilter;
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+      if (filters.status) params.status = filters.status;
+      if (filters.priority) params.priority = filters.priority;
+      if (filters.project_id) params.project_id = filters.project_id;
 
       const res = await tasksApi.getAll(params);
       const data = res.data?.data || res.data || [];
       const meta = res.data?.meta || res.data;
 
-      setTasks(Array.isArray(data) ? data : []);
-      if (meta && meta.current_page) {
-        setPagination((prev) => ({
-          ...prev,
-          current_page: meta.current_page,
-          last_page: meta.last_page || 1,
-          per_page: meta.per_page || 10,
-          total: meta.total || 0,
-        }));
-      }
+      dispatch({
+        type: 'FETCH_TASKS_SUCCESS',
+        payload: {
+          tasks: Array.isArray(data) ? data : [],
+          current_page: meta?.current_page || pagination.current_page,
+          last_page: meta?.last_page || 1,
+          per_page: meta?.per_page || 10,
+          total: meta?.total || 0,
+        },
+      });
     } catch (err) {
       console.error('Error fetching tasks:', err);
-      setError(err.data?.message || 'Failed to load tasks.');
-    } finally {
-      setLoading(false);
+      dispatch({
+        type: 'FETCH_TASKS_FAILURE',
+        payload: err.data?.message || 'Failed to load tasks.',
+      });
     }
-  }, [pagination.current_page, pagination.per_page, sortBy, sortDir, search, statusFilter, priorityFilter, projectFilter, user]);
+  }, [pagination.current_page, pagination.per_page, sorting.sortBy, sorting.sortDir, debouncedSearch, filters.status, filters.priority, filters.project_id, user]);
 
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
 
-  const handleSearchChange = (e) => {
-    setSearch(e.target.value);
-    setPagination((prev) => ({ ...prev, current_page: 1 }));
-  };
-
   const handleDeleteTask = async () => {
-    if (!taskToDelete) return;
-    setActionLoading(true);
+    if (!modals.taskToDelete) return;
+    dispatch({ type: 'SET_ACTION_LOADING', payload: true });
     try {
-      await tasksApi.delete(taskToDelete.id);
-      setTaskToDelete(null);
+      await tasksApi.delete(modals.taskToDelete.id);
+      showToast(`Task "${modals.taskToDelete.title}" was deleted successfully.`, 'success');
+      dispatch({ type: 'CLOSE_DELETE_MODAL' });
       fetchTasks();
     } catch (err) {
       console.error('Failed to delete task:', err);
-      alert(err.data?.message || 'Failed to delete task.');
+      showToast(err.data?.message || 'Failed to delete task.', 'error');
     } finally {
-      setActionLoading(false);
+      dispatch({ type: 'SET_ACTION_LOADING', payload: false });
     }
   };
 
@@ -154,38 +285,32 @@ export default function TasksPage() {
           <p className="subtitle">Manage, filter, and track tasks assigned to you</p>
         </div>
         {checkPermission('tasks.create') && (
-          <button className="btn-primary" onClick={() => setIsCreateOpen(true)}>
+          <button className="btn-primary" onClick={() => dispatch({ type: 'OPEN_CREATE_MODAL' })}>
             + Create Task
           </button>
         )}
       </div>
 
-      {/* Filters Card */}
       <div className="filters-card">
         <div className="filters-grid">
-          {/* Search */}
           <div className="filter-item search-box">
             <input
               type="text"
               id="task-search-input"
               name="search"
               placeholder="Search tasks by title..."
-              value={search}
-              onChange={handleSearchChange}
+              value={filters.search}
+              onChange={(e) => dispatch({ type: 'SET_FILTER', field: 'search', value: e.target.value })}
               className="form-control"
             />
           </div>
 
-          {/* Project Filter */}
           <div className="filter-item">
             <select
               id="task-project-filter"
               name="project_id"
-              value={projectFilter}
-              onChange={(e) => {
-                setProjectFilter(e.target.value);
-                setPagination((prev) => ({ ...prev, current_page: 1 }));
-              }}
+              value={filters.project_id}
+              onChange={(e) => dispatch({ type: 'SET_FILTER', field: 'project_id', value: e.target.value })}
               className="form-control"
             >
               <option value="">All Projects</option>
@@ -197,16 +322,12 @@ export default function TasksPage() {
             </select>
           </div>
 
-          {/* Status Filter */}
           <div className="filter-item">
             <select
               id="task-status-filter"
               name="status"
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setPagination((prev) => ({ ...prev, current_page: 1 }));
-              }}
+              value={filters.status}
+              onChange={(e) => dispatch({ type: 'SET_FILTER', field: 'status', value: e.target.value })}
               className="form-control"
             >
               <option value="">All Statuses</option>
@@ -217,16 +338,12 @@ export default function TasksPage() {
             </select>
           </div>
 
-          {/* Priority Filter */}
           <div className="filter-item">
             <select
               id="task-priority-filter"
               name="priority"
-              value={priorityFilter}
-              onChange={(e) => {
-                setPriorityFilter(e.target.value);
-                setPagination((prev) => ({ ...prev, current_page: 1 }));
-              }}
+              value={filters.priority}
+              onChange={(e) => dispatch({ type: 'SET_FILTER', field: 'priority', value: e.target.value })}
               className="form-control"
             >
               <option value="">All Priorities</option>
@@ -237,16 +354,14 @@ export default function TasksPage() {
             </select>
           </div>
 
-          {/* Sort By */}
           <div className="filter-item">
             <select
               id="task-sort-filter"
               name="sort"
-              value={`${sortBy}-${sortDir}`}
+              value={`${sorting.sortBy}-${sorting.sortDir}`}
               onChange={(e) => {
                 const [sort, dir] = e.target.value.split('-');
-                setSortBy(sort);
-                setSortDir(dir);
+                dispatch({ type: 'SET_SORT', payload: { sortBy: sort, sortDir: dir } });
               }}
               className="form-control"
             >
@@ -261,7 +376,6 @@ export default function TasksPage() {
 
       {error && <div className="alert alert-danger mb-3">{error}</div>}
 
-      {/* Tasks Table */}
       <div className="tasks-table-card">
         {loading ? (
           <div className="loading-state">
@@ -345,7 +459,7 @@ export default function TasksPage() {
                           <button
                             type="button"
                             className="btn-delete"
-                            onClick={() => setTaskToDelete(task)}
+                            onClick={() => dispatch({ type: 'OPEN_DELETE_MODAL', payload: task })}
                           >
                             Delete
                           </button>
@@ -359,7 +473,6 @@ export default function TasksPage() {
           </div>
         )}
 
-        {/* Pagination Footer */}
         {!loading && tasks.length > 0 && (
           <div className="pagination-bar">
             <span className="pagination-info">
@@ -369,18 +482,14 @@ export default function TasksPage() {
               <button
                 className="btn-page"
                 disabled={pagination.current_page <= 1}
-                onClick={() =>
-                  setPagination((prev) => ({ ...prev, current_page: prev.current_page - 1 }))
-                }
+                onClick={() => dispatch({ type: 'SET_PAGE', payload: pagination.current_page - 1 })}
               >
                 Previous
               </button>
               <button
                 className="btn-page"
                 disabled={pagination.current_page >= pagination.last_page}
-                onClick={() =>
-                  setPagination((prev) => ({ ...prev, current_page: prev.current_page + 1 }))
-                }
+                onClick={() => dispatch({ type: 'SET_PAGE', payload: pagination.current_page + 1 })}
               >
                 Next
               </button>
@@ -389,28 +498,27 @@ export default function TasksPage() {
         )}
       </div>
 
-      {/* Modals */}
-      {isCreateOpen && (
+      {modals.isCreateOpen && (
         <TaskFormModal
-          isOpen={isCreateOpen}
-          onClose={() => setIsCreateOpen(false)}
+          isOpen={modals.isCreateOpen}
+          onClose={() => dispatch({ type: 'CLOSE_CREATE_MODAL' })}
           onSuccess={() => {
-            setIsCreateOpen(false);
+            dispatch({ type: 'CLOSE_CREATE_MODAL' });
             fetchTasks();
           }}
         />
       )}
 
-      {taskToDelete && (
+      {modals.taskToDelete && (
         <ConfirmModal
-          isOpen={Boolean(taskToDelete)}
+          isOpen={Boolean(modals.taskToDelete)}
           title="Delete Task"
-          message={`Are you sure you want to delete task "${taskToDelete.title}"?`}
+          message={`Are you sure you want to delete task "${modals.taskToDelete.title}"?`}
           confirmText="Delete"
           isDanger={true}
           loading={actionLoading}
           onConfirm={handleDeleteTask}
-          onClose={() => setTaskToDelete(null)}
+          onClose={() => dispatch({ type: 'CLOSE_DELETE_MODAL' })}
         />
       )}
     </div>

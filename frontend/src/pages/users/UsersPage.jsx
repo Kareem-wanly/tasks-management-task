@@ -1,81 +1,83 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import usersApi from '../../api/usersApi';
 import rolesApi from '../../api/rolesApi';
-import { useAuth } from '../../context/AuthContext';
-import AssignRoleModal from './AssignRoleModal';
+import useDebounce from '../../hooks/useDebounce';
+import UserModal from './UserModal';
 import ConfirmModal from '../projects/ConfirmModal';
+import { useAuth } from '../../context/AuthContext';
 import './UsersPage.css';
+import { useToast } from '../../context/ToastContext';
+
 
 export default function UsersPage() {
-  const { user: currentUser, can } = useAuth() || {};
+  const { can } = useAuth() || {};
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { showToast } = useToast();
 
-  const checkPermission = (permission) => {
-    if (typeof can === 'function') return can(permission);
-    if (currentUser?.role === 'admin' || currentUser?.is_admin || currentUser?.role?.name === 'admin') return true;
-    if (Array.isArray(currentUser?.permissions)) {
-      return currentUser.permissions.includes(permission) || currentUser.permissions.some((p) => (p.name || p) === permission);
-    }
-    return false;
-  };
+
+  const initialSearch = searchParams.get('search') || '';
+  const initialRole = searchParams.get('role') || '';
+  const initialPage = parseInt(searchParams.get('page') || '1', 10);
+
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [selectedRole, setSelectedRole] = useState(initialRole);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+
+  const debouncedSearch = useDebounce(searchTerm, 400);
 
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
+  const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [search, setSearch] = useState('');
-  const [selectedRole, setSelectedRole] = useState('');
-  const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    lastPage: 1,
-    total: 0,
-    perPage: 10,
-  });
-
-  const [userForRoles, setUserForRoles] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [userToEdit, setUserToEdit] = useState(null);
   const [userToDelete, setUserToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
-    rolesApi
-      .getAll()
-      .then((res) => {
-        const list = res.data?.data || res.data || [];
+    const params = {};
+    if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+    if (selectedRole) params.role = selectedRole;
+    if (currentPage > 1) params.page = currentPage.toString();
+
+    setSearchParams(params, { replace: true });
+  }, [debouncedSearch, selectedRole, currentPage, setSearchParams]);
+
+  useEffect(() => {
+    const loadRoles = async () => {
+      try {
+        const res = await rolesApi.getAll();
+        const list = res.data?.data || res.data?.roles || res.data || [];
         setRoles(Array.isArray(list) ? list : []);
-      })
-      .catch((err) => console.error('Failed to load roles list:', err));
+      } catch (err) {
+        console.error('Failed to load roles for filter:', err);
+      }
+    };
+    loadRoles();
   }, []);
 
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+      const res = await usersApi.getAll({
+        search: debouncedSearch,
+        role: selectedRole,
+        page: currentPage,
+      });
 
-      const params = {
-        page,
-        per_page: 10,
-      };
+      const data = res.data?.data || res.data?.users || res.data || [];
+      setUsers(Array.isArray(data) ? data : []);
 
-      if (search.trim()) params.search = search.trim();
-      if (selectedRole) params.role = selectedRole;
-
-      const res = await usersApi.getAll(params);
-      const data = res.data;
-
-      if (data && Array.isArray(data.data)) {
-        setUsers(data.data);
-        setPagination({
-          currentPage: data.current_page || 1,
-          lastPage: data.last_page || 1,
-          total: data.total || data.data.length,
-          perPage: data.per_page || 10,
+      if (res.data?.meta || res.data?.current_page) {
+        setMeta({
+          current_page: res.data.meta?.current_page || res.data.current_page || 1,
+          last_page: res.data.meta?.last_page || res.data.last_page || 1,
+          total: res.data.meta?.total || res.data.total || (Array.isArray(data) ? data.length : 0),
         });
-      } else if (Array.isArray(data)) {
-        setUsers(data);
-        setPagination({ currentPage: 1, lastPage: 1, total: data.length, perPage: data.length });
-      } else {
-        setUsers([]);
       }
     } catch (err) {
       console.error('Failed to load users:', err);
@@ -83,27 +85,20 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, selectedRole]);
+  }, [debouncedSearch, selectedRole, currentPage]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    setPage(1);
-    fetchUsers();
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
   };
 
-  const handleRoleFilterChange = (e) => {
+  const handleRoleChange = (e) => {
     setSelectedRole(e.target.value);
-    setPage(1);
-  };
-
-  const handleResetFilters = () => {
-    setSearch('');
-    setSelectedRole('');
-    setPage(1);
+    setCurrentPage(1);
   };
 
   const handleDeleteUser = async () => {
@@ -111,208 +106,203 @@ export default function UsersPage() {
     try {
       setDeleteLoading(true);
       await usersApi.delete(userToDelete.id);
+      showToast(`User "${userToDelete.name}" was deleted successfully.`, 'success');
       setUserToDelete(null);
       fetchUsers();
     } catch (err) {
-      alert(err.data?.message || 'Failed to delete user.');
+      showToast(err.data?.message || 'Failed to delete user.', 'error');
     } finally {
       setDeleteLoading(false);
     }
   };
 
-  const canAssignRoles = checkPermission('roles.assign') || checkPermission('roles.manage');
-  const canDeleteUser = checkPermission('users.delete');
+  const canCreate = typeof can === 'function' ? can('users.create') : true;
+  const canEdit = typeof can === 'function' ? can('users.update') : true;
+  const canDelete = typeof can === 'function' ? can('users.delete') : true;
 
   return (
     <div className="users-page-container">
-      <div className="users-page-header">
+      <div className="users-header">
         <div>
-          <h1>Team & Users</h1>
-          <p className="users-subtitle">Manage team members, permissions, and assigned system roles.</p>
+          <h1>Users Management</h1>
+          <p className="users-subtitle">Manage team members, accounts, and system role assignments.</p>
         </div>
-        <div className="users-stats-pill">
-          Total Members: <strong>{pagination.total}</strong>
-        </div>
+        {canCreate && (
+          <button
+            className="btn-create-user"
+            onClick={() => {
+              setUserToEdit(null);
+              setIsModalOpen(true);
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add New User
+          </button>
+        )}
       </div>
 
-      <div className="users-filter-bar">
-        <form onSubmit={handleSearchSubmit} className="search-form">
-          <div className="search-input-wrapper">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input
-              type="text"
-              id="users-search-input"
-              name="search"
-              placeholder="Search by name or email..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <button type="submit" className="filter-btn">Search</button>
-        </form>
-
-        <div className="filter-group">
-          <select
-            id="users-role-filter-select"
-            name="roleFilter"
-            value={selectedRole}
-            onChange={handleRoleFilterChange}
-            className="role-filter-select"
-          >
-            <option value="">All Roles</option>
-            {roles.map((r) => (
-              <option key={r.id} value={r.name}>
-                {r.display_name || r.name}
-              </option>
-            ))}
-          </select>
-
-          {(search || selectedRole) && (
-            <button onClick={handleResetFilters} className="btn-reset">
-              Reset Filters
-            </button>
+      <div className="users-filters-bar">
+        <div className="search-box-wrapper">
+          <svg className="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            className="users-search-input"
+          />
+          {searchTerm && (
+            <button className="btn-clear-search" onClick={() => { setSearchTerm(''); setCurrentPage(1); }}>×</button>
           )}
         </div>
+
+        <select
+          value={selectedRole}
+          onChange={handleRoleChange}
+          className="users-role-select"
+        >
+          <option value="">All System Roles</option>
+          {roles.map((r) => (
+            <option key={r.id} value={r.name}>{r.display_name || r.name}</option>
+          ))}
+        </select>
       </div>
 
       {error && <div className="alert alert-danger mb-4">{error}</div>}
 
-      <div className="users-table-card">
-        {loading ? (
-          <div className="users-loading-state">
-            <div className="users-spinner" />
-            <p>Loading members...</p>
-          </div>
-        ) : users.length === 0 ? (
-          <div className="users-empty-state">
-            <div className="empty-icon">👥</div>
-            <h3>No members found</h3>
-            <p>Try refining your search query or role filter.</p>
-          </div>
-        ) : (
-          <div className="table-responsive">
+      {loading ? (
+        <div className="users-loading-state">
+          <div className="users-spinner" />
+          <p>Fetching users...</p>
+        </div>
+      ) : users.length === 0 ? (
+        <div className="users-empty-state">
+          <div className="empty-icon">👥</div>
+          <h3>No users found</h3>
+          <p>Try adjusting your search query or filter options.</p>
+        </div>
+      ) : (
+        <>
+          <div className="users-table-card">
             <table className="users-table">
               <thead>
                 <tr>
                   <th>User</th>
-                  <th>Roles</th>
-                  <th>Actions</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Joined Date</th>
+                  {(canEdit || canDelete) && <th style={{ textAlign: 'right' }}>Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => {
-                  const isCurrent = currentUser?.id === u.id;
-                  const isAdministrator = u.roles?.some(
-                    (r) => r.name === 'Administrator' || r.name === 'admin'
-                  );
-
-                  return (
-                    <tr key={u.id}>
-                      <td>
-                        <div className="user-profile-cell">
-                          <div className="user-avatar-circle">
-                            {(u.name || 'U')[0].toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="user-fullname">
-                              {u.name} {isCurrent && <span className="tag-current-user">You</span>}
-                            </div>
-                            <div className="user-email-text">{u.email}</div>
-                          </div>
+                {users.map((u) => (
+                  <tr key={u.id}>
+                    <td>
+                      <div className="user-identity">
+                        <div className="user-avatar-circle">
+                          {u.name?.charAt(0)?.toUpperCase() || 'U'}
                         </div>
-                      </td>
-                      <td>
-                        <div className="roles-badges-list">
-                          {u.roles && u.roles.length > 0 ? (
-                            u.roles.map((r) => (
-                              <span
-                                key={r.id}
-                                className={`role-badge ${
-                                  r.name === 'Administrator' ? 'role-admin' : 'role-member'
-                                }`}
-                              >
-                                {r.display_name || r.name}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="no-roles-badge">No Roles</span>
-                          )}
+                        <div>
+                          <div className="user-fullname">{u.name}</div>
+                          <div className="user-email-sub">{u.email}</div>
                         </div>
-                      </td>
-                      <td>
-                        <div className="table-actions-cell">
-                          {canAssignRoles && (
+                      </div>
+                    </td>
+                    <td>
+                      <span className="badge-role-tag">
+                        {u.role?.display_name || u.role?.name || u.role || 'No Role'}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`badge-status ${u.is_active === false ? 'inactive' : 'active'}`}>
+                        {u.is_active === false ? 'Inactive' : 'Active'}
+                      </span>
+                    </td>
+                    <td className="user-date-col">
+                      {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}
+                    </td>
+                    {(canEdit || canDelete) && (
+                      <td style={{ textAlign: 'right' }}>
+                        <div className="table-actions">
+                          {canEdit && (
                             <button
-                              className="action-btn-role"
-                              onClick={() => setUserForRoles(u)}
+                              className="btn-table-action edit"
+                              onClick={() => {
+                                setUserToEdit(u);
+                                setIsModalOpen(true);
+                              }}
+                              title="Edit user"
                             >
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-                              Manage Roles
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             </button>
                           )}
-
-                          {canDeleteUser && !isCurrent && !isAdministrator && (
+                          {canDelete && (
                             <button
-                              className="action-btn-delete"
+                              className="btn-table-action delete"
                               onClick={() => setUserToDelete(u)}
                               title="Delete user"
                             >
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             </button>
                           )}
                         </div>
                       </td>
-                    </tr>
-                  );
-                })}
+                    )}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
-        )}
 
-        {pagination.lastPage > 1 && (
-          <div className="pagination-bar">
-            <span className="pagination-info">
-              Showing page {pagination.currentPage} of {pagination.lastPage}
-            </span>
-            <div className="pagination-controls">
-              <button
-                className="btn-page"
-                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                disabled={pagination.currentPage <= 1 || loading}
-              >
-                Previous
-              </button>
-              <button
-                className="btn-page"
-                onClick={() => setPage((prev) => Math.min(prev + 1, pagination.lastPage))}
-                disabled={pagination.currentPage >= pagination.lastPage || loading}
-              >
-                Next
-              </button>
+          {meta.last_page > 1 && (
+            <div className="users-pagination">
+              <span className="pagination-info">
+                Showing page <strong>{meta.current_page}</strong> of <strong>{meta.last_page}</strong> ({meta.total} total users)
+              </span>
+              <div className="pagination-buttons">
+                <button
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="btn-page"
+                >
+                  Previous
+                </button>
+                <button
+                  disabled={currentPage >= meta.last_page}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  className="btn-page"
+                >
+                  Next
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </>
+      )}
 
-      {userForRoles && (
-        <AssignRoleModal
-          isOpen={Boolean(userForRoles)}
-          onClose={() => setUserForRoles(null)}
+      {isModalOpen && (
+        <UserModal
+          isOpen={isModalOpen}
+          userToEdit={userToEdit}
+          roles={roles}
+          onClose={() => {
+            setIsModalOpen(false);
+            setUserToEdit(null);
+          }}
           onSuccess={() => {
-            setUserForRoles(null);
+            setIsModalOpen(false);
+            setUserToEdit(null);
             fetchUsers();
           }}
-          user={userForRoles}
         />
       )}
 
       {userToDelete && (
         <ConfirmModal
           isOpen={Boolean(userToDelete)}
-          title="Delete Team Member"
-          message={`Are you sure you want to delete user "${userToDelete.name}" (${userToDelete.email})?`}
-          confirmText="Delete Member"
+          title="Delete User"
+          message={`Are you sure you want to delete "${userToDelete.name}"? This action cannot be undone.`}
+          confirmText="Delete User"
           danger={true}
           loading={deleteLoading}
           onConfirm={handleDeleteUser}
