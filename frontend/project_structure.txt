@@ -1,0 +1,865 @@
+Folder PATH listing for volume Local Disk
+Volume serial number is 00000075 9EF2:B6C0
+D:.
+│   .env.example
+│   .gitignore
+│   .oxlintrc.json
+│   index.html
+│   package-lock.json
+│   package.json
+│   project_structure.txt
+│   README.md
+│   vite.config.js
+│   
+├───node_modules
+│   │   .package-lock.json
+│   │   
+│   ├───.bin
+│   │       nanoid
+│   │       nanoid.cmd
+│   │       nanoid.ps1
+│   │       oxlint
+│   │       oxlint.cmd
+│   │       oxlint.ps1
+│   │       rolldown
+│   │       rolldown.cmd
+│   │       rolldown.ps1
+│   │       vite
+│   │       vite.cmd
+│   │       vite.ps1
+│   │       
+│   ├───.vite
+│   │   └───deps
+│   │           package.json
+│   │           react-dom.js
+│   │           react-dom.js.map
+│   │           react-dom_client.js
+│   │           react-dom_client.js.map
+│   │           react-router-dom.js
+│   │           react-router-dom.js.map
+│   │           react.js
+│   │           react.js.map
+│   │           react_jsx-dev-runtime.js
+│   │           react_jsx-dev-runtime.js.map
+│   │           react_jsx-runtime.js
+│   │           react_jsx-runtime.js.map
+│   │           rolldown-runtime-FDOR9p9I.js
+│   │           _metadata.json
+│   │           
+│   ├───.vite-temp
+│   ├───@emnapi
+│   ├───@napi-rs
+│   ├───@oxc-project
+│   │   └───types
+│   │           LICENSE
+│   │           package.json
+│   │           README.md
+│   │           types.d.ts
+│   │           
+│   ├───@oxlint
+│   │   └───binding-win32-x64-msvc
+│   │           oxlint.win32-x64-msvc.node
+│   │           package.json
+│   │           README.md
+│   │           
+│   ├───@rolldown
+│   │   ├───binding-win32-x64-msvc
+│   │   │       package.json
+│   │   │       README.md
+│   │   │       rolldown-binding.win32-x64-msvc.node
+│   │   │       
+│   │   └───pluginutils
+│   │       │   LICENSE
+│   │       │   package.json
+│   │       │   README.md
+│   │       │   
+│   │       └───dist
+│   │           │   filter-B_mD-HGz.mjs
+│   │           │   index.d.mts
+│   │           │   index.mjs
+│   │           │   
+│   │           └───filter
+│   │                   index.d.mts
+│   │                   index.mjs
+│   │                   
+│   ├───@tybys
+│   ├───@types
+│   │   ├───react
+│   │   │   │   canary.d.ts
+│   │   │   │   compiler-runtime.d.ts
+│   │   │   │   experimental.d.ts
+│   │   │   │   global.d.ts
+│   │   │   │   index.d.ts
+│   │   │   │   jsx-dev-runtime.d.ts
+│   │   │   │   jsx-runtime.d.ts
+│   │   │   │   LICENSE
+│   │   │   │   package.json
+│   │   │   │   README.md
+│   │   │   │   
+│   │   │   └───ts5.0
+│   │   │           canary.d.ts
+│   │   │           experimental.d.ts
+│   │   │           global.d.ts
+│   │   │           index.d.ts
+│   │   │           jsx-dev-runtime.d.ts
+│   │   │           jsx-runtime.d.ts
+│   │   │           
+│   │   └───react-dom
+│   │       │   canary.d.ts
+│   │       │   client.d.ts
+│   │       │   experimental.d.ts
+│   │       │   index.d.ts
+│   │       │   LICENSE
+│   │       │   package.json
+│   │       │   README.md
+│   │       │   server.browser.d.ts
+│   │       │   server.bun.d.ts
+│   │       │   server.d.ts
+│   │       │   server.edge.d.ts
+│   │       │   server.node.d.ts
+│   │       │   static.browser.d.ts
+│   │       │   static.d.ts
+│   │       │   static.edge.d.ts
+│   │       │   static.node.d.ts
+│   │       │   
+│   │       └───test-utils
+│   │               index.d.ts
+│   │               
+│   ├───@vitejs
+│   │   └───plugin-react
+│   │       │   LICENSE
+│   │       │   package.json
+│   │       │   README.md
+│   │       │   
+│   │       ├───dist
+│   │       │       index.d.ts
+│   │       │       index.js
+│   │       │       refresh-runtime.js
+│   │       │       
+│   │       └───types
+│   │               optionalTypes.d.ts
+│   │               preamble.d.ts
+│   │               
+│   ├───cookie
+│   │   │   LICENSE
+│   │   │   package.json
+│   │   │   README.md
+│   │   │   
+│   │   └───dist
+│   │           index.d.ts
+│   │           index.js
+│   │           index.js.map
+│   │           
+│   ├───csstype
+│   │       index.d.ts
+│   │       index.js.flow
+│   │       LICENSE
+│   │       package.json
+│   │       README.md
+│   │       
+│   ├───detect-libc
+│   │   │   index.d.ts
+│   │   │   LICENSE
+│   │   │   package.json
+│   │   │   README.md
+│   │   │   
+│   │   └───lib
+│   │           detect-libc.js
+│   │           elf.js
+│   │           filesystem.js
+│   │           process.js
+│   │           
+│   ├───fdir
+│   │   │   LICENSE
+│   │   │   package.json
+│   │   │   README.md
+│   │   │   
+│   │   └───dist
+│   │           index.cjs
+│   │           index.d.cts
+│   │           index.d.mts
+│   │           index.mjs
+│   │           
+│   ├───lightningcss
+│   │   │   LICENSE
+│   │   │   package.json
+│   │   │   README.md
+│   │   │   
+│   │   └───node
+│   │           ast.d.ts
+│   │           ast.js.flow
+│   │           browserslistToTargets.js
+│   │           composeVisitors.js
+│   │           flags.js
+│   │           index.d.ts
+│   │           index.js
+│   │           index.js.flow
+│   │           index.mjs
+│   │           targets.d.ts
+│   │           targets.js.flow
+│   │           
+│   ├───lightningcss-win32-x64-msvc
+│   │       LICENSE
+│   │       lightningcss.win32-x64-msvc.node
+│   │       package.json
+│   │       README.md
+│   │       
+│   ├───nanoid
+│   │   │   index.browser.cjs
+│   │   │   index.browser.js
+│   │   │   index.cjs
+│   │   │   index.d.cts
+│   │   │   index.d.ts
+│   │   │   index.js
+│   │   │   LICENSE
+│   │   │   nanoid.js
+│   │   │   package.json
+│   │   │   README.md
+│   │   │   
+│   │   ├───async
+│   │   │       index.browser.cjs
+│   │   │       index.browser.js
+│   │   │       index.cjs
+│   │   │       index.d.ts
+│   │   │       index.js
+│   │   │       index.native.js
+│   │   │       package.json
+│   │   │       
+│   │   ├───bin
+│   │   │       nanoid.cjs
+│   │   │       
+│   │   ├───non-secure
+│   │   │       index.cjs
+│   │   │       index.d.ts
+│   │   │       index.js
+│   │   │       package.json
+│   │   │       
+│   │   └───url-alphabet
+│   │           index.cjs
+│   │           index.js
+│   │           package.json
+│   │           
+│   ├───oxlint
+│   │   │   configuration_schema.json
+│   │   │   LICENSE
+│   │   │   package.json
+│   │   │   README.md
+│   │   │   
+│   │   ├───bin
+│   │   │       oxlint
+│   │   │       
+│   │   └───dist
+│   │           bindings.js
+│   │           cli.js
+│   │           index.d.ts
+│   │           index.js
+│   │           js_config.js
+│   │           lint.js
+│   │           plugins-dev.d.ts
+│   │           plugins-dev.js
+│   │           plugins.js
+│   │           utils.js
+│   │           workspace.js
+│   │           workspace2.js
+│   │           
+│   ├───picocolors
+│   │       LICENSE
+│   │       package.json
+│   │       picocolors.browser.js
+│   │       picocolors.d.ts
+│   │       picocolors.js
+│   │       README.md
+│   │       types.d.ts
+│   │       
+│   ├───picomatch
+│   │   │   index.js
+│   │   │   LICENSE
+│   │   │   package.json
+│   │   │   posix.js
+│   │   │   README.md
+│   │   │   
+│   │   └───lib
+│   │           constants.js
+│   │           parse.js
+│   │           picomatch.js
+│   │           scan.js
+│   │           utils.js
+│   │           
+│   ├───postcss
+│   │   │   LICENSE
+│   │   │   package.json
+│   │   │   README.md
+│   │   │   
+│   │   └───lib
+│   │           at-rule.d.ts
+│   │           at-rule.js
+│   │           comment.d.ts
+│   │           comment.js
+│   │           container.d.ts
+│   │           container.js
+│   │           css-syntax-error.d.ts
+│   │           css-syntax-error.js
+│   │           declaration.d.ts
+│   │           declaration.js
+│   │           document.d.ts
+│   │           document.js
+│   │           fromJSON.d.ts
+│   │           fromJSON.js
+│   │           input.d.ts
+│   │           input.js
+│   │           lazy-result.d.ts
+│   │           lazy-result.js
+│   │           list.d.ts
+│   │           list.js
+│   │           map-generator.js
+│   │           no-work-result.d.ts
+│   │           no-work-result.js
+│   │           node.d.ts
+│   │           node.js
+│   │           parse.d.ts
+│   │           parse.js
+│   │           parser.js
+│   │           postcss.d.mts
+│   │           postcss.d.ts
+│   │           postcss.js
+│   │           postcss.mjs
+│   │           previous-map.d.ts
+│   │           previous-map.js
+│   │           processor.d.ts
+│   │           processor.js
+│   │           result.d.ts
+│   │           result.js
+│   │           root.d.ts
+│   │           root.js
+│   │           rule.d.ts
+│   │           rule.js
+│   │           stringifier.d.ts
+│   │           stringifier.js
+│   │           stringify.d.ts
+│   │           stringify.js
+│   │           symbols.js
+│   │           terminal-highlight.js
+│   │           tokenize.js
+│   │           warn-once.js
+│   │           warning.d.ts
+│   │           warning.js
+│   │           
+│   ├───react
+│   │   │   compiler-runtime.js
+│   │   │   index.js
+│   │   │   jsx-dev-runtime.js
+│   │   │   jsx-dev-runtime.react-server.js
+│   │   │   jsx-runtime.js
+│   │   │   jsx-runtime.react-server.js
+│   │   │   LICENSE
+│   │   │   package.json
+│   │   │   react.react-server.js
+│   │   │   README.md
+│   │   │   
+│   │   └───cjs
+│   │           react-compiler-runtime.development.js
+│   │           react-compiler-runtime.production.js
+│   │           react-compiler-runtime.profiling.js
+│   │           react-jsx-dev-runtime.development.js
+│   │           react-jsx-dev-runtime.production.js
+│   │           react-jsx-dev-runtime.profiling.js
+│   │           react-jsx-dev-runtime.react-server.development.js
+│   │           react-jsx-dev-runtime.react-server.production.js
+│   │           react-jsx-runtime.development.js
+│   │           react-jsx-runtime.production.js
+│   │           react-jsx-runtime.profiling.js
+│   │           react-jsx-runtime.react-server.development.js
+│   │           react-jsx-runtime.react-server.production.js
+│   │           react.development.js
+│   │           react.production.js
+│   │           react.react-server.development.js
+│   │           react.react-server.production.js
+│   │           
+│   ├───react-dom
+│   │   │   client.js
+│   │   │   client.react-server.js
+│   │   │   index.js
+│   │   │   LICENSE
+│   │   │   package.json
+│   │   │   profiling.js
+│   │   │   profiling.react-server.js
+│   │   │   react-dom.react-server.js
+│   │   │   README.md
+│   │   │   server.browser.js
+│   │   │   server.bun.js
+│   │   │   server.edge.js
+│   │   │   server.js
+│   │   │   server.node.js
+│   │   │   server.react-server.js
+│   │   │   static.browser.js
+│   │   │   static.edge.js
+│   │   │   static.js
+│   │   │   static.node.js
+│   │   │   static.react-server.js
+│   │   │   test-utils.js
+│   │   │   
+│   │   └───cjs
+│   │           react-dom-client.development.js
+│   │           react-dom-client.production.js
+│   │           react-dom-profiling.development.js
+│   │           react-dom-profiling.profiling.js
+│   │           react-dom-server-legacy.browser.development.js
+│   │           react-dom-server-legacy.browser.production.js
+│   │           react-dom-server-legacy.node.development.js
+│   │           react-dom-server-legacy.node.production.js
+│   │           react-dom-server.browser.development.js
+│   │           react-dom-server.browser.production.js
+│   │           react-dom-server.bun.development.js
+│   │           react-dom-server.bun.production.js
+│   │           react-dom-server.edge.development.js
+│   │           react-dom-server.edge.production.js
+│   │           react-dom-server.node.development.js
+│   │           react-dom-server.node.production.js
+│   │           react-dom-test-utils.development.js
+│   │           react-dom-test-utils.production.js
+│   │           react-dom.development.js
+│   │           react-dom.production.js
+│   │           react-dom.react-server.development.js
+│   │           react-dom.react-server.production.js
+│   │           
+│   ├───react-router
+│   │   │   CHANGELOG.md
+│   │   │   LICENSE.md
+│   │   │   package.json
+│   │   │   README.md
+│   │   │   
+│   │   ├───dist
+│   │   │   ├───development
+│   │   │   │   │   browser-B2PdsXXH.d.ts
+│   │   │   │   │   browser-DBmQ1yAR.d.mts
+│   │   │   │   │   chunk-3UVS743K.js
+│   │   │   │   │   chunk-62JRHF6Z.mjs
+│   │   │   │   │   chunk-7XGYIT3M.js
+│   │   │   │   │   chunk-HHGH3NKS.js
+│   │   │   │   │   chunk-ZA36QIGN.mjs
+│   │   │   │   │   context-CeD5LmaF.d.mts
+│   │   │   │   │   data-CjO11-hU.d.ts
+│   │   │   │   │   data-DEjBmEfD.d.mts
+│   │   │   │   │   dom-export.d.mts
+│   │   │   │   │   dom-export.d.ts
+│   │   │   │   │   dom-export.js
+│   │   │   │   │   dom-export.mjs
+│   │   │   │   │   index-react-server-client-3ykjivgQ.d.ts
+│   │   │   │   │   index-react-server-client-CACgcj2J.d.mts
+│   │   │   │   │   index-react-server-client.d.mts
+│   │   │   │   │   index-react-server-client.d.ts
+│   │   │   │   │   index-react-server-client.js
+│   │   │   │   │   index-react-server-client.mjs
+│   │   │   │   │   index-react-server.d.mts
+│   │   │   │   │   index-react-server.d.ts
+│   │   │   │   │   index-react-server.js
+│   │   │   │   │   index-react-server.mjs
+│   │   │   │   │   index.d.mts
+│   │   │   │   │   index.d.ts
+│   │   │   │   │   index.js
+│   │   │   │   │   index.mjs
+│   │   │   │   │   instrumentation-Dkmpzd13.d.ts
+│   │   │   │   │   register-CmkRspdl.d.mts
+│   │   │   │   │   register-roq_0qYo.d.ts
+│   │   │   │   │   
+│   │   │   │   └───lib
+│   │   │   │       └───types
+│   │   │   │               internal.d.mts
+│   │   │   │               internal.d.ts
+│   │   │   │               internal.js
+│   │   │   │               internal.mjs
+│   │   │   │               
+│   │   │   └───production
+│   │   │       │   browser-B2PdsXXH.d.ts
+│   │   │       │   browser-DBmQ1yAR.d.mts
+│   │   │       │   chunk-FDTIF24W.js
+│   │   │       │   chunk-SJTG3J2Q.mjs
+│   │   │       │   chunk-TP6EHSSF.js
+│   │   │       │   chunk-VJZ67BZE.js
+│   │   │       │   chunk-YBLPXYCV.mjs
+│   │   │       │   context-CeD5LmaF.d.mts
+│   │   │       │   data-CjO11-hU.d.ts
+│   │   │       │   data-DEjBmEfD.d.mts
+│   │   │       │   dom-export.d.mts
+│   │   │       │   dom-export.d.ts
+│   │   │       │   dom-export.js
+│   │   │       │   dom-export.mjs
+│   │   │       │   index-react-server-client-3ykjivgQ.d.ts
+│   │   │       │   index-react-server-client-CACgcj2J.d.mts
+│   │   │       │   index-react-server-client.d.mts
+│   │   │       │   index-react-server-client.d.ts
+│   │   │       │   index-react-server-client.js
+│   │   │       │   index-react-server-client.mjs
+│   │   │       │   index-react-server.d.mts
+│   │   │       │   index-react-server.d.ts
+│   │   │       │   index-react-server.js
+│   │   │       │   index-react-server.mjs
+│   │   │       │   index.d.mts
+│   │   │       │   index.d.ts
+│   │   │       │   index.js
+│   │   │       │   index.mjs
+│   │   │       │   instrumentation-Dkmpzd13.d.ts
+│   │   │       │   register-CmkRspdl.d.mts
+│   │   │       │   register-roq_0qYo.d.ts
+│   │   │       │   
+│   │   │       └───lib
+│   │   │           └───types
+│   │   │                   internal.d.mts
+│   │   │                   internal.d.ts
+│   │   │                   internal.js
+│   │   │                   internal.mjs
+│   │   │                   
+│   │   └───docs
+│   │       │   index.md
+│   │       │   
+│   │       ├───explanation
+│   │       │       backend-for-frontend.md
+│   │       │       code-splitting.md
+│   │       │       concurrency.md
+│   │       │       form-vs-fetcher.md
+│   │       │       hot-module-replacement.md
+│   │       │       hydration.md
+│   │       │       index-query-param.md
+│   │       │       index.md
+│   │       │       lazy-route-discovery.md
+│   │       │       location.md
+│   │       │       progressive-enhancement.md
+│   │       │       race-conditions.md
+│   │       │       react-transitions.md
+│   │       │       route-matching.md
+│   │       │       server-client-execution.md
+│   │       │       sessions-and-cookies.md
+│   │       │       special-files.md
+│   │       │       state-management.md
+│   │       │       styling.md
+│   │       │       type-safety.md
+│   │       │       
+│   │       ├───how-to
+│   │       │       accessibility.md
+│   │       │       client-data.md
+│   │       │       data-strategy.md
+│   │       │       error-boundary.md
+│   │       │       error-reporting.md
+│   │       │       fetchers.md
+│   │       │       file-route-conventions.md
+│   │       │       file-uploads.md
+│   │       │       form-validation.md
+│   │       │       headers.md
+│   │       │       index.md
+│   │       │       instrumentation.md
+│   │       │       meta.md
+│   │       │       middleware.md
+│   │       │       navigation-blocking.md
+│   │       │       optimize-revalidation.md
+│   │       │       pre-rendering.md
+│   │       │       presets.md
+│   │       │       react-server-components.md
+│   │       │       resource-routes.md
+│   │       │       route-module-type-safety.md
+│   │       │       search-params.md
+│   │       │       security.md
+│   │       │       server-bundles.md
+│   │       │       spa.md
+│   │       │       status.md
+│   │       │       suspense.md
+│   │       │       using-handle.md
+│   │       │       view-transitions.md
+│   │       │       webhook.md
+│   │       │       
+│   │       ├───start
+│   │       │   │   index.md
+│   │       │   │   modes.md
+│   │       │   │   
+│   │       │   ├───data
+│   │       │   │       actions.md
+│   │       │   │       custom.md
+│   │       │   │       data-loading.md
+│   │       │   │       index.md
+│   │       │   │       installation.md
+│   │       │   │       navigating.md
+│   │       │   │       pending-ui.md
+│   │       │   │       route-object.md
+│   │       │   │       routing.md
+│   │       │   │       testing.md
+│   │       │   │       
+│   │       │   ├───declarative
+│   │       │   │       index.md
+│   │       │   │       installation.md
+│   │       │   │       navigating.md
+│   │       │   │       routing.md
+│   │       │   │       url-values.md
+│   │       │   │       
+│   │       │   └───framework
+│   │       │           actions.md
+│   │       │           data-loading.md
+│   │       │           deploying.md
+│   │       │           index.md
+│   │       │           installation.md
+│   │       │           navigating.md
+│   │       │           pending-ui.md
+│   │       │           rendering.md
+│   │       │           route-module.md
+│   │       │           routing.md
+│   │       │           testing.md
+│   │       │           
+│   │       └───upgrading
+│   │               component-routes.md
+│   │               future.md
+│   │               index.md
+│   │               remix.md
+│   │               router-provider.md
+│   │               v6.md
+│   │               
+│   ├───react-router-dom
+│   │   │   LICENSE.md
+│   │   │   package.json
+│   │   │   README.md
+│   │   │   
+│   │   └───dist
+│   │           index.d.mts
+│   │           index.d.ts
+│   │           index.js
+│   │           index.mjs
+│   │           
+│   ├───rolldown
+│   │   │   LICENSE
+│   │   │   package.json
+│   │   │   README.md
+│   │   │   
+│   │   ├───bin
+│   │   │       cli.mjs
+│   │   │       
+│   │   └───dist
+│   │       │   cli.d.mts
+│   │       │   cli.mjs
+│   │       │   config.d.mts
+│   │       │   config.mjs
+│   │       │   experimental-index.d.mts
+│   │       │   experimental-index.mjs
+│   │       │   experimental-runtime-types.d.ts
+│   │       │   filter-index.d.mts
+│   │       │   filter-index.mjs
+│   │       │   get-log-filter.d.mts
+│   │       │   get-log-filter.mjs
+│   │       │   index.d.mts
+│   │       │   index.mjs
+│   │       │   parallel-plugin-worker.d.mts
+│   │       │   parallel-plugin-worker.mjs
+│   │       │   parallel-plugin.d.mts
+│   │       │   parallel-plugin.mjs
+│   │       │   parse-ast-index.d.mts
+│   │       │   parse-ast-index.mjs
+│   │       │   plugins-index.d.mts
+│   │       │   plugins-index.mjs
+│   │       │   utils-index.d.mts
+│   │       │   utils-index.mjs
+│   │       │   
+│   │       └───shared
+│   │               binding-D26QphWG.d.mts
+│   │               binding-TuFFIE_J.mjs
+│   │               bindingify-input-options-XPJLJOD0.mjs
+│   │               constructors-BbWPse2X.d.mts
+│   │               constructors-D_3i7dpX.mjs
+│   │               define-config-BhJ90aEv.d.mts
+│   │               define-config-Demdg3_4.mjs
+│   │               dist-DKbukT1H.mjs
+│   │               error-BHRSI0R7.mjs
+│   │               get-log-filter-BpNVNJ5-.d.mts
+│   │               load-config-BL_FI6dc.mjs
+│   │               logging-BSNejiLS.d.mts
+│   │               logs-ZGEh6uhb.mjs
+│   │               misc-CoQm4NHO.mjs
+│   │               normalize-string-or-regex-dnh67V_w.mjs
+│   │               parse-D4dtlfWy.mjs
+│   │               prompt--dNycKSZ.mjs
+│   │               resolve-tsconfig-DxqIJB3x.mjs
+│   │               rolldown-build-CtPvmZgJ.mjs
+│   │               rolldown-ChpIlMRm.mjs
+│   │               transform-BPrUvqEZ.d.mts
+│   │               watch-B1b0gmVh.mjs
+│   │               
+│   ├───scheduler
+│   │   │   index.js
+│   │   │   index.native.js
+│   │   │   LICENSE
+│   │   │   package.json
+│   │   │   README.md
+│   │   │   unstable_mock.js
+│   │   │   unstable_post_task.js
+│   │   │   
+│   │   └───cjs
+│   │           scheduler-unstable_mock.development.js
+│   │           scheduler-unstable_mock.production.js
+│   │           scheduler-unstable_post_task.development.js
+│   │           scheduler-unstable_post_task.production.js
+│   │           scheduler.development.js
+│   │           scheduler.native.development.js
+│   │           scheduler.native.production.js
+│   │           scheduler.production.js
+│   │           
+│   ├───set-cookie-parser
+│   │   │   LICENSE
+│   │   │   package.json
+│   │   │   README.md
+│   │   │   
+│   │   └───lib
+│   │           set-cookie.js
+│   │           
+│   ├───source-map-js
+│   │   │   LICENSE
+│   │   │   package.json
+│   │   │   README.md
+│   │   │   source-map.d.ts
+│   │   │   source-map.js
+│   │   │   
+│   │   └───lib
+│   │           array-set.js
+│   │           base64-vlq.js
+│   │           base64.js
+│   │           binary-search.js
+│   │           mapping-list.js
+│   │           quick-sort.js
+│   │           source-map-consumer.d.ts
+│   │           source-map-consumer.js
+│   │           source-map-generator.d.ts
+│   │           source-map-generator.js
+│   │           source-node.d.ts
+│   │           source-node.js
+│   │           util.js
+│   │           
+│   ├───tinyglobby
+│   │   │   LICENSE
+│   │   │   package.json
+│   │   │   README.md
+│   │   │   
+│   │   └───dist
+│   │           index.cjs
+│   │           index.d.cts
+│   │           index.d.mts
+│   │           index.mjs
+│   │           
+│   └───vite
+│       │   client.d.ts
+│       │   LICENSE.md
+│       │   package.json
+│       │   README.md
+│       │   
+│       ├───bin
+│       │       openChrome.js
+│       │       vite.js
+│       │       
+│       ├───dist
+│       │   ├───client
+│       │   │       client.mjs
+│       │   │       env.mjs
+│       │   │       
+│       │   └───node
+│       │       │   cli.js
+│       │       │   index.d.ts
+│       │       │   index.js
+│       │       │   internal.d.ts
+│       │       │   internal.js
+│       │       │   module-runner.d.ts
+│       │       │   module-runner.js
+│       │       │   
+│       │       └───chunks
+│       │               build.js
+│       │               dist.js
+│       │               lib.js
+│       │               moduleRunnerTransport.d.ts
+│       │               node.js
+│       │               postcss-import.js
+│       │               
+│       ├───misc
+│       │       false.js
+│       │       true.js
+│       │       
+│       └───types
+│           │   customEvent.d.ts
+│           │   hmrPayload.d.ts
+│           │   hot.d.ts
+│           │   import-meta.d.ts
+│           │   importGlob.d.ts
+│           │   importMeta.d.ts
+│           │   metadata.d.ts
+│           │   
+│           └───internal
+│                   cssPreprocessorOptions.d.ts
+│                   esbuildOptions.d.ts
+│                   lightningcssOptions.d.ts
+│                   rollupTypeCompat.d.ts
+│                   terserOptions.d.ts
+│                   
+├───public
+│       favicon.svg
+│       icons.svg
+│       
+└───src
+    │   App.css
+    │   App.jsx
+    │   index.css
+    │   main.jsx
+    │   
+    ├───api
+    │       activitiesApi.js
+    │       apiClient.js
+    │       authApi.js
+    │       commentsApi.js
+    │       projectsApi.js
+    │       rolesApi.js
+    │       tasksApi.js
+    │       usersApi.js
+    │       
+    ├───assets
+    │       hero.png
+    │       react.svg
+    │       vite.svg
+    │       
+    ├───components
+    │   └───layout
+    │       │   AppLayout.css
+    │       │   AppLayout.jsx
+    │       │   Header.jsx
+    │       │   Sidebar.jsx
+    │       │   
+    │       └───common
+    │               Can.jsx
+    │               
+    ├───context
+    │       AuthContext.jsx
+    │       
+    ├───pages
+    │   │   NotFoundPage.jsx
+    │   │   
+    │   ├───auth
+    │   │       LoginPage.css
+    │   │       LoginPage.jsx
+    │   │       RegisterPage.css
+    │   │       RegisterPage.jsx
+    │   │       
+    │   ├───dashboard
+    │   │       DashboardPage.css
+    │   │       DashboardPage.jsx
+    │   │       
+    │   ├───errors
+    │   │       ForbiddenPage.jsx
+    │   │       NotFoundPage.jsx
+    │   │       
+    │   └───projects
+    │           ConfirmModal.jsx
+    │           ProjectDetailsPage.css
+    │           ProjectDetailsPage.jsx
+    │           ProjectFormModal.jsx
+    │           ProjectsPage.css
+    │           ProjectsPage.jsx
+    │           
+    ├───routes
+    │       AppRoutes.jsx
+    │       PermissionRoute.jsx
+    │       ProtectedRoute.jsx
+    │       
+    └───styles
+            global.css
+            layout.css
+            variables.css
+            
