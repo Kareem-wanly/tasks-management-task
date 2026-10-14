@@ -89,7 +89,6 @@ export default function LoginPage() {
   return (
     <div className="login-container">
       <div className="login-card">
-        {/* Header */}
         <div className="login-header">
           <div className="login-logo">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -100,7 +99,6 @@ export default function LoginPage() {
           <p className="login-subtitle">Welcome back! Please enter your details.</p>
         </div>
 
-        {/* General Error Alert */}
         {generalError && (
           <div className="error-alert">
             {generalError}
@@ -108,7 +106,6 @@ export default function LoginPage() {
         )}
 
         <form className="login-form" onSubmit={handleSubmit} noValidate>
-          {/* Email Field */}
           <div className="form-group">
             <label className="form-label" htmlFor="email">
               Email address
@@ -130,7 +127,6 @@ export default function LoginPage() {
             )}
           </div>
 
-          {/* Password Field */}
           <div className="form-group">
             <label className="form-label" htmlFor="password">
               Password
@@ -161,7 +157,6 @@ export default function LoginPage() {
             )}
           </div>
 
-          {/* Submit Button */}
           <button type="submit" className="submit-btn" disabled={isSubmitting}>
             {isSubmitting ? (
               <>
@@ -174,7 +169,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Footer */}
         <div className="login-footer">
           Don't have an account?{' '}
           <Link to="/register" className="signup-link">

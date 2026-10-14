@@ -1,0 +1,88 @@
+.input-group-common {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+  width: 100%;
+}
+
+.common-input-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #334155;
+  margin-bottom: 0.35rem;
+  display: inline-block;
+}
+
+.req-star {
+  color: #dc2626;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.common-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.common-input-icon {
+  position: absolute;
+  left: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.common-input-field {
+  width: 100%;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: #1e293b;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.common-input-field.with-icon {
+  padding-left: 2.25rem;
+}
+
+.common-input-field:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.common-input-field:disabled {
+  background-color: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.input-group-common.has-error .common-input-field {
+  border-color: #dc2626;
+}
+
+.input-group-common.has-error .common-input-field:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+
+.common-input-error {
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: #dc2626;
+  line-height: 1.2;
+}
+
+.common-input-helper {
+  margin-top: 0.35rem;
+  font-size: 0.775rem;
+  color: #64748b;
+  line-height: 1.2;
+}

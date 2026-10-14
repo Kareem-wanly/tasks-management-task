@@ -1,0 +1,64 @@
+.textarea-group-common {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+  width: 100%;
+}
+
+.common-textarea-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #334155;
+  margin-bottom: 0.35rem;
+  display: inline-block;
+}
+
+.common-textarea-field {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: #1e293b;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  outline: none;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+  line-height: 1.5;
+}
+
+.common-textarea-field:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.common-textarea-field:disabled {
+  background-color: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.textarea-group-common.has-error .common-textarea-field {
+  border-color: #dc2626;
+}
+
+.textarea-group-common.has-error .common-textarea-field:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+
+.common-textarea-error {
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: #dc2626;
+  line-height: 1.2;
+}
+
+.common-textarea-helper {
+  margin-top: 0.35rem;
+  font-size: 0.775rem;
+  color: #64748b;
+  line-height: 1.2;
+}
