@@ -1,64 +1,33 @@
 import { useAuth } from '../../context/AuthContext';
-import Can from '../../components/common/Can';
+import './DashboardPage.css';
 
 export default function DashboardPage() {
-  const { user, roles, permissions, logout } = useAuth();
+  const { user, roles } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-md p-6">
-        <div className="flex justify-between items-center pb-4 border-b">
-          <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-          <button
-            onClick={logout}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm"
-          >
-            Logout
-          </button>
+    <div className="dashboard-container">
+      <div className="welcome-card">
+        <div className="welcome-icon-box">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
         </div>
 
-        <div className="mt-6 space-y-4">
-          <p className="text-gray-700">
-            Welcome, <span className="font-semibold text-indigo-600">{user?.name}</span> ({user?.email})
-          </p>
+        <h1 className="welcome-title">Welcome, {user?.name || 'User'}!</h1>
+        
+        <p className="welcome-subtitle">
+          This is your workspace overview. Project statistics, assigned tasks, and completion metrics will appear here once connected.
+        </p>
 
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-semibold text-gray-700 mb-2">Roles:</h3>
-            <div className="flex gap-2">
-              {roles?.length ? (
-                roles.map((r, i) => (
-                  <span key={i} className="px-2.5 py-1 bg-indigo-100 text-indigo-800 text-xs font-semibold rounded-full">
-                    {r}
-                  </span>
-                ))
-              ) : (
-                <span className="text-sm text-gray-500">No specific roles assigned</span>
-              )}
-            </div>
+        {roles?.length > 0 && (
+          <div className="user-roles-container">
+            {roles.map((role, index) => (
+              <span key={index} className="role-tag">
+                {role}
+              </span>
+            ))}
           </div>
-
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-semibold text-gray-700 mb-2">Permissions:</h3>
-            <div className="flex flex-wrap gap-2">
-              {permissions?.length ? (
-                permissions.map((p, i) => (
-                  <span key={i} className="px-2.5 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
-                    {p}
-                  </span>
-                ))
-              ) : (
-                <span className="text-sm text-gray-500">No specific permissions assigned</span>
-              )}
-            </div>
-          </div>
-
-          
-          <Can role="admin">
-            <div className="p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg text-sm">
-              This element is only visible to administrators (Admin).
-            </div>
-          </Can>
-        </div>
+        )}
       </div>
     </div>
   );
