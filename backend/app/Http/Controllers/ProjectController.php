@@ -6,6 +6,7 @@ use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Models\ActivityLog;
 
 class ProjectController extends Controller
 {
@@ -147,7 +148,7 @@ class ProjectController extends Controller
     'status'      => ['sometimes', 'string', 'in:active,in_progress,on_hold,completed,archived'], 
     'start_date'  => ['nullable', 'date'],
     'due_date'    => ['nullable', 'date', 'after_or_equal:start_date'],
-]);
+        ]);
 
     if (isset($validated['name']) && !isset($validated['title'])) {
         $validated['title'] = $validated['name'];
@@ -322,11 +323,19 @@ class ProjectController extends Controller
 
     public function allActivities(Request $request): JsonResponse
 {
-    $this->authorize('viewAny', Project::class);
+    abort_unless($request->user()->hasPermission('activities.view'), 403, 'You do not have permission to view activities.');
 
-    $activities = \App\Models\ActivityLog::with('user:id,name,email')
-        ->latest()
-        ->paginate((int) $request->query('per_page', 15));
+    $query = ActivityLog::with('user:id,name,email')->latest();
+
+    if (!$request->user()->hasRole('Administrator')) {
+        $query->whereHas('project', function ($q) use ($request) {
+            $q->where('owner_id', $request->user()->id)
+              ->orWhereHas('members', fn ($m) => $m->where('users.id', $request->user()->id));
+        });
+    }
+
+    $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
+    $activities = $query->paginate($perPage);
 
     return response()->json([
         'success' => true,

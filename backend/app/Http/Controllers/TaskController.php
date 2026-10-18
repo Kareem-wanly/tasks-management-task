@@ -32,13 +32,16 @@ class TaskController extends Controller
 
     $user = $request->user();
 
-    $isAdmin = $user->role === 'admin' 
-        || (isset($user->is_admin) && $user->is_admin) 
-        || (is_object($user->role) && $user->role->name === 'admin');
+    //N2.Fix
 
-    if (!$isAdmin) {
-        $query->where('assigned_to', $user->id);
-    } elseif ($request->filled('assigned_to')) {
+    if (!$user->hasRole('Administrator')) {
+        $query->whereHas('project', function ($q) use ($user) {$q->where('owner_id', $user->id)
+
+            ->orWhereHas('members', fn ($m) => $m->where('users.id', $user->id));
+        });
+    }
+
+    if ($request->filled('assigned_to')) {
         $query->where('assigned_to', $request->query('assigned_to'));
     }
 
@@ -49,9 +52,9 @@ class TaskController extends Controller
     if ($request->filled('due_date')) {
         $query->whereDate('due_date', $request->query('due_date'));
     }
-
-    if ($request->filled('due_date_from')) {
-        $query->whereDate('due_date', '>=', $request->query('due_date_from'));
+    //N3.fix 
+    if ($request->filled('due_date_to')) {
+        $query->whereDate('due_date', '<=', $request->query('due_date_to'));
     }
 
     if ($request->boolean('overdue') || $request->query('overdue') === 'true') {
@@ -223,7 +226,8 @@ class TaskController extends Controller
 
     public function updateStatus(Request $request, Task $task): JsonResponse
 {
-    $this->authorize('update', $task);
+    //fix: Check if the user is authorized to update the status of the task
+    $this->authorize('updateStatus', $task);
 
     $validated = $request->validate([
         'status' => ['required', 'string', 'in:todo,in_progress,review,completed'],

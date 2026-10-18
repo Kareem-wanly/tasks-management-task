@@ -7,7 +7,7 @@ use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Models\Role;
 use Illuminate\Http\JsonResponse;
-use Illuminate\support\Facades\Hash;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -43,7 +43,7 @@ class AuthController extends Controller
     }
 
     public function login(Request $request): JsonResponse
-    {
+        {
     $credentials = $request->validate([
         'email'    => ['required', 'string', 'email'],
         'password' => ['required', 'string'],
@@ -73,12 +73,49 @@ public function me(Request $request): JsonResponse
     ]);
     }
 
-public function logout(Request $request): JsonResponse
-    {
+
+
+    public function logout(Request $request): JsonResponse
+        {
     $request->user()->currentAccessToken()->delete();
 
     return response()->json([
         'message' => 'Logged out successfully',
     ]);
     }
+
+    public function updateProfile(Request $request): \Illuminate\Http\JsonResponse
+{
+    $user = $request->user();
+
+    $validated = $request->validate([
+        'name'  => ['required', 'string', 'max:255'],
+        'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+    ]);
+
+    $user->update($validated);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Profile updated successfully',
+        'data'    => $user,
+    ]);
+}
+
+public function updatePassword(Request $request): \Illuminate\Http\JsonResponse
+{
+    $validated = $request->validate([
+        'current_password' => ['required', 'string', 'current_password'],
+        'password'         => ['required', 'string', 'min:8', 'confirmed'],
+    ]);
+
+    $request->user()->update([
+        'password' => $validated['password'], 
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Password updated successfully',
+    ]);
+}
 }

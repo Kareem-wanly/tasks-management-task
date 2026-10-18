@@ -48,7 +48,26 @@ class UserController extends Controller
         return response()->json($users);
     }
 
-    
+    public function store(Request $request): \Illuminate\Http\JsonResponse
+{
+    abort_unless($request->user()->hasPermission('users.create'), 403, 'Unauthorized.');
+
+    $validated = $request->validate([
+        'name'     => ['required', 'string', 'max:255'],
+        'email'    => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+        'password' => ['required', 'string', 'min:8'],
+    ]);
+
+    $user = \App\Models\User::create($validated);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'User created successfully',
+        'data'    => $user,
+    ], 201);
+}
+
+
     public function show(User $user): JsonResponse
     {
         $this->authorize('view', $user);

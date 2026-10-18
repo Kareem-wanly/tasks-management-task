@@ -70,6 +70,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
 
     // 7. Activity Logs
-    Route::get('/activities', [ProjectController::class, 'index']); 
+    Route::get('/activities', [ProjectController::class, 'allActivities']);
     Route::get('/projects/{project}/activities', [ProjectController::class, 'activities']);
 });
