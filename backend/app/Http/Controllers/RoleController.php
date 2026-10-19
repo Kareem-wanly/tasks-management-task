@@ -69,6 +69,22 @@ class RoleController extends Controller
     {
         $this->authorize('update', $role);
 
+        $systemRoles = ['Administrator', 'Project Manager', 'Member'];
+
+        // #37. Prevent renaming system roles to ensure they remain consistent and protected
+        if (in_array($role->name, $systemRoles) && $request->filled('name') && $request->name !== $role->name) {
+            return response()->json([
+                'message' => 'System roles cannot be renamed.'
+            ], 403);
+        }
+
+        // #37. Prevent assigning a system role name to any other role
+        if (!in_array($role->name, $systemRoles) && $request->filled('name') && in_array($request->name, $systemRoles)) {
+            return response()->json([
+                'message' => 'Cannot rename a role to a reserved system role name.'
+            ], 403);
+        }
+
         $role->update($request->only(['name', 'display_name', 'description']));
 
         if ($request->has('permissions')) {
@@ -101,11 +117,36 @@ class RoleController extends Controller
     public function syncPermissions(Request $request, Role $role): JsonResponse
     {
         $this->authorize('update', $role);
+        // #37. Prevent non-Administrator users from modifying the permissions of the Administrator role
+        if ($role->name === 'Administrator' && !$request->user()->hasRole('Administrator')) {
+            return response()->json([
+                'message' => 'Only an Administrator can modify permissions for this role.'
+            ], 403);
+        }
 
         $request->validate([
             'permissions'   => ['required', 'array'],
             'permissions.*' => ['integer', 'exists:permissions,id'],
         ]);
+
+        if (!$request->user()->hasRole('Administrator')) {
+            $userPermissionIds = $request->user()->roles()
+                ->with('permissions')
+                ->get()
+                ->pluck('permissions')
+                ->flatten()
+                ->pluck('id')
+                ->unique()
+                ->toArray();
+
+            $unauthorizedPermissions = array_diff($request->permissions, $userPermissionIds);
+
+            if (!empty($unauthorizedPermissions)) {
+                return response()->json([
+                    'message' => 'You cannot grant permissions that you do not possess.'
+                ], 403);
+            }
+        }
 
         $role->permissions()->sync($request->permissions);
 

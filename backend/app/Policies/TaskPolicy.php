@@ -9,7 +9,8 @@ class TaskPolicy
 {
     public function before(User $user, string $ability): ?bool
     {
-        if ($user->hasRole('Administrator') || $user->hasPermission('projects.update')) {
+        //#4. Allow administrators to perform any action without further checks
+        if ($user->hasRole('Administrator') ) {
             return true;
         }
 

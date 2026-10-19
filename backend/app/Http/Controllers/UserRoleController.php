@@ -15,7 +15,12 @@ class UserRoleController extends Controller
     
     public function index(User $user): JsonResponse
     {
+        //#5.  Add $this->authorize('view', $user); at the top of the method.
+        $this->authorize('viewRoles', $user);
+
         return response()->json([
+            'success' => true,
+            'message' => 'User roles retrieved successfully',
             'data' => $user->roles()->get(['roles.id', 'name', 'display_name'])
         ]);
     }
@@ -38,7 +43,16 @@ class UserRoleController extends Controller
 
         if ($adminRole) {
             $userHasAdminRole = $user->roles()->where('roles.id', $adminRole->id)->exists();
-            $newRolesExcludeAdmin = !in_array($adminRole->id, $request->roles);
+            $assigningAdmin   = in_array($adminRole->id, $request->roles);
+
+            //fix: Only allow users with the Administrator role to assign or revoke the Administrator role
+            if (($assigningAdmin || $userHasAdminRole) && !$request->user()->hasRole('Administrator')) {
+                return response()->json([
+                    'message' => 'Only an Administrator can assign or revoke the Administrator role.'
+                ], 403);
+            }
+
+            $newRolesExcludeAdmin = !$assigningAdmin;
 
             if ($userHasAdminRole && $newRolesExcludeAdmin) {
                 $adminCount = User::whereHas('roles', function ($q) use ($adminRole) {

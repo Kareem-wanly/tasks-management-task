@@ -13,19 +13,20 @@ class CommentController extends Controller
     use AuthorizesRequests;
 
     
-    public function index(Task $task): JsonResponse
-    {
-        $this->authorize('view', $task);
+    public function index(Request $request, Task $task): JsonResponse
+{
+    $this->authorize('view', $task);
 
-        $comments = $task->comments()
-            ->with('user:id,name,email')
-            ->latest()
-            ->get();
+    abort_unless($request->user()->hasPermission('comments.view'), 403);
 
-        return response()->json([
-            'data' => $comments
-        ]);
-    }
+    $comments = $task->comments()->with('user:id,name,email')->latest()->get();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Comments retrieved successfully',
+        'data'    => $comments,
+    ]);
+}
 
     public function store(Request $request, Task $task): JsonResponse
     {

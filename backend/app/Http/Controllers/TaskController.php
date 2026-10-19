@@ -91,13 +91,19 @@ class TaskController extends Controller
         return response()->json(['data' => $project->tasks()->with('assignee:id,name,email')->get()]);
     }
 
-    public function show(Task $task): JsonResponse
+    public function show(Request $request, Task $task): JsonResponse
 {
     $this->authorize('view', $task);
 
-    $taskData = $task->load(['project:id,title', 'assignee:id,name,email', 'comments.user:id,name,email'])->toArray();
-    
-    
+    $relations = ['project:id,title', 'assignee:id,name,email'];
+
+    //#40.fix: Only load comments if the user has permission to view them
+    if ($request->user()->hasPermission('comments.view')) {
+        $relations[] = 'comments.user:id,name,email';
+    }
+
+    $taskData = $task->load($relations)->toArray();
+
     $taskData['is_overdue'] = $task->due_date && $task->status !== 'completed' && $task->due_date < now();
 
     return response()->json([
