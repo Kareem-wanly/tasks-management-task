@@ -17,14 +17,25 @@ class CommentController extends Controller
 {
     $this->authorize('view', $task);
 
-    abort_unless($request->user()->hasPermission('comments.view'), 403);
+    abort_unless($request->user()->hasPermission('comments.view'), 403, 'You do not have permission to view comments.');
 
-    $comments = $task->comments()->with('user:id,name,email')->latest()->get();
+    $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
+
+    $comments = $task->comments()
+        ->with('user:id,name,email')
+        ->latest()
+        ->paginate($perPage);
 
     return response()->json([
         'success' => true,
         'message' => 'Comments retrieved successfully',
-        'data'    => $comments,
+        'data'    => $comments->items(),
+        'meta'    => [
+            'current_page' => $comments->currentPage(),
+            'last_page'    => $comments->lastPage(),
+            'per_page'     => $comments->perPage(),
+            'total'        => $comments->total(),
+        ],
     ]);
 }
 

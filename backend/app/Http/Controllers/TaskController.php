@@ -21,7 +21,8 @@ class TaskController extends Controller
     $query = Task::with(['project:id,title', 'assignee:id,name,email']);
 
     if ($request->filled('search')) {
-        $query->where('title', 'like', '%' . $request->query('search') . '%');
+        $search = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $request->query('search'));
+        $query->where('title', 'like', "%{$search}%");
     }
 
     if ($request->filled('status')) {
@@ -75,7 +76,7 @@ class TaskController extends Controller
 
     $query->orderBy($sortBy, $sortOrder);
 
-    $perPage = (int) $request->query('per_page', 15);
+    $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
     $tasks = $query->paginate($perPage);
 
     $tasks->getCollection()->transform(function ($task) {
@@ -86,13 +87,19 @@ class TaskController extends Controller
     return response()->json($tasks);
 }
 
-    public function indexByProject(Project $project): JsonResponse
+    public function indexByProject(Request $request, Project $project): JsonResponse
     {
         $this->authorize('view', $project);
 
-        return response()->json(['data' => $project->tasks()->with('assignee:id,name,email')->get()]);
-    }
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
 
+        $tasks = $project->tasks()
+            ->with('assignee:id,name,email')
+            ->latest()
+            ->paginate($perPage);
+
+        return response()->json($tasks);
+    }
     public function show(Request $request, Task $task): JsonResponse
 {
     $this->authorize('view', $task);

@@ -44,19 +44,21 @@ class AuthController extends Controller
     }
 
     public function login(Request $request): JsonResponse
-        {
-    $credentials = $request->validate([
+    {
+        $credentials = $request->validate([
         'email'    => ['required', 'string', 'email'],
         'password' => ['required', 'string'],
     ]);
 
-    if (!Auth::attempt($credentials)) {
-        return response()->json([
-            'message' => 'Invalid login credentials'
-        ], 401);
-    }
+    $user = User::where('email', $request->email)->first();
 
-    $user = User::where('email', $request->email)->firstOrFail();
+        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+            return response()->json([
+                'message' => 'Invalid login credentials',
+            ], 401);
+        }
+
+
     $token = $user->createToken('auth_token')->plainTextToken;
 
     return response()->json([

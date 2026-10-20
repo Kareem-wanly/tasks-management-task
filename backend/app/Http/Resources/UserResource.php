@@ -16,9 +16,7 @@ class UserResource extends JsonResource
             'roles'                 => $this->whenLoaded('roles', function () {
             return $this->roles->pluck('name');
             }),
-            'effective_permissions' => $this->when($this->relationLoaded('roles'), function () {
-             return $this->getEffectivePermissions()->pluck('name');
-            }),
+            'effective_permissions' => $this->permissionNames()->values(),
             'created_at'            => $this->created_at?->toISOString(),
             'updated_at'            => $this->updated_at?->toISOString(),
         ];

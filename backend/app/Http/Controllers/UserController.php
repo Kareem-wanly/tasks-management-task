@@ -19,7 +19,7 @@ class UserController extends Controller
         $query = User::with('roles:id,name,display_name');
 
         if ($request->filled('search')) {
-            $search = $request->query('search');
+            $search = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $request->query('search'));
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%");
@@ -34,14 +34,7 @@ class UserController extends Controller
             });
         }
 
-        $perPage = (int) $request->query('per_page', 10);
-        
-        if ($request->query('per_page') === 'all' || $perPage === -1) {
-            $users = $query->orderBy('name', 'asc')->get(['id', 'name', 'email', 'created_at']);
-            return response()->json([
-                'data' => $users
-            ]);
-        }
+        $perPage = min(max((int) $request->query('per_page', 10), 1), 100);
 
         $users = $query->orderBy('id', 'desc')->paginate($perPage);
 

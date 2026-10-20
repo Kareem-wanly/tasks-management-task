@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+
 class ProjectController extends Controller
 {
     use AuthorizesRequests;
@@ -28,7 +29,7 @@ class ProjectController extends Controller
         }
 
         if ($request->filled('search')) {
-            $search = $request->query('search');
+            $search = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $request->query('search'));
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%");
@@ -53,8 +54,10 @@ class ProjectController extends Controller
         }
 
         $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
-        $projects = $query->with(['owner:id,name,email', 'members:id,name,email'])
+        $projects = $query->with('owner:id,name,email')
+                          ->withCount(['members', 'tasks'])
                           ->paginate($perPage);
+        
 
         return response()->json([
             'success' => true,
@@ -276,19 +279,27 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function activities(Project $project): JsonResponse
+    public function activities(Request $request, Project $project): JsonResponse
     {
         $this->authorize('view', $project);
+
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
 
         $activities = ActivityLog::where('project_id', $project->id)
             ->with('user:id,name,email')
             ->latest()
-            ->get();
+            ->paginate($perPage);
 
         return response()->json([
             'success' => true,
             'message' => 'Project activity logs retrieved successfully',
-            'data'    => $activities,
+            'data'    => $activities->items(),
+            'meta'    => [
+                'current_page' => $activities->currentPage(),
+                'last_page'    => $activities->lastPage(),
+                'per_page'     => $activities->perPage(),
+                'total'        => $activities->total(),
+            ],
         ]);
     }
 
