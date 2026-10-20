@@ -40,8 +40,7 @@ class ProjectPolicy
 
     public function update(User $user, Project $project): bool
     {
-        return ($user->hasPermission('projects.update') || $user->hasPermission('projects.edit')) 
-            && $this->isMember($user, $project);
+        return $user->hasPermission('projects.update') && $this->isMember($user, $project);
     }
 
     public function delete(User $user, Project $project): bool

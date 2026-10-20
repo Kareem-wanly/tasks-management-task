@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\Role; 
 use Illuminate\Http\Request;
@@ -26,30 +26,27 @@ class UserRoleController extends Controller
     }
 
     public function syncRoles(Request $request, User $user): JsonResponse
-    {
-        
-        if (!$request->user()->hasPermission('roles.assign') && !$request->user()->hasPermission('roles.manage')) {
-            return response()->json([
-                'message' => 'This action is unauthorized.'
-            ], 403);
-        }
+{
+    if (!$request->user()->hasPermission('roles.assign') && !$request->user()->hasPermission('roles.manage')) {
+        return response()->json([
+            'message' => 'This action is unauthorized.'
+        ], 403);
+    }
 
-        $request->validate([
-            'roles'   => ['required', 'array'],
-            'roles.*' => ['integer', 'exists:roles,id'],
-        ]);
+    $request->validate([
+        'roles'   => ['required', 'array'],
+        'roles.*' => ['integer', 'exists:roles,id'],
+    ]);
 
+    return DB::transaction(function () use ($request, $user) {
         $adminRole = Role::where('name', 'Administrator')->first();
 
         if ($adminRole) {
             $userHasAdminRole = $user->roles()->where('roles.id', $adminRole->id)->exists();
             $assigningAdmin   = in_array($adminRole->id, $request->roles);
 
-            //fix: Only allow users with the Administrator role to assign or revoke the Administrator role
             if (($assigningAdmin || $userHasAdminRole) && !$request->user()->hasRole('Administrator')) {
-                return response()->json([
-                    'message' => 'Only an Administrator can assign or revoke the Administrator role.'
-                ], 403);
+                abort(403, 'Only an Administrator can assign or revoke the Administrator role.');
             }
 
             $newRolesExcludeAdmin = !$assigningAdmin;
@@ -57,7 +54,7 @@ class UserRoleController extends Controller
             if ($userHasAdminRole && $newRolesExcludeAdmin) {
                 $adminCount = User::whereHas('roles', function ($q) use ($adminRole) {
                     $q->where('roles.id', $adminRole->id);
-                })->count();
+                })->lockForUpdate()->count();
 
                 if ($adminCount <= 1) {
                     return response()->json([
@@ -73,5 +70,6 @@ class UserRoleController extends Controller
             'message' => 'User roles updated successfully',
             'user'    => $user->load('roles:id,name,display_name'),
         ]);
-    }
+    });
+}
 }

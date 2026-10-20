@@ -7,6 +7,8 @@ use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Enums\TaskStatus;
+use Illuminate\Validation\Rule;
 
 class TaskController extends Controller
 {
@@ -118,7 +120,7 @@ class TaskController extends Controller
     $validated = $request->validate([
         'title'       => ['required', 'string', 'max:255'],
         'description' => ['nullable', 'string'],
-        'status'      => ['required', 'string', 'in:todo,in_progress,review,completed'],
+        'status' => ['required', Rule::enum(TaskStatus::class)],
         'priority'    => ['sometimes', 'string', 'in:low,medium,high,urgent'],
         'project_id'  => ['required', 'integer', 'exists:projects,id'],
         'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
@@ -183,7 +185,7 @@ class TaskController extends Controller
     $validated = $request->validate([
         'title'       => ['sometimes', 'string', 'max:255'],
         'description' => ['nullable', 'string'],
-        'status'      => ['sometimes', 'string', 'in:todo,in_progress,review,completed'],
+        'status' => ['required', Rule::enum(TaskStatus::class)],
         'priority'    => ['sometimes', 'string', 'in:low,medium,high,urgent'],
         'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
         'due_date'    => ['nullable', 'date'],
@@ -236,7 +238,7 @@ class TaskController extends Controller
     $this->authorize('updateStatus', $task);
 
     $validated = $request->validate([
-        'status' => ['required', 'string', 'in:todo,in_progress,review,completed'],
+        'status' => ['required', Rule::enum(TaskStatus::class)],
     ]);
 
 

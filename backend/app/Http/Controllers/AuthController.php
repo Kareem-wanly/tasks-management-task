@@ -10,36 +10,37 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class AuthController extends Controller
 {
     public function register(RegisterRequest $request): JsonResponse
     {
-        // Validate the request data
         $validated = $request->validated();
 
-        // Create a new user
-        $user = User::create([
-            'name'     => $validated['name'],
-            'email'    => $validated['email'],
-            'password' => Hash::make($validated['password']), // Hash the password
-        ]);
-        // Assign the Member role
-        $memberRole = Role::where('name', 'Member')->first(); // Find the Member role
-        if ($memberRole) {
-            $user->roles()->attach($memberRole->id);
-        }
-        // Create a new token for the user
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $user = DB::transaction(function () use ($validated) {
+            $user = User::create([
+                'name'     => $validated['name'],
+                'email'    => $validated['email'],
+                'password' => $validated['password'], 
+            ]);
 
-        // Return a JSON response with the user data and token
+            $memberRole = Role::where('name', 'Member')->first();
+            if ($memberRole) {
+                $user->roles()->attach($memberRole->id);
+            }
+
+            return $user;
+        });
+
+        $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'message'      => 'User registered successfully',
             'access_token' => $token,
             'token_type'   => 'Bearer',
             'user'         => new UserResource($user->load('roles')),
-        ], 201); // Return a 201 Created response
+        ], 201);
     }
 
     public function login(Request $request): JsonResponse

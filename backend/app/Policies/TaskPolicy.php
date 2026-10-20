@@ -51,7 +51,7 @@ class TaskPolicy
 
         return $task->project->owner_id === $user->id 
             || $task->created_by === $user->id 
-            || $user->hasPermission('tasks.manage');
+            || $user->hasPermission('tasks.update');
     }
 
     public function updateStatus(User $user, Task $task): bool
@@ -60,9 +60,8 @@ class TaskPolicy
             return false;
         }
 
-        return $this->isAssignee($user, $task) 
-            || $task->project->owner_id === $user->id 
-            || $user->hasPermission('tasks.change_status');
+        return $task->project->owner_id === $user->id 
+            || $task->project->members()->where('users.id', $user->id)->exists();
     }
 
     public function delete(User $user, Task $task): bool
