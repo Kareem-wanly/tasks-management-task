@@ -36,7 +36,7 @@ class UserRoleController extends Controller
         ]);
 
         return DB::transaction(function () use ($request, $user) {
-            
+
             $adminRole = Role::where('name', 'Administrator')->first();
 
             if ($adminRole) {
@@ -47,9 +47,9 @@ class UserRoleController extends Controller
                     abort(403, 'Only an Administrator can assign or revoke the Administrator role.');
                 }
 
-                $newRolesExcludeAdmin = ! $assigningAdmin;
+                $isRevokingAdmin = ! $assigningAdmin;
 
-                if ($userHasAdminRole && $newRolesExcludeAdmin) {
+                if ($userHasAdminRole && $isRevokingAdmin) {
                     $adminCount = User::whereHas('roles', function ($q) use ($adminRole) {
                         $q->where('roles.id', $adminRole->id);
                     })->lockForUpdate()->count();

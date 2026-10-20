@@ -16,7 +16,7 @@ class ProjectPolicy
         return null;
     }
 
-    private function isMember(User $user, Project $project): bool
+    private function canAccess(User $user, Project $project): bool
     {
         return $project->owner_id === $user->id
             || $project->members()->where('users.id', $user->id)->exists();
@@ -29,7 +29,7 @@ class ProjectPolicy
 
     public function view(User $user, Project $project): bool
     {
-        return $user->hasPermission('projects.view') && $this->isMember($user, $project);
+        return $user->hasPermission('projects.view') && $this->canAccess($user, $project);
     }
 
     public function create(User $user): bool
@@ -39,16 +39,16 @@ class ProjectPolicy
 
     public function update(User $user, Project $project): bool
     {
-        return $user->hasPermission('projects.update') && $this->isMember($user, $project);
+        return $user->hasPermission('projects.update') && $this->canAccess($user, $project);
     }
 
     public function delete(User $user, Project $project): bool
     {
-        return $user->hasPermission('projects.delete') && $this->isMember($user, $project);
+        return $user->hasPermission('projects.delete') && $this->canAccess($user, $project);
     }
 
     public function archive(User $user, Project $project): bool
     {
-        return $user->hasPermission('projects.archive') && $this->isMember($user, $project);
+        return $user->hasPermission('projects.archive') && $this->canAccess($user, $project);
     }
 }
