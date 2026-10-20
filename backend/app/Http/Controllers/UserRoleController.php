@@ -27,11 +27,8 @@ class UserRoleController extends Controller
 
     public function syncRoles(Request $request, User $user): JsonResponse
     {
-        if (! $request->user()->hasPermission('roles.assign') && ! $request->user()->hasPermission('roles.manage')) {
-            return response()->json([
-                'message' => 'This action is unauthorized.',
-            ], 403);
-        }
+
+        $this->authorize('manageRoles', $user);
 
         $request->validate([
             'roles' => ['required', 'array'],
@@ -39,6 +36,7 @@ class UserRoleController extends Controller
         ]);
 
         return DB::transaction(function () use ($request, $user) {
+            
             $adminRole = Role::where('name', 'Administrator')->first();
 
             if ($adminRole) {

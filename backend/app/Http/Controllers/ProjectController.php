@@ -146,10 +146,12 @@ class ProjectController extends Controller
     {
         $this->authorize('view', $project);
 
+        $members = $project->members()->get(['users.id', 'name', 'email']);
+
         return response()->json([
             'success' => true,
             'message' => 'Project members retrieved successfully',
-            'data' => $project->members()->get(['users.id', 'name', 'email']),
+            'data' => $members,
         ]);
     }
 
@@ -159,9 +161,11 @@ class ProjectController extends Controller
 
         $validated = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'],
+            'role'    => ['sometimes', 'string', 'in:member,lead,manager'],
         ]);
 
         $userId = (int) $validated['user_id'];
+        $role = $validated['role'] ?? null;
 
         if ($project->members()->where('users.id', $userId)->exists()) {
             return response()->json([
@@ -173,13 +177,13 @@ class ProjectController extends Controller
             ], 422);
         }
 
-        $project->members()->attach($userId);
+        $project->members()->attach($userId, ['role' => $role]);
 
         ActivityLog::create([
-            'user_id' => $request->user()->id,
-            'project_id' => $project->id,
-            'action' => 'member_added',
-            'description' => "User ID {$userId} was added to project '{$project->title}' by User ID {$request->user()->id}.",
+            'user_id'     => $request->user()->id,
+            'project_id'  => $project->id,
+            'action'      => 'member_added',
+            'description' => "User ID {$userId} was added to project '{$project->title}'.",
         ]);
 
         return response()->json([
@@ -209,7 +213,7 @@ class ProjectController extends Controller
             'user_id' => $request->user()->id,
             'project_id' => $project->id,
             'action' => 'member_removed',
-            'description' => "User ID {$user} was removed from project '{$project->title}' by User ID {$request->user()->id}.",
+            'description' => "User ID {$user} was removed from project '{$project->title}'.",
         ]);
 
         return response()->json([

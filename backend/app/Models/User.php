@@ -33,6 +33,17 @@ class User extends Authenticatable
         ];
     }
 
+    public function permissionNames(): \Illuminate\Support\Collection
+    {
+        return $this->permissionsCache ??= $this->roles()
+            ->with('permissions')
+            ->get()
+            ->pluck('permissions')
+            ->flatten()
+            ->pluck('name')
+            ->unique();
+    }
+
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class)->withTimestamps();
