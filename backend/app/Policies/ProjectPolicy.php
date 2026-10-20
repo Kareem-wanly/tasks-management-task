@@ -7,7 +7,6 @@ use App\Models\User;
 
 class ProjectPolicy
 {
-    
     public function before(User $user, string $ability): ?bool
     {
         if ($user->hasRole('Administrator')) {
@@ -19,7 +18,7 @@ class ProjectPolicy
 
     private function isMember(User $user, Project $project): bool
     {
-        return $project->owner_id === $user->id 
+        return $project->owner_id === $user->id
             || $project->members()->where('users.id', $user->id)->exists();
     }
 

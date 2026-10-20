@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Task extends Model
 {
@@ -25,15 +26,25 @@ class Task extends Model
         'created_by',
     ];
 
+    protected $appends = ['is_overdue'];
+
     protected function casts(): array
     {
         return [
-            'due_date'     => 'datetime',
+            'due_date' => 'datetime',
             'completed_at' => 'datetime',
         ];
     }
 
-    
+    protected function isOverdue(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->due_date
+                && $this->status !== 'completed'
+                && $this->due_date < now()
+        );
+    }
+
     protected static function booted(): void
     {
         static::updating(function (Task $task) {
@@ -47,7 +58,6 @@ class Task extends Model
         });
     }
 
-    
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
@@ -73,10 +83,9 @@ class Task extends Model
         return $this->hasMany(ActivityLog::class);
     }
 
-    
     public function scopeOverdue(Builder $query): Builder
     {
         return $query->where('due_date', '<', now())
-                     ->where('status', '!=', 'completed');
+            ->where('status', '!=', 'completed');
     }
 }

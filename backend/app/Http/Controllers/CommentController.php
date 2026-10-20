@@ -4,40 +4,39 @@ namespace App\Http\Controllers;
 
 use App\Models\Comment;
 use App\Models\Task;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class CommentController extends Controller
 {
     use AuthorizesRequests;
 
-    
     public function index(Request $request, Task $task): JsonResponse
-{
-    $this->authorize('view', $task);
+    {
+        $this->authorize('view', $task);
 
-    abort_unless($request->user()->hasPermission('comments.view'), 403, 'You do not have permission to view comments.');
+        abort_unless($request->user()->hasPermission('comments.view'), 403, 'You do not have permission to view comments.');
 
-    $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
+        $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
 
-    $comments = $task->comments()
-        ->with('user:id,name,email')
-        ->latest()
-        ->paginate($perPage);
+        $comments = $task->comments()
+            ->with('user:id,name,email')
+            ->latest()
+            ->paginate($perPage);
 
-    return response()->json([
-        'success' => true,
-        'message' => 'Comments retrieved successfully',
-        'data'    => $comments->items(),
-        'meta'    => [
-            'current_page' => $comments->currentPage(),
-            'last_page'    => $comments->lastPage(),
-            'per_page'     => $comments->perPage(),
-            'total'        => $comments->total(),
-        ],
-    ]);
-}
+        return response()->json([
+            'success' => true,
+            'message' => 'Comments retrieved successfully',
+            'data' => $comments->items(),
+            'meta' => [
+                'current_page' => $comments->currentPage(),
+                'last_page' => $comments->lastPage(),
+                'per_page' => $comments->perPage(),
+                'total' => $comments->total(),
+            ],
+        ]);
+    }
 
     public function store(Request $request, Task $task): JsonResponse
     {
@@ -48,13 +47,13 @@ class CommentController extends Controller
         $this->authorize('create', [Comment::class, $task]);
 
         $comment = $task->comments()->create([
-            'body'    => $validated['body'],
+            'body' => $validated['body'],
             'user_id' => $request->user()->id,
         ]);
 
         return response()->json([
             'message' => 'Comment created successfully',
-            'data'    => $comment->load('user:id,name,email')
+            'data' => $comment->load('user:id,name,email'),
         ], 201);
     }
 
@@ -70,7 +69,7 @@ class CommentController extends Controller
 
         return response()->json([
             'message' => 'Comment updated successfully',
-            'data'    => $comment->load('user:id,name,email'),
+            'data' => $comment->load('user:id,name,email'),
         ]);
     }
 

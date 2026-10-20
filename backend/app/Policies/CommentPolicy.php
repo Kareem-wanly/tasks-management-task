@@ -8,7 +8,6 @@ use App\Models\User;
 
 class CommentPolicy
 {
-    
     public function before(User $user, string $ability): ?bool
     {
         if ($user->hasRole('Administrator')) {
@@ -22,11 +21,11 @@ class CommentPolicy
     {
         $project = $task?->project;
 
-        if (!$project) {
+        if (! $project) {
             return false;
         }
 
-        return $project->owner_id === $user->id 
+        return $project->owner_id === $user->id
             || $project->members()->where('users.id', $user->id)->exists();
     }
 
@@ -47,11 +46,11 @@ class CommentPolicy
 
     public function update(User $user, Comment $comment): bool
     {
-        if (!$this->isProjectMember($user, $comment->task)) {
+        if (! $this->isProjectMember($user, $comment->task)) {
             return false;
         }
 
-        if (!$user->hasPermission('comments.update')) {
+        if (! $user->hasPermission('comments.update')) {
             return false;
         }
 
@@ -60,11 +59,11 @@ class CommentPolicy
 
     public function delete(User $user, Comment $comment): bool
     {
-        if (!$this->isProjectMember($user, $comment->task)) {
+        if (! $this->isProjectMember($user, $comment->task)) {
             return false;
         }
 
-        if (!$user->hasPermission('comments.delete')) {
+        if (! $user->hasPermission('comments.delete')) {
             return false;
         }
 

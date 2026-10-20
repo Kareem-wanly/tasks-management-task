@@ -2,29 +2,32 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreProjectRequest;
+use App\Http\Requests\UpdateProjectRequest;
+use App\Http\Resources\ProjectResource;
 use App\Models\ActivityLog;
 use App\Models\Project;
+use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-
 class ProjectController extends Controller
 {
     use AuthorizesRequests;
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         $this->authorize('viewAny', Project::class);
 
         $user = $request->user();
         $query = Project::query();
 
-        if (!$user->hasRole('Administrator')) {
+        if (! $user->hasRole('Administrator')) {
             $query->where(function ($q) use ($user) {
                 $q->where('owner_id', $user->id)
-                  ->orWhereHas('members', fn ($m) => $m->where('users.id', $user->id));
+                    ->orWhereHas('members', fn ($m) => $m->where('users.id', $user->id));
             });
         }
 
@@ -32,7 +35,7 @@ class ProjectController extends Controller
             $search = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $request->query('search'));
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
@@ -55,66 +58,34 @@ class ProjectController extends Controller
 
         $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
         $projects = $query->with('owner:id,name,email')
-                          ->withCount(['members', 'tasks'])
-                          ->paginate($perPage);
-        
+            ->withCount(['members', 'tasks'])
+            ->paginate($perPage);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Projects retrieved successfully',
-            'data'    => $projects->items(),
-            'meta'    => [
-                'current_page' => $projects->currentPage(),
-                'last_page'    => $projects->lastPage(),
-                'per_page'     => $projects->perPage(),
-                'total'        => $projects->total(),
-            ],
-            'links'   => [
-                'first' => $projects->url(1),
-                'last'  => $projects->url($projects->lastPage()),
-                'prev'  => $projects->previousPageUrl(),
-                'next'  => $projects->nextPageUrl(),
-            ],
-        ]);
+        return ProjectResource::collection($projects);
     }
 
-    public function show(Project $project): JsonResponse
+    public function show(Project $project): ProjectResource
     {
         $this->authorize('view', $project);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Project details retrieved successfully',
-            'data'    => $project->load([
-                'owner:id,name,email',
-                'members:id,name,email',
-            ]),
-        ]);
+        return new ProjectResource($project->load(['owner:id,name,email', 'members:id,name,email']));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreProjectRequest $request): JsonResponse
     {
         $this->authorize('create', Project::class);
 
-        $validated = $request->validate([
-            'title'       => ['required_without:name', 'nullable', 'string', 'max:255'],
-            'name'        => ['required_without:title', 'nullable', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'status'      => ['sometimes', 'string', 'in:active,in_progress,on_hold,completed'],
-            'start_date'  => ['nullable', 'date'],
-            'due_date'    => ['nullable', 'date', 'after_or_equal:start_date'],
-        ]);
-
+        $validated = $request->validated();
         $title = $validated['title'] ?? $validated['name'];
 
         $project = DB::transaction(function () use ($request, $validated, $title) {
             $project = Project::create([
-                'title'       => $title,
+                'title' => $title,
                 'description' => $validated['description'] ?? null,
-                'start_date'  => $validated['start_date'] ?? null,
-                'due_date'    => $validated['due_date'] ?? null,
-                'owner_id'    => $request->user()->id,
-                'status'      => $validated['status'] ?? 'active',
+                'start_date' => $validated['start_date'] ?? null,
+                'due_date' => $validated['due_date'] ?? null,
+                'owner_id' => $request->user()->id,
+                'status' => $validated['status'] ?? 'active',
             ]);
 
             $project->members()->attach($request->user()->id);
@@ -122,27 +93,18 @@ class ProjectController extends Controller
             return $project;
         });
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Project created successfully',
-            'data'    => $project->load(['owner:id,name,email', 'members:id,name,email']),
-        ], 201);
+        return (new ProjectResource($project->load(['owner:id,name,email', 'members:id,name,email'])))
+            ->response()
+            ->setStatusCode(201);
     }
 
-    public function update(Request $request, Project $project): JsonResponse
+    public function update(UpdateProjectRequest $request, Project $project): ProjectResource|JsonResponse
     {
         $this->authorize('update', $project);
 
-        $validated = $request->validate([
-            'title'       => ['sometimes', 'nullable', 'string', 'max:255'],
-            'name'        => ['sometimes', 'nullable', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'status'      => ['sometimes', 'string', 'in:active,in_progress,on_hold,completed'],
-            'start_date'  => ['nullable', 'date'],
-            'due_date'    => ['nullable', 'date', 'after_or_equal:start_date'],
-        ]);
+        $validated = $request->validated();
 
-        if (isset($validated['name']) && !isset($validated['title'])) {
+        if (isset($validated['name']) && ! isset($validated['title'])) {
             $validated['title'] = $validated['name'];
             unset($validated['name']);
         }
@@ -154,9 +116,8 @@ class ProjectController extends Controller
 
             if ($hasUnfinishedTasks) {
                 return response()->json([
-                    'success' => false,
                     'message' => 'Cannot complete project with unfinished tasks.',
-                    'errors'  => [
+                    'errors' => [
                         'status' => ['Project has pending or in-progress tasks that must be completed first.'],
                     ],
                 ], 422);
@@ -165,11 +126,7 @@ class ProjectController extends Controller
 
         $project->update($validated);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Project updated successfully',
-            'data'    => $project->fresh(['owner:id,name,email', 'members:id,name,email']),
-        ]);
+        return new ProjectResource($project->fresh(['owner:id,name,email', 'members:id,name,email']));
     }
 
     public function destroy(Project $project): JsonResponse
@@ -181,7 +138,7 @@ class ProjectController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Project deleted successfully',
-            'data'    => null,
+            'data' => null,
         ]);
     }
 
@@ -192,7 +149,7 @@ class ProjectController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Project members retrieved successfully',
-            'data'    => $project->members()->get(['users.id', 'name', 'email']),
+            'data' => $project->members()->get(['users.id', 'name', 'email']),
         ]);
     }
 
@@ -210,7 +167,7 @@ class ProjectController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'User is already a member of this project.',
-                'errors'  => [
+                'errors' => [
                     'user_id' => ['The specified user is already attached to this project.'],
                 ],
             ], 422);
@@ -219,46 +176,46 @@ class ProjectController extends Controller
         $project->members()->attach($userId);
 
         ActivityLog::create([
-            'user_id'     => $request->user()->id,
-            'project_id'  => $project->id,
-            'action'      => 'member_added',
+            'user_id' => $request->user()->id,
+            'project_id' => $project->id,
+            'action' => 'member_added',
             'description' => "User ID {$userId} was added to project '{$project->title}' by User ID {$request->user()->id}.",
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Member added to project successfully',
-            'data'    => $project->load(['owner:id,name,email', 'members:id,name,email']),
+            'data' => $project->load(['owner:id,name,email', 'members:id,name,email']),
         ], 200);
     }
 
-    public function removeMember(Request $request, Project $project, int $userId): JsonResponse
+    public function removeMember(Request $request, Project $project, User $user): JsonResponse
     {
         $this->authorize('update', $project);
 
-        if (!$project->members()->where('users.id', $userId)->exists()) {
+        if (! $project->members()->where('users.id', $user)->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'User is not a member of this project.',
-                'errors'  => [
+                'errors' => [
                     'user_id' => ['The specified user is not attached to this project.'],
                 ],
             ], 404);
         }
 
-        $project->members()->detach($userId);
+        $project->members()->detach($user);
 
         ActivityLog::create([
-            'user_id'     => $request->user()->id,
-            'project_id'  => $project->id,
-            'action'      => 'member_removed',
-            'description' => "User ID {$userId} was removed from project '{$project->title}' by User ID {$request->user()->id}.",
+            'user_id' => $request->user()->id,
+            'project_id' => $project->id,
+            'action' => 'member_removed',
+            'description' => "User ID {$user} was removed from project '{$project->title}' by User ID {$request->user()->id}.",
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Member removed from project successfully',
-            'data'    => $project->load(['owner:id,name,email', 'members:id,name,email']),
+            'data' => $project->load(['owner:id,name,email', 'members:id,name,email']),
         ]);
     }
 
@@ -275,7 +232,7 @@ class ProjectController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Project status changed to {$newStatus} successfully",
-            'data'    => $project->fresh(['owner:id,name,email', 'members:id,name,email']),
+            'data' => $project->fresh(['owner:id,name,email', 'members:id,name,email']),
         ]);
     }
 
@@ -293,12 +250,12 @@ class ProjectController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Project activity logs retrieved successfully',
-            'data'    => $activities->items(),
-            'meta'    => [
+            'data' => $activities->items(),
+            'meta' => [
                 'current_page' => $activities->currentPage(),
-                'last_page'    => $activities->lastPage(),
-                'per_page'     => $activities->perPage(),
-                'total'        => $activities->total(),
+                'last_page' => $activities->lastPage(),
+                'per_page' => $activities->perPage(),
+                'total' => $activities->total(),
             ],
         ]);
     }
@@ -309,10 +266,10 @@ class ProjectController extends Controller
 
         $query = ActivityLog::with('user:id,name,email')->latest();
 
-        if (!$request->user()->hasRole('Administrator')) {
+        if (! $request->user()->hasRole('Administrator')) {
             $query->whereHas('project', function ($q) use ($request) {
                 $q->where('owner_id', $request->user()->id)
-                  ->orWhereHas('members', fn ($m) => $m->where('users.id', $request->user()->id));
+                    ->orWhereHas('members', fn ($m) => $m->where('users.id', $request->user()->id));
             });
         }
 
@@ -322,12 +279,12 @@ class ProjectController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'All activity logs retrieved successfully',
-            'data'    => $activities->items(),
-            'meta'    => [
+            'data' => $activities->items(),
+            'meta' => [
                 'current_page' => $activities->currentPage(),
-                'last_page'    => $activities->lastPage(),
-                'per_page'     => $activities->perPage(),
-                'total'        => $activities->total(),
+                'last_page' => $activities->lastPage(),
+                'per_page' => $activities->perPage(),
+                'total' => $activities->total(),
             ],
         ]);
     }

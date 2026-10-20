@@ -10,10 +10,10 @@ class PermissionController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        
-        if (!$request->user()->hasPermission('permissions.view') && !$request->user()->hasPermission('roles.manage')) {
+
+        if (! $request->user()->hasPermission('permissions.view') && ! $request->user()->hasPermission('roles.manage')) {
             return response()->json([
-                'message' => 'This action is unauthorized.'
+                'message' => 'This action is unauthorized.',
             ], 403);
         }
 

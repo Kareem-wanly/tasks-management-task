@@ -12,13 +12,13 @@ class StoreRoleRequest extends FormRequest
     }
 
     public function rules(): array
-{
-    return [
-        'name'          => ['required', 'string', 'max:255', 'unique:roles,name'],
-        'display_name'  => ['nullable', 'string', 'max:255'],
-        'description'   => ['nullable', 'string'],
-        'permissions'   => ['nullable', 'array'],
-        'permissions.*' => ['integer', 'exists:permissions,id'],
-    ];
-}
+    {
+        return [
+            'name' => ['required', 'string', 'max:255', 'unique:roles,name'],
+            'display_name' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['integer', 'exists:permissions,id'],
+        ];
+    }
 }

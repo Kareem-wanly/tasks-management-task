@@ -58,8 +58,8 @@ class RolesAndPermissionsSeeder extends Seeder
             );
         }
 
-        $adminRole  = Role::firstOrCreate(['name' => 'Administrator', 'display_name' => 'System Administrator', 'description' => 'Has full access to all system resources']);
-        $pmRole     = Role::firstOrCreate(['name' => 'Project Manager', 'display_name' => 'Project Manager', 'description' => 'Can manage assigned projects and tasks']);
+        $adminRole = Role::firstOrCreate(['name' => 'Administrator', 'display_name' => 'System Administrator', 'description' => 'Has full access to all system resources']);
+        $pmRole = Role::firstOrCreate(['name' => 'Project Manager', 'display_name' => 'Project Manager', 'description' => 'Can manage assigned projects and tasks']);
         $memberRole = Role::firstOrCreate(['name' => 'Member', 'display_name' => 'Team Member', 'description' => 'Can view projects and work on assigned tasks']);
 
         $allPermissionIds = Permission::pluck('id')->toArray();
@@ -69,21 +69,21 @@ class RolesAndPermissionsSeeder extends Seeder
             'users.view',
             'projects.view', 'projects.create', 'projects.update', 'projects.delete', 'projects.archive', 'projects.manage_members',
             'tasks.view', 'tasks.create', 'tasks.update', 'tasks.delete', 'tasks.assign', 'tasks.change_status',
-            'comments.view', 'comments.create', 'comments.update', 'comments.delete'
+            'comments.view', 'comments.create', 'comments.update', 'comments.delete',
         ];
         $pmRole->permissions()->sync(Permission::whereIn('name', $pmPermissionNames)->pluck('id'));
 
         $memberPermissionNames = [
             'projects.view',
             'tasks.view', 'tasks.update', 'tasks.change_status',
-            'comments.view', 'comments.create'
+            'comments.view', 'comments.create',
         ];
         $memberRole->permissions()->sync(Permission::whereIn('name', $memberPermissionNames)->pluck('id'));
 
         $adminUser = User::firstOrCreate(
             ['email' => 'admin@example.com'],
             [
-                'name'     => 'Admin User',
+                'name' => 'Admin User',
                 'password' => Hash::make('Password123!'),
             ]
         );

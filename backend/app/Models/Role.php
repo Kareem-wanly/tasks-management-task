@@ -16,8 +16,7 @@ class Role extends Model
         'description',
     ];
 
-
-/**
+    /**
      * The users that belong to the role
      */
     public function users(): BelongsToMany

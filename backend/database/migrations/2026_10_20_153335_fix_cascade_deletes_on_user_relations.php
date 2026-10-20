@@ -16,7 +16,7 @@ return new class extends Migration
             [$databaseName, $table, $foreignKey]
         );
 
-        if (!empty($exists)) {
+        if (! empty($exists)) {
             Schema::table($table, function (Blueprint $t) use ($foreignKey) {
                 $t->dropForeign($foreignKey);
             });
@@ -28,9 +28,9 @@ return new class extends Migration
         $this->dropForeignKeyIfExists('projects', 'projects_owner_id_foreign');
         Schema::table('projects', function (Blueprint $table) {
             $table->foreign('owner_id')
-                  ->references('id')
-                  ->on('users')
-                  ->restrictOnDelete();
+                ->references('id')
+                ->on('users')
+                ->restrictOnDelete();
         });
 
         $this->dropForeignKeyIfExists('tasks', 'tasks_assigned_to_foreign');
@@ -41,14 +41,14 @@ return new class extends Migration
             $table->unsignedBigInteger('created_by')->nullable()->change();
 
             $table->foreign('assigned_to')
-                  ->references('id')
-                  ->on('users')
-                  ->nullOnDelete();
+                ->references('id')
+                ->on('users')
+                ->nullOnDelete();
 
             $table->foreign('created_by')
-                  ->references('id')
-                  ->on('users')
-                  ->nullOnDelete();
+                ->references('id')
+                ->on('users')
+                ->nullOnDelete();
         });
 
         $this->dropForeignKeyIfExists('comments', 'comments_user_id_foreign');
@@ -57,9 +57,9 @@ return new class extends Migration
             $table->unsignedBigInteger('user_id')->nullable()->change();
 
             $table->foreign('user_id')
-                  ->references('id')
-                  ->on('users')
-                  ->nullOnDelete();
+                ->references('id')
+                ->on('users')
+                ->nullOnDelete();
         });
     }
 

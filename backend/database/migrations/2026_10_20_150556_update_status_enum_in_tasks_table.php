@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::table('tasks', function (Blueprint $table) {
             $table->enum('status', ['todo', 'in_progress', 'review', 'completed'])
-                  ->default('todo')
-                  ->change();
+                ->default('todo')
+                ->change();
         });
     }
 
@@ -19,8 +19,8 @@ return new class extends Migration
     {
         Schema::table('tasks', function (Blueprint $table) {
             $table->enum('status', ['todo', 'in_progress', 'in_review', 'completed'])
-                  ->default('todo')
-                  ->change();
+                ->default('todo')
+                ->change();
         });
     }
 };
