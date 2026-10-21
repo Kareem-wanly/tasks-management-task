@@ -56,6 +56,12 @@ class ProjectController extends Controller
             $query->orderBy($sortBy, $direction);
         }
 
+        if ($request->has('per_page') && ! is_numeric($request->query('per_page'))) {
+            return response()->json([
+                'message' => 'The per_page parameter must be an integer.',
+            ], 422);
+        }
+
         $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
         $projects = $query->with('owner:id,name,email')
             ->withCount(['members', 'tasks'])
@@ -290,6 +296,29 @@ class ProjectController extends Controller
                 'per_page' => $activities->perPage(),
                 'total' => $activities->total(),
             ],
+        ]);
+    }
+
+    public function options(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Project::class);
+
+        $query = Project::query();
+
+        if (! $request->user()->hasRole('Administrator')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('owner_id', $request->user()->id)
+                  ->orWhereHas('members', fn ($m) => $m->where('users.id', $request->user()->id));
+            });
+        }
+
+        $projects = $query->where('status', '!=', 'archived')
+            ->orderBy('title')
+            ->limit(1000)
+            ->get(['id', 'title', 'status']);
+
+        return response()->json([
+            'data' => $projects,
         ]);
     }
 }

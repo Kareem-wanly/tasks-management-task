@@ -34,6 +34,12 @@ class UserController extends Controller
             });
         }
 
+        if ($request->has('per_page') && ! is_numeric($request->query('per_page'))) {
+            return response()->json([
+                'message' => 'The per_page parameter must be an integer.',
+            ], 422);
+        }
+
         $perPage = min(max((int) $request->query('per_page', 10), 1), 100);
 
         $users = $query->orderBy('id', 'desc')->paginate($perPage);
@@ -102,4 +108,18 @@ class UserController extends Controller
             'message' => 'User deleted successfully',
         ]);
     }
+
+    public function options(): JsonResponse
+{
+    $this->authorize('viewAny', User::class);
+
+    $users = User::orderBy('name')
+        ->limit(1000)
+        ->get(['id', 'name', 'email']);
+
+    return response()->json([
+        'data' => $users,
+    ]);
+}
+
 }

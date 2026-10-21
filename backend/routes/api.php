@@ -76,4 +76,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // 7. Activity Logs
     Route::get('/activities', [ProjectController::class, 'allActivities']);
     Route::get('/projects/{project}/activities', [ProjectController::class, 'activities']);
+
+    Route::get('/users/options', [UserController::class, 'options']);
+    Route::get('/projects/options', [ProjectController::class, 'options']);
 });

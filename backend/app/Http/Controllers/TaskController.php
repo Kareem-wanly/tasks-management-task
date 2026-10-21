@@ -54,8 +54,8 @@ class TaskController extends Controller
             $query->where('project_id', $request->query('project_id'));
         }
 
-        if ($request->filled('due_date')) {
-            $query->whereDate('due_date', $request->query('due_date'));
+        if ($request->filled('due_date_from')) {
+            $query->whereDate('due_date', '>=', $request->query('due_date_from'));
         }
 
         if ($request->filled('due_date_to')) {
@@ -66,6 +66,12 @@ class TaskController extends Controller
             $query->where('status', '!=', 'completed')
                 ->whereNotNull('due_date')
                 ->whereDate('due_date', '<', now()->toDateString());
+        }
+
+        if ($request->has('per_page') && ! is_numeric($request->query('per_page'))) {
+            return response()->json([
+                'message' => 'The per_page parameter must be an integer.',
+            ], 422);
         }
 
         $sortBy = $request->query('sort_by', 'created_at');
@@ -193,31 +199,19 @@ class TaskController extends Controller
 
     public function updateStatus(Request $request, Task $task): JsonResponse
     {
-        // fix: Check if the user is authorized to update the status of the task
         $this->authorize('updateStatus', $task);
 
         $validated = $request->validate([
             'status' => ['required', Rule::enum(TaskStatus::class)],
         ]);
 
-        $completedAt = $task->completed_at;
-
-        if ($validated['status'] === 'completed' && $task->status !== 'completed') {
-
-            $completedAt = now();
-        } elseif ($validated['status'] !== 'completed' && $task->status === 'completed') {
-
-            $completedAt = null;
-        }
-
         $task->update([
             'status' => $validated['status'],
-            'completed_at' => $completedAt,
         ]);
 
         return response()->json([
             'message' => 'Task status updated successfully',
-            'data' => $task,
+            'data'    => $task->fresh(['project:id,title', 'assignee:id,name,email']),
         ]);
     }
 
