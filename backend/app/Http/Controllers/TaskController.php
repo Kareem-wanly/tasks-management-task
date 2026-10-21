@@ -171,7 +171,7 @@ class TaskController extends Controller
 
     public function storeByProject(StoreTaskRequest $request, Project $project): TaskResource
     {
-        $this->authorize('update', $project);
+        $this->authorize('create', [Task::class, $project]);
 
         $validated = $request->validated();
         $validated['project_id'] = $project->id;

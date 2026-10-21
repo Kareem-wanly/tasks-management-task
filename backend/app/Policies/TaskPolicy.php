@@ -4,6 +4,8 @@ namespace App\Policies;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Models\Project;
+
 
 class TaskPolicy
 {
@@ -44,9 +46,18 @@ class TaskPolicy
         return $user->hasPermission('tasks.view') && $this->isProjectMember($user, $task);
     }
 
-    public function create(User $user): bool
+    public function create(User $user, ?Project $project = null): bool
     {
-        return $user->hasPermission('tasks.create');
+        if (! $user->hasPermission('tasks.create')) {
+            return false;
+        }
+
+        if (! $project) {
+            return true;
+        }
+
+        return $project->owner_id === $user->id
+            || $project->members()->where('users.id', $user->id)->exists();
     }
 
     public function update(User $user, Task $task): bool

@@ -44,4 +44,10 @@ class UserPolicy
     {
         return $currentUser->hasPermission('roles.assign');
     }
+
+    public function viewRoles(User $currentUser, User $user): bool
+    {
+        return $currentUser->is($user) || $currentUser->hasPermission('users.view');
+    }
+
 }

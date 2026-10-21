@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Models\Project;
 
 class UserController extends Controller
 {
@@ -89,10 +90,10 @@ class UserController extends Controller
     {
         $this->authorize('delete', $user);
 
-        if ($user->hasRole('Administrator')) {
+        if (Project::withTrashed()->where('owner_id', $user->id)->exists()) {
             return response()->json([
-                'message' => 'Administrator users cannot be deleted directly.',
-            ], 403);
+                'message' => "Transfer or delete this user's projects before deleting the user.",
+            ], 409);
         }
 
         $user->delete();
