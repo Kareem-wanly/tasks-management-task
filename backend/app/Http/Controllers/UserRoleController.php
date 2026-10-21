@@ -40,7 +40,7 @@ class UserRoleController extends Controller
             'roles.*' => ['integer', 'exists:roles,id'],
         ]);
 
-        // R7: التحقق من أن الرتب المطلوبة لا تمنح صلاحيات لا يملكها المستخدم الحالي
+        
         if (! $request->user()->hasRole('Administrator')) {
             $requestedPermissionIds = Permission::whereHas('roles', fn ($q) => $q->whereIn('roles.id', $request->roles))
                 ->pluck('id');
@@ -87,6 +87,8 @@ class UserRoleController extends Controller
             }
 
             $user->roles()->sync($request->roles);
+
+            $user->clearPermissionsCache();
 
             return response()->json([
                 'message' => 'User roles updated successfully',

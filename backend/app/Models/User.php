@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Support\Collection;
 
 class User extends Authenticatable
 {
@@ -25,6 +26,9 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    protected ?Collection $permissionCache = null;
+    protected ?Collection $roleCache = null;
+
     protected function casts(): array
     {
         return [
@@ -33,15 +37,16 @@ class User extends Authenticatable
         ];
     }
 
-    public function permissionNames(): \Illuminate\Support\Collection
+    public function permissionNames(): Collection
     {
-        return $this->permissionsCache ??= $this->roles()
-            ->with('permissions')
+        return $this->permissionCache ??= $this->roles()
+            ->with('permissions:id,name')
             ->get()
             ->pluck('permissions')
             ->flatten()
             ->pluck('name')
-            ->unique();
+            ->unique()
+            ->values();
     }
 
     public function roles(): BelongsToMany
@@ -59,18 +64,14 @@ class User extends Authenticatable
             ->unique('id');
     }
 
-    public function hasPermission(string $permissionName): bool
+    public function hasPermission(string $name): bool
     {
-        return $this->roles()
-            ->whereHas('permissions', function ($q) use ($permissionName) {
-                $q->where('permissions.name', $permissionName);
-            })
-            ->exists();
+        return $this->permissionNames()->contains($name);
     }
 
-    public function hasRole(string $roleName): bool
+    public function hasRole(string $name): bool
     {
-        return $this->roles()->where('name', $roleName)->exists();
+        return ($this->roleCache ??= $this->roles()->pluck('name'))->contains($name);
     }
 
     public function projects()
@@ -88,5 +89,25 @@ class User extends Authenticatable
     public function ownedProjects(): HasMany
     {
         return $this->hasMany(Project::class, 'owner_id');
+    }
+
+    
+
+    public function permissionIds(): Collection
+    {
+        return $this->roles()
+            ->with('permissions:id')
+            ->get()
+            ->pluck('permissions')
+            ->flatten()
+            ->pluck('id')
+            ->unique()
+            ->values();
+    }
+
+    public function clearPermissionsCache(): void
+    {
+        $this->permissionCache = null;
+        $this->roleCache = null;
     }
 }

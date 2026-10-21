@@ -9,15 +9,7 @@ use App\Models\Project;
 
 class TaskPolicy
 {
-    public function before(User $user, string $ability): ?bool
-    {
-        // #4. Allow administrators to perform any action without further checks
-        if ($user->hasRole('Administrator')) {
-            return true;
-        }
-
-        return null;
-    }
+    
 
     public function viewAny(User $user): bool
     {
