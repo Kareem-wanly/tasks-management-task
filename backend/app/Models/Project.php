@@ -48,4 +48,20 @@ class Project extends Model
     {
         return $this->hasMany(ActivityLog::class);
     }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (Project $project) {
+            if ($project->isForceDeleting()) {
+                $project->tasks()->forceDelete();
+            } else {
+                $project->tasks()->delete();
+            }
+        });
+
+        static::restoring(function (Project $project) {
+            $project->tasks()->withTrashed()->restore();
+        });
+    }
+
 }

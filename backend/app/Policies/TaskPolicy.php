@@ -24,6 +24,12 @@ class TaskPolicy
 
     private function isProjectMember(User $user, Task $task): bool
     {
+        $project = $task->project;
+        if (! $project) {
+            return false;
+        }
+
+
         return $task->project->owner_id === $user->id
             || $task->project->members()->where('users.id', $user->id)->exists();
     }
@@ -60,8 +66,9 @@ class TaskPolicy
             return false;
         }
 
-        return $task->project->owner_id === $user->id
-            || $task->project->members()->where('users.id', $user->id)->exists();
+        return $task->project?->owner_id === $user->id
+            || $user->hasPermission('tasks.update')
+            || ($user->hasPermission('tasks.change_status') && (int) $task->assigned_to === (int) $user->id);
     }
 
     public function delete(User $user, Task $task): bool

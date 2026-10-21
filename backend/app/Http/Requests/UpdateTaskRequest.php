@@ -7,6 +7,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 use Illuminate\Validation\Validator;
+use App\Rules\ProjectMember;
 
 
 
@@ -25,7 +26,7 @@ class UpdateTaskRequest extends FormRequest
             'status' => ['sometimes', Rule::enum(TaskStatus::class)],
             'priority' => ['sometimes', 'string', 'in:low,medium,high,urgent'],
             'due_date' => ['nullable', 'date'],
-            'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
+            'assigned_to' => ['nullable', 'integer', 'exists:users,id', new ProjectMember($this->route('project'))],
         ];
     }
 

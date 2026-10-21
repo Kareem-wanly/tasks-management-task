@@ -197,29 +197,29 @@ class ProjectController extends Controller
     {
         $this->authorize('update', $project);
 
-        if (! $project->members()->where('users.id', $user)->exists()) {
+        if (! $project->members()->where('users.id', $user->id)->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'User is not a member of this project.',
-                'errors' => [
+                'errors'  => [
                     'user_id' => ['The specified user is not attached to this project.'],
                 ],
             ], 404);
         }
 
-        $project->members()->detach($user);
+        $project->members()->detach($user->id);
 
         ActivityLog::create([
-            'user_id' => $request->user()->id,
-            'project_id' => $project->id,
-            'action' => 'member_removed',
-            'description' => "User ID {$user} was removed from project '{$project->title}'.",
+            'user_id'     => $request->user()->id,
+            'project_id'  => $project->id,
+            'action'      => 'member_removed',
+            'description' => "{$user->name} was removed from project '{$project->title}'.",
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Member removed from project successfully',
-            'data' => $project->load(['owner:id,name,email', 'members:id,name,email']),
+            'data'    => $project->load(['owner:id,name,email', 'members:id,name,email']),
         ]);
     }
 
