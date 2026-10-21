@@ -17,16 +17,16 @@ class UpdateRoleRequest extends FormRequest
         $roleId = is_object($this->role) ? $this->role->id : $this->role;
 
         return [
-            'name'          => [
-                'sometimes', 
-                'required', 
-                'string', 
-                'max:255', 
-                Rule::unique('roles', 'name')->ignore($roleId)
+            'name' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('roles', 'name')->ignore($roleId),
             ],
-            'display_name'  => ['nullable', 'string', 'max:255'],
-            'description'   => ['nullable', 'string'],
-            'permissions'   => ['nullable', 'array'],
+            'display_name' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'permissions' => ['nullable', 'array'],
             'permissions.*' => ['integer', 'exists:permissions,id'],
         ];
     }

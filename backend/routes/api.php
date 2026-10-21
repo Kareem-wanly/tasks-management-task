@@ -10,8 +10,12 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserRoleController;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+// #6. No rate limit
+
+Route::middleware('throttle:5,1')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+});
 
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -23,23 +27,23 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // 2. User & User Roles Management
     Route::get('/users', [UserController::class, 'index']);
-    Route::post('/users', [UserController::class, 'store']); 
+    Route::post('/users', [UserController::class, 'store']);
     Route::get('/users/{user}', [UserController::class, 'show']);
     Route::put('/users/{user}', [UserController::class, 'update']);
     Route::delete('/users/{user}', [UserController::class, 'destroy']);
-    
+
     Route::get('/users/{user}/roles', [UserRoleController::class, 'index']);
-    Route::put('/users/{user}/roles', [UserRoleController::class, 'syncRoles']); 
+    Route::put('/users/{user}/roles', [UserRoleController::class, 'syncRoles']);
 
     // 3. Roles & Permissions Management
     Route::get('/permissions', [PermissionController::class, 'index']);
-    
+
     Route::get('/roles', [RoleController::class, 'index']);
     Route::post('/roles', [RoleController::class, 'store']);
     Route::get('/roles/{role}', [RoleController::class, 'show']);
     Route::put('/roles/{role}', [RoleController::class, 'update']);
     Route::delete('/roles/{role}', [RoleController::class, 'destroy']);
-    Route::put('/roles/{role}/permissions', [RoleController::class, 'syncPermissions']); 
+    Route::put('/roles/{role}/permissions', [RoleController::class, 'syncPermissions']);
 
     // 4. Projects Management & Members
     Route::get('/projects', [ProjectController::class, 'index']);
@@ -48,16 +52,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/projects/{project}', [ProjectController::class, 'update']);
     Route::delete('/projects/{project}', [ProjectController::class, 'destroy']);
     Route::patch('/projects/{project}/archive', [ProjectController::class, 'archive']);
-    
+
     Route::get('/projects/{project}/members', [ProjectController::class, 'getMembers']);
     Route::post('/projects/{project}/members', [ProjectController::class, 'addMember']);
     Route::delete('/projects/{project}/members/{user}', [ProjectController::class, 'removeMember']);
 
     // 5. Tasks Management
-    Route::get('/tasks', [TaskController::class, 'index']); 
-    Route::get('/projects/{project}/tasks', [TaskController::class, 'indexByProject']); 
-    Route::post('/projects/{project}/tasks', [TaskController::class, 'storeByProject']); 
-    
+    Route::get('/tasks', [TaskController::class, 'index']);
+    Route::get('/projects/{project}/tasks', [TaskController::class, 'indexByProject']);
+    Route::post('/projects/{project}/tasks', [TaskController::class, 'storeByProject']);
+
     Route::get('/tasks/{task}', [TaskController::class, 'show']);
     Route::put('/tasks/{task}', [TaskController::class, 'update']);
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy']);
@@ -70,6 +74,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
 
     // 7. Activity Logs
-    Route::get('/activities', [ProjectController::class, 'index']); 
+    Route::get('/activities', [ProjectController::class, 'allActivities']);
     Route::get('/projects/{project}/activities', [ProjectController::class, 'activities']);
 });

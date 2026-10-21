@@ -9,11 +9,12 @@ class TaskPolicy
 {
     public function before(User $user, string $ability): ?bool
     {
-        if ($user->hasRole('Administrator') || $user->hasPermission('projects.update')) {
+        // #4. Allow administrators to perform any action without further checks
+        if ($user->hasRole('Administrator')) {
             return true;
         }
 
-        return null; 
+        return null;
     }
 
     public function viewAny(User $user): bool
@@ -23,7 +24,7 @@ class TaskPolicy
 
     private function isProjectMember(User $user, Task $task): bool
     {
-        return $task->project->owner_id === $user->id 
+        return $task->project->owner_id === $user->id
             || $task->project->members()->where('users.id', $user->id)->exists();
     }
 
@@ -44,34 +45,33 @@ class TaskPolicy
 
     public function update(User $user, Task $task): bool
     {
-        if (!$this->isProjectMember($user, $task)) {
+        if (! $this->isProjectMember($user, $task)) {
             return false;
         }
 
-        return $task->project->owner_id === $user->id 
-            || $task->created_by === $user->id 
-            || $user->hasPermission('tasks.manage');
+        return $task->project->owner_id === $user->id
+            || $task->created_by === $user->id
+            || $user->hasPermission('tasks.update');
     }
 
     public function updateStatus(User $user, Task $task): bool
     {
-        if (!$this->isProjectMember($user, $task)) {
+        if (! $this->isProjectMember($user, $task)) {
             return false;
         }
 
-        return $this->isAssignee($user, $task) 
-            || $task->project->owner_id === $user->id 
-            || $user->hasPermission('tasks.change_status');
+        return $task->project->owner_id === $user->id
+            || $task->project->members()->where('users.id', $user->id)->exists();
     }
 
     public function delete(User $user, Task $task): bool
     {
-        if (!$this->isProjectMember($user, $task)) {
+        if (! $this->isProjectMember($user, $task)) {
             return false;
         }
 
-        return $task->project->owner_id === $user->id 
-            || $task->created_by === $user->id 
+        return $task->project->owner_id === $user->id
+            || $task->created_by === $user->id
             || $user->hasPermission('tasks.delete');
     }
 }
