@@ -8,7 +8,6 @@ use App\Http\Requests\UpdateTaskRequest;
 use App\Http\Resources\TaskResource;
 use App\Models\Project;
 use App\Models\Task;
-use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -116,65 +115,6 @@ class TaskController extends Controller
         return new TaskResource($task->load($relations));
     }
 
-    public function store(Request $request): JsonResponse
-    {
-        $this->authorize('create', Task::class);
-
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'status' => ['required', Rule::enum(TaskStatus::class)],
-            'priority' => ['sometimes', 'string', 'in:low,medium,high,urgent'],
-            'project_id' => ['required', 'integer', 'exists:projects,id'],
-            'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
-            'due_date' => ['nullable', 'date'],
-        ]);
-
-        $project = Project::findOrFail($validated['project_id']);
-
-        if (! $request->user()->hasRole('Administrator') &&
-            $project->owner_id !== $request->user()->id &&
-            ! $project->members()->where('users.id', $request->user()->id)->exists()) {
-            return response()->json(['message' => 'You are not a member of this project.'], 403);
-        }
-
-        if (! empty($validated['assigned_to'])) {
-            $assignee = User::find($validated['assigned_to']);
-            $isAssigneeValid = ($assignee && $assignee->hasRole('Administrator')) ||
-                               $project->owner_id === (int) $validated['assigned_to'] ||
-                               $project->members()->where('users.id', $validated['assigned_to'])->exists();
-
-            if (! $isAssigneeValid) {
-                return response()->json([
-                    'message' => 'The given data was invalid.',
-                    'errors' => ['assigned_to' => ['The assigned user must be a member of the project.']],
-                ], 422);
-            }
-        }
-
-        if (! empty($validated['due_date']) && ! empty($project->due_date)) {
-            if (strtotime($validated['due_date']) > strtotime($project->due_date)) {
-                return response()->json([
-                    'message' => 'The given data was invalid.',
-                    'errors' => ['due_date' => ['Task due date cannot exceed project due date.']],
-                ], 422);
-            }
-        }
-
-        $completedAt = ($validated['status'] === 'completed') ? now() : null;
-        $task = Task::create($validated + [
-            'created_by' => $request->user()->id,
-            'completed_at' => $completedAt,
-        ]);
-
-        // $task = Task::create($validated + ['created_by' => $request->user()->id]);
-
-        return response()->json([
-            'message' => 'Task created successfully',
-            'data' => $task,
-        ], 201);
-    }
-
     public function storeByProject(StoreTaskRequest $request, Project $project): TaskResource
     {
         $this->authorize('create', [Task::class, $project]);
@@ -211,7 +151,7 @@ class TaskController extends Controller
 
         return response()->json([
             'message' => 'Task status updated successfully',
-            'data'    => $task->fresh(['project:id,title', 'assignee:id,name,email']),
+            'data' => $task->fresh(['project:id,title', 'assignee:id,name,email']),
         ]);
     }
 

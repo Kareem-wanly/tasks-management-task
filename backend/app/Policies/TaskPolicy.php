@@ -2,15 +2,12 @@
 
 namespace App\Policies;
 
+use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use App\Models\Project;
-
 
 class TaskPolicy
 {
-    
-
     public function viewAny(User $user): bool
     {
         return $user->hasPermission('tasks.view');
@@ -22,7 +19,6 @@ class TaskPolicy
         if (! $project) {
             return false;
         }
-
 
         return $task->project->owner_id === $user->id
             || $task->project->members()->where('users.id', $user->id)->exists();
@@ -83,5 +79,11 @@ class TaskPolicy
         return $task->project->owner_id === $user->id
             || $task->created_by === $user->id
             || $user->hasPermission('tasks.delete');
+    }
+
+    public function assign(User $user, Task $task): bool
+    {
+        return $task->project?->owner_id === $user->id
+            || $user->hasPermission('tasks.assign');
     }
 }

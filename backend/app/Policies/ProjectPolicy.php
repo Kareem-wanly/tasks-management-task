@@ -7,8 +7,6 @@ use App\Models\User;
 
 class ProjectPolicy
 {
-    
-
     private function canAccess(User $user, Project $project): bool
     {
         return $project->owner_id === $user->id
@@ -43,5 +41,11 @@ class ProjectPolicy
     public function archive(User $user, Project $project): bool
     {
         return $user->hasPermission('projects.archive') && $this->canAccess($user, $project);
+    }
+
+    public function manageMembers(User $user, Project $project): bool
+    {
+        return $project->owner_id === $user->id
+            || ($user->hasPermission('projects.manage_members') && $project->hasMember($user));
     }
 }

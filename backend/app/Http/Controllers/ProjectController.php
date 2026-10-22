@@ -24,12 +24,7 @@ class ProjectController extends Controller
         $user = $request->user();
         $query = Project::query();
 
-        if (! $user->hasRole('Administrator')) {
-            $query->where(function ($q) use ($user) {
-                $q->where('owner_id', $user->id)
-                    ->orWhereHas('members', fn ($m) => $m->where('users.id', $user->id));
-            });
-        }
+        $query->accessibleBy($user);
 
         if ($request->filled('search')) {
             $search = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $request->query('search'));
@@ -82,7 +77,7 @@ class ProjectController extends Controller
         $this->authorize('create', Project::class);
 
         $validated = $request->validated();
-        $title = $validated['title'] ?? $validated['name'];
+        $title = $validated['title'] ?? null;
 
         $project = DB::transaction(function () use ($request, $validated, $title) {
             $project = Project::create([
@@ -109,11 +104,6 @@ class ProjectController extends Controller
         $this->authorize('update', $project);
 
         $validated = $request->validated();
-
-        if (isset($validated['name']) && ! isset($validated['title'])) {
-            $validated['title'] = $validated['name'];
-            unset($validated['name']);
-        }
 
         if (isset($validated['status']) && $validated['status'] === 'completed') {
             $hasUnfinishedTasks = $project->tasks()
@@ -148,7 +138,7 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function getMembers(Project $project): JsonResponse
+    public function members(Project $project): JsonResponse
     {
         $this->authorize('view', $project);
 
@@ -163,11 +153,11 @@ class ProjectController extends Controller
 
     public function addMember(Request $request, Project $project): JsonResponse
     {
-        $this->authorize('update', $project);
+        $this->authorize('manageMembers', $project);
 
         $validated = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'],
-            'role'    => ['sometimes', 'string', 'in:member,lead,manager'],
+            'role' => ['sometimes', 'string', 'in:member,lead,manager'],
         ]);
 
         $userId = (int) $validated['user_id'];
@@ -186,9 +176,9 @@ class ProjectController extends Controller
         $project->members()->attach($userId, ['role' => $role]);
 
         ActivityLog::create([
-            'user_id'     => $request->user()->id,
-            'project_id'  => $project->id,
-            'action'      => 'member_added',
+            'user_id' => $request->user()->id,
+            'project_id' => $project->id,
+            'action' => 'member_added',
             'description' => "User ID {$userId} was added to project '{$project->title}'.",
         ]);
 
@@ -201,13 +191,13 @@ class ProjectController extends Controller
 
     public function removeMember(Request $request, Project $project, User $user): JsonResponse
     {
-        $this->authorize('update', $project);
+        $this->authorize('manageMembers', $project);
 
         if (! $project->members()->where('users.id', $user->id)->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'User is not a member of this project.',
-                'errors'  => [
+                'errors' => [
                     'user_id' => ['The specified user is not attached to this project.'],
                 ],
             ], 404);
@@ -216,20 +206,20 @@ class ProjectController extends Controller
         $project->members()->detach($user->id);
 
         ActivityLog::create([
-            'user_id'     => $request->user()->id,
-            'project_id'  => $project->id,
-            'action'      => 'member_removed',
+            'user_id' => $request->user()->id,
+            'project_id' => $project->id,
+            'action' => 'member_removed',
             'description' => "{$user->name} was removed from project '{$project->title}'.",
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Member removed from project successfully',
-            'data'    => $project->load(['owner:id,name,email', 'members:id,name,email']),
+            'data' => $project->load(['owner:id,name,email', 'members:id,name,email']),
         ]);
     }
 
-    public function archive(Request $request, Project $project): JsonResponse
+    public function toggleArchive(Request $request, Project $project): JsonResponse
     {
         $this->authorize('archive', $project);
 
@@ -272,7 +262,7 @@ class ProjectController extends Controller
 
     public function allActivities(Request $request): JsonResponse
     {
-        abort_unless($request->user()->hasPermission('activities.view'), 403, 'You do not have permission to view activities.');
+        $this->authorize('viewAny', ActivityLog::class);
 
         $query = ActivityLog::with('user:id,name,email')->latest();
 
@@ -305,12 +295,7 @@ class ProjectController extends Controller
 
         $query = Project::query();
 
-        if (! $request->user()->hasRole('Administrator')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('owner_id', $request->user()->id)
-                  ->orWhereHas('members', fn ($m) => $m->where('users.id', $request->user()->id));
-            });
-        }
+        $query->accessibleBy($request->user());
 
         $projects = $query->where('status', '!=', 'archived')
             ->orderBy('title')

@@ -16,10 +16,7 @@ class ProjectMember implements ValidationRule
             return;
         }
 
-        $isMember = (int) $this->project->owner_id === (int) $value
-            || $this->project->members()->where('users.id', $value)->exists();
-
-        if (! $isMember) {
+        if (! $this->project->hasMember($value)) {
             $fail('The assigned user must be a member of the project.');
         }
     }
