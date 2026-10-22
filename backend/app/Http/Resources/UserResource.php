@@ -16,9 +16,15 @@ class UserResource extends JsonResource
             'roles'                 => $this->whenLoaded('roles', function () {
                 return $this->roles->pluck('name');
             }),
-            'effective_permissions' => method_exists($this->resource, 'permissionNames')
-                ? $this->resource->permissionNames()->values()
-                : [],
+            
+            'effective_permissions' => $this->when(
+                $request->routeIs('me', 'login', 'register', 'auth.me', 'auth.login', 'auth.register'),
+                function () {
+                    return method_exists($this->resource, 'permissionNames')
+                        ? $this->resource->permissionNames()->values()
+                        : [];
+                }
+            ),
             'created_at'            => $this->created_at?->toISOString(),
             'updated_at'            => $this->updated_at?->toISOString(),
         ];

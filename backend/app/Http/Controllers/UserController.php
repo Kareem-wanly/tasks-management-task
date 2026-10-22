@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Models\Project;
 
 class UserController extends Controller
 {
@@ -31,6 +32,12 @@ class UserController extends Controller
                 $q->where('name', $role)
                     ->orWhere('id', $role);
             });
+        }
+
+        if ($request->has('per_page') && ! is_numeric($request->query('per_page'))) {
+            return response()->json([
+                'message' => 'The per_page parameter must be an integer.',
+            ], 422);
         }
 
         $perPage = min(max((int) $request->query('per_page', 10), 1), 100);
@@ -89,10 +96,10 @@ class UserController extends Controller
     {
         $this->authorize('delete', $user);
 
-        if ($user->hasRole('Administrator')) {
+        if (Project::withTrashed()->where('owner_id', $user->id)->exists()) {
             return response()->json([
-                'message' => 'Administrator users cannot be deleted directly.',
-            ], 403);
+                'message' => "Transfer or delete this user's projects before deleting the user.",
+            ], 409);
         }
 
         $user->delete();
@@ -101,4 +108,18 @@ class UserController extends Controller
             'message' => 'User deleted successfully',
         ]);
     }
+
+    public function options(): JsonResponse
+{
+    $this->authorize('viewAny', User::class);
+
+    $users = User::orderBy('name')
+        ->limit(1000)
+        ->get(['id', 'name', 'email']);
+
+    return response()->json([
+        'data' => $users,
+    ]);
+}
+
 }

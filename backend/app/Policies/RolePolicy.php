@@ -7,14 +7,7 @@ use App\Models\User;
 
 class RolePolicy
 {
-    public function before(User $user, string $ability): ?bool
-    {
-        if ($user->hasRole('Administrator')) {
-            return true;
-        }
-
-        return null;
-    }
+    
 
     public function viewAny(User $user): bool
     {

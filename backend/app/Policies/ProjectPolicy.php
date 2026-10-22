@@ -7,14 +7,7 @@ use App\Models\User;
 
 class ProjectPolicy
 {
-    public function before(User $user, string $ability): ?bool
-    {
-        if ($user->hasRole('Administrator')) {
-            return true;
-        }
-
-        return null;
-    }
+    
 
     private function canAccess(User $user, Project $project): bool
     {

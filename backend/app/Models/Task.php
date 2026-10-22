@@ -47,13 +47,11 @@ class Task extends Model
 
     protected static function booted(): void
     {
-        static::updating(function (Task $task) {
-            if ($task->isDirty('status')) {
-                if ($task->status === 'completed') {
-                    $task->completed_at = now();
-                } else {
-                    $task->completed_at = null;
-                }
+        static::saving(function (Task $task) {
+            if ($task->isDirty('status') || ! $task->exists) {
+                $task->completed_at = $task->status === 'completed'
+                    ? ($task->completed_at ?? now())
+                    : null;
             }
         });
     }

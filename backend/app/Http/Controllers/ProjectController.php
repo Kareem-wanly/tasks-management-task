@@ -56,6 +56,12 @@ class ProjectController extends Controller
             $query->orderBy($sortBy, $direction);
         }
 
+        if ($request->has('per_page') && ! is_numeric($request->query('per_page'))) {
+            return response()->json([
+                'message' => 'The per_page parameter must be an integer.',
+            ], 422);
+        }
+
         $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
         $projects = $query->with('owner:id,name,email')
             ->withCount(['members', 'tasks'])
@@ -197,29 +203,29 @@ class ProjectController extends Controller
     {
         $this->authorize('update', $project);
 
-        if (! $project->members()->where('users.id', $user)->exists()) {
+        if (! $project->members()->where('users.id', $user->id)->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'User is not a member of this project.',
-                'errors' => [
+                'errors'  => [
                     'user_id' => ['The specified user is not attached to this project.'],
                 ],
             ], 404);
         }
 
-        $project->members()->detach($user);
+        $project->members()->detach($user->id);
 
         ActivityLog::create([
-            'user_id' => $request->user()->id,
-            'project_id' => $project->id,
-            'action' => 'member_removed',
-            'description' => "User ID {$user} was removed from project '{$project->title}'.",
+            'user_id'     => $request->user()->id,
+            'project_id'  => $project->id,
+            'action'      => 'member_removed',
+            'description' => "{$user->name} was removed from project '{$project->title}'.",
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Member removed from project successfully',
-            'data' => $project->load(['owner:id,name,email', 'members:id,name,email']),
+            'data'    => $project->load(['owner:id,name,email', 'members:id,name,email']),
         ]);
     }
 
@@ -290,6 +296,29 @@ class ProjectController extends Controller
                 'per_page' => $activities->perPage(),
                 'total' => $activities->total(),
             ],
+        ]);
+    }
+
+    public function options(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Project::class);
+
+        $query = Project::query();
+
+        if (! $request->user()->hasRole('Administrator')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('owner_id', $request->user()->id)
+                  ->orWhereHas('members', fn ($m) => $m->where('users.id', $request->user()->id));
+            });
+        }
+
+        $projects = $query->where('status', '!=', 'archived')
+            ->orderBy('title')
+            ->limit(1000)
+            ->get(['id', 'title', 'status']);
+
+        return response()->json([
+            'data' => $projects,
         ]);
     }
 }

@@ -69,7 +69,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'users.view',
             'projects.view', 'projects.create', 'projects.update', 'projects.delete', 'projects.archive', 'projects.manage_members',
             'tasks.view', 'tasks.create', 'tasks.update', 'tasks.delete', 'tasks.assign', 'tasks.change_status',
-            'comments.view', 'comments.create', 'comments.update', 'comments.delete',
+            'comments.view', 'comments.create', 'comments.update', 'comments.delete', 'activities.view',
         ];
         $pmRole->permissions()->sync(Permission::whereIn('name', $pmPermissionNames)->pluck('id'));
 
@@ -77,6 +77,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'projects.view',
             'tasks.view', 'tasks.update', 'tasks.change_status',
             'comments.view', 'comments.create',
+            'activities.view',
         ];
         $memberRole->permissions()->sync(Permission::whereIn('name', $memberPermissionNames)->pluck('id'));
 

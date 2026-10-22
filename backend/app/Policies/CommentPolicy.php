@@ -8,14 +8,7 @@ use App\Models\User;
 
 class CommentPolicy
 {
-    public function before(User $user, string $ability): ?bool
-    {
-        if ($user->hasRole('Administrator')) {
-            return true;
-        }
-
-        return null;
-    }
+    
 
     private function isProjectMember(User $user, ?Task $task): bool
     {

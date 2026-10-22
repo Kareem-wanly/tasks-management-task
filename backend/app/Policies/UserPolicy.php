@@ -6,15 +6,7 @@ use App\Models\User;
 
 class UserPolicy
 {
-    public function before(User $currentUser, string $ability): ?bool
-    {
-        if ($currentUser->hasRole('Administrator')) {
-            return true;
-        }
-
-        return null;
-    }
-
+    
     public function viewAny(User $currentUser): bool
     {
         return $currentUser->hasPermission('users.view');
@@ -44,4 +36,10 @@ class UserPolicy
     {
         return $currentUser->hasPermission('roles.assign');
     }
+
+    public function viewRoles(User $currentUser, User $user): bool
+    {
+        return $currentUser->is($user) || $currentUser->hasPermission('users.view');
+    }
+
 }

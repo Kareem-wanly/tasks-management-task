@@ -86,6 +86,7 @@ class RoleController extends Controller
         $role->update($request->only(['name', 'display_name', 'description']));
 
         if ($request->has('permissions')) {
+            $this->guardPermissionGrant($request, $role, $request->permissions);
             $role->permissions()->sync($request->permissions);
         }
 
@@ -93,6 +94,28 @@ class RoleController extends Controller
             'message' => 'Role updated successfully',
             'role' => $role->load('permissions:id,name,description'),
         ]);
+    }
+
+    private function guardPermissionGrant(Request $request, Role $role, array $ids): void
+    {
+        if ($request->user()->hasRole('Administrator')) {
+            return;
+        }
+
+        abort_if($role->name === 'Administrator', 403, 'Only an Administrator can modify permissions for this role.');
+
+        $userPermissionIds = $request->user()->roles()
+            ->with('permissions')
+            ->get()
+            ->pluck('permissions')
+            ->flatten()
+            ->pluck('id')
+            ->unique()
+            ->toArray();
+
+        $unauthorized = array_diff($ids, $userPermissionIds);
+
+        abort_if(!empty($unauthorized), 403, 'You cannot grant permissions that you do not possess.');
     }
 
     public function destroy(Role $role): JsonResponse
@@ -115,42 +138,19 @@ class RoleController extends Controller
     public function syncPermissions(Request $request, Role $role): JsonResponse
     {
         $this->authorize('update', $role);
-        // #37. Prevent non-Administrator users from modifying the permissions of the Administrator role
-        if ($role->name === 'Administrator' && ! $request->user()->hasRole('Administrator')) {
-            return response()->json([
-                'message' => 'Only an Administrator can modify permissions for this role.',
-            ], 403);
-        }
 
         $request->validate([
-            'permissions' => ['required', 'array'],
+            'permissions'   => ['required', 'array'],
             'permissions.*' => ['integer', 'exists:permissions,id'],
         ]);
 
-        if (! $request->user()->hasRole('Administrator')) {
-            $userPermissionIds = $request->user()->roles()
-                ->with('permissions')
-                ->get()
-                ->pluck('permissions')
-                ->flatten()
-                ->pluck('id')
-                ->unique()
-                ->toArray();
-
-            $unauthorizedPermissions = array_diff($request->permissions, $userPermissionIds);
-
-            if (! empty($unauthorizedPermissions)) {
-                return response()->json([
-                    'message' => 'You cannot grant permissions that you do not possess.',
-                ], 403);
-            }
-        }
+        $this->guardPermissionGrant($request, $role, $request->permissions);
 
         $role->permissions()->sync($request->permissions);
 
         return response()->json([
             'message' => 'Role permissions synchronized successfully',
-            'role' => $role->load('permissions:id,name,description'),
+            'role'    => $role->load('permissions:id,name,description'),
         ]);
     }
 }
