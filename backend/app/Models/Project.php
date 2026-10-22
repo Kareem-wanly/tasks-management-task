@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -35,8 +36,8 @@ class Project extends Model
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class)
-                    ->withPivot('role')
-                    ->withTimestamps();
+            ->withPivot('role')
+            ->withTimestamps();
     }
 
     public function tasks(): HasMany
@@ -64,4 +65,23 @@ class Project extends Model
         });
     }
 
+    public function hasMember(User|int $user): bool
+    {
+        $userId = $user instanceof User ? $user->id : (int) $user;
+
+        return (int) $this->owner_id === $userId
+            || $this->members()->where('users.id', $userId)->exists();
+    }
+
+    public function scopeAccessibleBy(Builder $query, User $user): Builder
+    {
+        if ($user->hasRole('Administrator')) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $q) use ($user) {
+            $q->where('owner_id', $user->id)
+                ->orWhereHas('members', fn (Builder $m) => $m->where('users.id', $user->id));
+        });
+    }
 }

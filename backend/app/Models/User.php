@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Collection;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
@@ -27,6 +27,7 @@ class User extends Authenticatable
     ];
 
     protected ?Collection $permissionCache = null;
+
     protected ?Collection $roleCache = null;
 
     protected function casts(): array
@@ -74,24 +75,27 @@ class User extends Authenticatable
         return ($this->roleCache ??= $this->roles()->pluck('name'))->contains($name);
     }
 
-    public function projects()
+    public function memberProjects()
     {
         return $this->belongsToMany(Project::class)
             ->withPivot('role')
             ->withTimestamps();
     }
 
+    public function projects(): BelongsToMany
+    {
+        return $this->memberProjects();
+    }
+
     public function assignedTasks(): HasMany
-{
-    return $this->hasMany(Task::class, 'assigned_to');
-}
+    {
+        return $this->hasMany(Task::class, 'assigned_to');
+    }
 
     public function ownedProjects(): HasMany
     {
         return $this->hasMany(Project::class, 'owner_id');
     }
-
-    
 
     public function permissionIds(): Collection
     {

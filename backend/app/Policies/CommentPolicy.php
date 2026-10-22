@@ -8,8 +8,6 @@ use App\Models\User;
 
 class CommentPolicy
 {
-    
-
     private function isProjectMember(User $user, ?Task $task): bool
     {
         $project = $task?->project;
@@ -61,5 +59,20 @@ class CommentPolicy
         }
 
         return $this->isOwner($user, $comment) || $user->hasPermission('comments.manage_all');
+    }
+
+    public function viewAny(User $user, ?Task $task = null): bool
+    {
+        if (! $user->hasPermission('comments.view')) {
+            return false;
+        }
+
+        if (! $task) {
+            return true;
+        }
+
+        $project = $task->project;
+
+        return $project ? $project->hasMember($user) : false;
     }
 }

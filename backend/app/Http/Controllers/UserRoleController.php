@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\Permission;
 
 class UserRoleController extends Controller
 {
@@ -21,7 +21,7 @@ class UserRoleController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'User roles retrieved successfully',
-            'data'    => $user->roles()->get(['roles.id', 'name', 'display_name', 'description']),
+            'data' => $user->roles()->get(['roles.id', 'name', 'display_name', 'description']),
         ]);
     }
 
@@ -36,11 +36,10 @@ class UserRoleController extends Controller
         );
 
         $request->validate([
-            'roles'   => ['required', 'array'],
+            'roles' => ['required', 'array'],
             'roles.*' => ['integer', 'exists:roles,id'],
         ]);
 
-        
         if (! $request->user()->hasRole('Administrator')) {
             $requestedPermissionIds = Permission::whereHas('roles', fn ($q) => $q->whereIn('roles.id', $request->roles))
                 ->pluck('id');
@@ -65,7 +64,7 @@ class UserRoleController extends Controller
 
             if ($adminRole) {
                 $userHasAdminRole = $user->roles()->where('roles.id', $adminRole->id)->exists();
-                $assigningAdmin   = in_array($adminRole->id, $request->roles);
+                $assigningAdmin = in_array($adminRole->id, $request->roles);
 
                 if (($assigningAdmin || $userHasAdminRole) && ! $request->user()->hasRole('Administrator')) {
                     abort(403, 'Only an Administrator can assign or revoke the Administrator role.');
@@ -92,10 +91,8 @@ class UserRoleController extends Controller
 
             return response()->json([
                 'message' => 'User roles updated successfully',
-                'user'    => $user->load('roles:id,name,display_name'),
+                'user' => $user->load('roles:id,name,display_name'),
             ]);
         });
     }
-
-
 }

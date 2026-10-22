@@ -16,7 +16,7 @@ class CommentController extends Controller
     {
         $this->authorize('view', $task);
 
-        abort_unless($request->user()->hasPermission('comments.view'), 403, 'You do not have permission to view comments.');
+        $this->authorize('viewAny', [Comment::class, $task]);
 
         $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
 
@@ -40,11 +40,11 @@ class CommentController extends Controller
 
     public function store(Request $request, Task $task): JsonResponse
     {
-        $validated = $request->validate([
-            'body' => ['required', 'string'],
-        ]);
-
         $this->authorize('create', [Comment::class, $task]);
+
+        $validated = $request->validate([
+            'body' => ['required', 'string', 'max:5000'],
+        ]);
 
         $comment = $task->comments()->create([
             'body' => $validated['body'],
@@ -62,7 +62,7 @@ class CommentController extends Controller
         $this->authorize('update', $comment);
 
         $validated = $request->validate([
-            'body' => ['required', 'string'],
+            'body' => ['required', 'string', 'max:5000'],
         ]);
 
         $comment->update($validated);

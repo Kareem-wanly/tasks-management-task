@@ -6,7 +6,6 @@ use App\Models\User;
 
 class UserPolicy
 {
-    
     public function viewAny(User $currentUser): bool
     {
         return $currentUser->hasPermission('users.view');
@@ -41,5 +40,4 @@ class UserPolicy
     {
         return $currentUser->is($user) || $currentUser->hasPermission('users.view');
     }
-
 }

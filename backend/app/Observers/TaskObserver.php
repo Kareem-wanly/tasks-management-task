@@ -11,33 +11,33 @@ class TaskObserver
     public function created(Task $task): void
     {
         ActivityLog::create([
-            'user_id'     => Auth::id() ?? $task->created_by,
-            'project_id'  => $task->project_id,
-            'action'      => 'task_created',
+            'user_id' => Auth::id() ?? $task->created_by,
+            'project_id' => $task->project_id,
+            'action' => 'task_created',
             'description' => "Task '{$task->title}' was created.",
-            'metadata'    => ['task_id' => $task->id, 'title' => $task->title],
+            'metadata' => ['task_id' => $task->id, 'title' => $task->title],
         ]);
     }
 
     public function updated(Task $task): void
     {
         ActivityLog::create([
-            'user_id'     => Auth::id() ?? $task->created_by,
-            'project_id'  => $task->project_id,
-            'action'      => 'task_updated',
+            'user_id' => Auth::id() ?? $task->created_by,
+            'project_id' => $task->project_id,
+            'action' => 'task_updated',
             'description' => "Task '{$task->title}' was updated.",
-            'metadata'    => $task->getChanges(),
+            'metadata' => $task->getChanges(),
         ]);
     }
 
     public function deleted(Task $task): void
     {
         ActivityLog::create([
-            'user_id'     => Auth::id() ?? $task->created_by,
-            'project_id'  => $task->project_id,
-            'action'      => 'task_deleted',
+            'user_id' => Auth::id() ?? $task->created_by,
+            'project_id' => $task->project_id,
+            'action' => 'task_deleted',
             'description' => "Task '{$task->title}' was deleted.",
-            'metadata'    => ['task_id' => $task->id, 'title' => $task->title],
+            'metadata' => ['task_id' => $task->id, 'title' => $task->title],
         ]);
     }
 }

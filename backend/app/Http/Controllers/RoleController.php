@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreRoleRequest;
 use App\Http\Requests\UpdateRoleRequest;
 use App\Models\Role;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -22,35 +23,29 @@ class RoleController extends Controller
 
         return response()->json([
             'data' => $roles,
-            'roles' => $roles,
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreRoleRequest $request): JsonResponse
     {
         $this->authorize('create', Role::class);
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:roles,name'],
-            'display_name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'permissions' => ['nullable', 'array'],
-            'permissions.*' => ['integer', 'exists:permissions,id'],
-        ]);
+        $validated = $request->validated();
 
         $role = Role::create([
             'name' => $validated['name'],
-            'display_name' => $validated['display_name'],
+            'display_name' => $validated['display_name'] ?? $validated['name'],
             'description' => $validated['description'] ?? null,
         ]);
 
         if (! empty($validated['permissions'])) {
+            $this->guardPermissionGrant($request, $role, $validated['permissions']);
             $role->permissions()->sync($validated['permissions']);
         }
 
         return response()->json([
             'message' => 'Role created successfully',
-            'data' => $role->load('permissions:id,name,description')->loadCount(['permissions', 'users']),
+            'role' => $role->load('permissions:id,name,description'),
         ], 201);
     }
 
@@ -83,7 +78,8 @@ class RoleController extends Controller
             ], 403);
         }
 
-        $role->update($request->only(['name', 'display_name', 'description']));
+        $validated = $request->validated();
+        $role->update(array_intersect_key($validated, array_flip(['name', 'display_name', 'description'])));
 
         if ($request->has('permissions')) {
             $this->guardPermissionGrant($request, $role, $request->permissions);
@@ -115,7 +111,7 @@ class RoleController extends Controller
 
         $unauthorized = array_diff($ids, $userPermissionIds);
 
-        abort_if(!empty($unauthorized), 403, 'You cannot grant permissions that you do not possess.');
+        abort_if(! empty($unauthorized), 403, 'You cannot grant permissions that you do not possess.');
     }
 
     public function destroy(Role $role): JsonResponse
@@ -140,7 +136,7 @@ class RoleController extends Controller
         $this->authorize('update', $role);
 
         $request->validate([
-            'permissions'   => ['required', 'array'],
+            'permissions' => ['required', 'array'],
             'permissions.*' => ['integer', 'exists:permissions,id'],
         ]);
 
@@ -150,7 +146,7 @@ class RoleController extends Controller
 
         return response()->json([
             'message' => 'Role permissions synchronized successfully',
-            'role'    => $role->load('permissions:id,name,description'),
+            'role' => $role->load('permissions:id,name,description'),
         ]);
     }
 }
