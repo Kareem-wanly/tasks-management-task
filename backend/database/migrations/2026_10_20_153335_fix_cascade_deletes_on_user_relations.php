@@ -20,7 +20,7 @@ return new class extends Migration
             [$databaseName, $table, $foreignKey]
         );
 
-        if (!empty($exists)) {
+        if (! empty($exists)) {
             Schema::table($table, function (Blueprint $t) use ($foreignKey) {
                 $t->dropForeign($foreignKey);
             });

@@ -48,7 +48,7 @@ class RolesAndPermissionsSeeder extends Seeder
 
             ['name' => 'activities.view', 'description' => 'Allows user to view activities'],
             ['name' => 'roles.manage', 'description' => 'Can create, update, and delete roles'],
-            ['name' => 'users.manage-roles', 'description' => 'Can assign or revoke roles from users'],
+            ['name' => 'users.manage_roles', 'description' => 'Can assign or revoke roles from users'],
         ];
 
         foreach ($permissions as $perm) {

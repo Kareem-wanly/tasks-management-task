@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Project;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Models\Project;
+use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
@@ -49,20 +51,38 @@ class UserController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        abort_unless($request->user()->hasPermission('users.create'), 403, 'Unauthorized.');
+        $this->authorize('create', User::class);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
+            'role_id' => ['nullable', 'integer', 'exists:roles,id'],
         ]);
 
-        $user = User::create($validated);
+        $user = DB::transaction(function () use ($validated) {
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => $validated['password'],
+            ]);
+
+            if (! empty($validated['role_id'])) {
+                $user->roles()->attach($validated['role_id']);
+            } else {
+                $memberRole = Role::firstOrCreate(['name' => 'Member'], [
+                    'display_name' => 'Member',
+                    'description' => 'Standard team member with basic access',
+                ]);
+                $user->roles()->attach($memberRole->id);
+            }
+
+            return $user;
+        });
 
         return response()->json([
-            'success' => true,
             'message' => 'User created successfully',
-            'data' => $user,
+            'data' => $user->load('roles:id,name,display_name'),
         ], 201);
     }
 
@@ -110,16 +130,15 @@ class UserController extends Controller
     }
 
     public function options(): JsonResponse
-{
-    $this->authorize('viewAny', User::class);
+    {
+        $this->authorize('viewAny', User::class);
 
-    $users = User::orderBy('name')
-        ->limit(1000)
-        ->get(['id', 'name', 'email']);
+        $users = User::orderBy('name')
+            ->limit(1000)
+            ->get(['id', 'name', 'email']);
 
-    return response()->json([
-        'data' => $users,
-    ]);
-}
-
+        return response()->json([
+            'data' => $users,
+        ]);
+    }
 }

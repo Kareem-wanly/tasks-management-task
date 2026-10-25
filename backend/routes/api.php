@@ -19,6 +19,9 @@ Route::middleware('throttle:5,1')->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
 
+    Route::get('/users/options', [UserController::class, 'options']);
+    Route::get('/projects/options', [ProjectController::class, 'options']);
+
     // 1. Authentication & Profile
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
@@ -51,9 +54,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/projects/{project}', [ProjectController::class, 'show']);
     Route::put('/projects/{project}', [ProjectController::class, 'update']);
     Route::delete('/projects/{project}', [ProjectController::class, 'destroy']);
-    Route::patch('/projects/{project}/archive', [ProjectController::class, 'archive']);
+    Route::match(['post', 'patch'], '/projects/{project}/archive', [ProjectController::class, 'toggleArchive']);
 
-    Route::get('/projects/{project}/members', [ProjectController::class, 'getMembers']);
+    Route::get('/projects/{project}/members', [ProjectController::class, 'members']);
     Route::post('/projects/{project}/members', [ProjectController::class, 'addMember']);
     Route::delete('/projects/{project}/members/{user}', [ProjectController::class, 'removeMember']);
 
@@ -77,6 +80,4 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/activities', [ProjectController::class, 'allActivities']);
     Route::get('/projects/{project}/activities', [ProjectController::class, 'activities']);
 
-    Route::get('/users/options', [UserController::class, 'options']);
-    Route::get('/projects/options', [ProjectController::class, 'options']);
 });
