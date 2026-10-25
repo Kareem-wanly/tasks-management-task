@@ -112,9 +112,16 @@ class UserController extends Controller
         ]);
     }
 
-    public function destroy(User $user): JsonResponse
+    public function destroy(Request $request, User $user): JsonResponse
     {
         $this->authorize('delete', $user);
+
+        abort_if($user->is($request->user()), 403, 'You cannot delete your own account.');
+        abort_if(
+            $user->hasRole('Administrator') && ! $request->user()->hasRole('Administrator'),
+            403,
+            'Only an Administrator can delete another Administrator.'
+        );
 
         if (Project::withTrashed()->where('owner_id', $user->id)->exists()) {
             return response()->json([
