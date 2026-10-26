@@ -12,6 +12,8 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Http\Requests\UpdateTaskStatusRequest;
+
 
 class TaskController extends Controller
 {
@@ -119,6 +121,10 @@ class TaskController extends Controller
     {
         $this->authorize('create', [Task::class, $project]);
 
+        if ($request->filled('assigned_to')) {
+            $this->authorize('assign', [new Task(['project_id' => $project->id]), $project]);
+        }
+
         $validated = $request->validated();
         $validated['project_id'] = $project->id;
         $validated['created_by'] = $request->user()->id;
@@ -132,28 +138,25 @@ class TaskController extends Controller
     {
         $this->authorize('update', $task);
 
+        if ($request->has('assigned_to') && $request->validated('assigned_to') !== $task->assigned_to) {
+            $this->authorize('assign', $task);
+        }
+
         $task->update($request->validated());
 
         return new TaskResource($task->fresh(['project:id,title', 'assignee:id,name,email']));
     }
 
-    public function updateStatus(Request $request, Task $task): JsonResponse
-    {
-        $this->authorize('updateStatus', $task);
+    public function updateStatus(UpdateTaskStatusRequest $request, Task $task): TaskResource
+{
+    $this->authorize('updateStatus', $task);
 
-        $validated = $request->validate([
-            'status' => ['required', Rule::enum(TaskStatus::class)],
-        ]);
+    $task->update([
+        'status' => $request->validated('status'),
+    ]);
 
-        $task->update([
-            'status' => $validated['status'],
-        ]);
-
-        return response()->json([
-            'message' => 'Task status updated successfully',
-            'data' => $task->fresh(['project:id,title', 'assignee:id,name,email']),
-        ]);
-    }
+    return new TaskResource($task->fresh(['project:id,title', 'assignee:id,name,email']));
+}
 
     public function destroy(Task $task): JsonResponse
     {

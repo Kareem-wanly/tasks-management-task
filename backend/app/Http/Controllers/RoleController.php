@@ -45,7 +45,7 @@ class RoleController extends Controller
 
         return response()->json([
             'message' => 'Role created successfully',
-            'role' => $role->load('permissions:id,name,description'),
+            'data' => $role->load('permissions:id,name,description'),
         ], 201);
     }
 
@@ -88,7 +88,7 @@ class RoleController extends Controller
 
         return response()->json([
             'message' => 'Role updated successfully',
-            'role' => $role->load('permissions:id,name,description'),
+            'data' => $role->load('permissions:id,name,description'),
         ]);
     }
 
@@ -146,7 +146,7 @@ class RoleController extends Controller
 
         return response()->json([
             'message' => 'Role permissions synchronized successfully',
-            'role' => $role->load('permissions:id,name,description'),
+            'data' => $role->load('permissions:id,name,description'),
         ]);
     }
 }

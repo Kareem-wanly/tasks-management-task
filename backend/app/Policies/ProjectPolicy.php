@@ -9,8 +9,7 @@ class ProjectPolicy
 {
     private function canAccess(User $user, Project $project): bool
     {
-        return $project->owner_id === $user->id
-            || $project->members()->where('users.id', $user->id)->exists();
+        return $project->hasMember($user);
     }
 
     public function viewAny(User $user): bool

@@ -12,6 +12,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Http\Requests\AddProjectMemberRequest;
 
 class ProjectController extends Controller
 {
@@ -151,14 +152,11 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function addMember(Request $request, Project $project): JsonResponse
+    public function addMember(AddProjectMemberRequest $request, Project $project): JsonResponse
     {
         $this->authorize('manageMembers', $project);
 
-        $validated = $request->validate([
-            'user_id' => ['required', 'integer', 'exists:users,id'],
-            'role' => ['sometimes', 'string', 'in:member,lead,manager'],
-        ]);
+        $validated = $request->validated();
 
         $userId = (int) $validated['user_id'];
         $role = $validated['role'] ?? null;

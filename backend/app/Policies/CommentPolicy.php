@@ -12,12 +12,7 @@ class CommentPolicy
     {
         $project = $task?->project;
 
-        if (! $project) {
-            return false;
-        }
-
-        return $project->owner_id === $user->id
-            || $project->members()->where('users.id', $user->id)->exists();
+        return $project ? $project->hasMember($user) : false;
     }
 
     private function isOwner(User $user, Comment $comment): bool
@@ -71,8 +66,6 @@ class CommentPolicy
             return true;
         }
 
-        $project = $task->project;
-
-        return $project ? $project->hasMember($user) : false;
+        return $this->isProjectMember($user, $task);
     }
 }

@@ -20,8 +20,7 @@ class TaskPolicy
             return false;
         }
 
-        return $task->project->owner_id === $user->id
-            || $task->project->members()->where('users.id', $user->id)->exists();
+        return $task->project ? $task->project->hasMember($user) : false;
     }
 
     private function isAssignee(User $user, Task $task): bool
@@ -44,8 +43,7 @@ class TaskPolicy
             return true;
         }
 
-        return $project->owner_id === $user->id
-            || $project->members()->where('users.id', $user->id)->exists();
+        return $project->hasMember($user);
     }
 
     public function update(User $user, Task $task): bool
@@ -81,9 +79,11 @@ class TaskPolicy
             || $user->hasPermission('tasks.delete');
     }
 
-    public function assign(User $user, Task $task): bool
+    public function assign(User $user, Task $task, ?Project $project = null): bool
     {
-        return $task->project?->owner_id === $user->id
+        $targetProject = $task->project ?? $project;
+
+        return $targetProject?->owner_id === $user->id
             || $user->hasPermission('tasks.assign');
     }
 }

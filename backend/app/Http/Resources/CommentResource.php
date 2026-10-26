@@ -13,7 +13,11 @@ class CommentResource extends JsonResource
             'id' => $this->id,
             'body' => $this->body,
             'task_id' => $this->task_id,
-            'user' => new UserResource($this->whenLoaded('user')),
+            'user' => [
+                'id' => $this->user?->id,
+                'name' => $this->user?->name,
+                'email' => $this->user?->email,
+            ],
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

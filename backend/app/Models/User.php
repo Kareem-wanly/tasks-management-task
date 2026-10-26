@@ -55,15 +55,7 @@ class User extends Authenticatable
         return $this->belongsToMany(Role::class)->withTimestamps();
     }
 
-    public function getEffectivePermissions()
-    {
-        return $this->roles()
-            ->with('permissions')
-            ->get()
-            ->pluck('permissions')
-            ->flatten()
-            ->unique('id');
-    }
+    
 
     public function hasPermission(string $name): bool
     {
@@ -75,17 +67,12 @@ class User extends Authenticatable
         return ($this->roleCache ??= $this->roles()->pluck('name'))->contains($name);
     }
 
-    public function memberProjects()
+    public function memberProjects(): BelongsToMany
     {
-        return $this->belongsToMany(Project::class)
-            ->withPivot('role')
-            ->withTimestamps();
+        return $this->belongsToMany(Project::class, 'project_user');
     }
 
-    public function projects(): BelongsToMany
-    {
-        return $this->memberProjects();
-    }
+    
 
     public function assignedTasks(): HasMany
     {
