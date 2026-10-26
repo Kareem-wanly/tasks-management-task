@@ -55,8 +55,6 @@ class User extends Authenticatable
         return $this->belongsToMany(Role::class)->withTimestamps();
     }
 
-    
-
     public function hasPermission(string $name): bool
     {
         return $this->permissionNames()->contains($name);
@@ -71,8 +69,6 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Project::class, 'project_user');
     }
-
-    
 
     public function assignedTasks(): HasMany
     {

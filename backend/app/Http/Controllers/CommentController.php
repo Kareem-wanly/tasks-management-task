@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreCommentRequest;
+use App\Http\Requests\UpdateCommentRequest;
+use App\Http\Resources\CommentResource;
 use App\Models\Comment;
 use App\Models\Task;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Http\Requests\StoreCommentRequest;
-use App\Http\Requests\UpdateCommentRequest;
-use App\Http\Resources\CommentResource;
 
 class CommentController extends Controller
 {
@@ -43,8 +43,6 @@ class CommentController extends Controller
 
     public function store(StoreCommentRequest $request, Task $task): JsonResponse
     {
-        $this->authorize('create', [Comment::class, $task]);
-
         $comment = $task->comments()->create([
             'body' => $request->validated('body'),
             'user_id' => $request->user()->id,
@@ -58,8 +56,6 @@ class CommentController extends Controller
 
     public function update(UpdateCommentRequest $request, Comment $comment): JsonResponse
     {
-        $this->authorize('update', $comment);
-
         $comment->update($request->validated());
 
         return response()->json([

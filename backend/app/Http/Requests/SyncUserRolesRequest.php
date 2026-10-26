@@ -8,6 +8,18 @@ class SyncUserRolesRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        $target = $this->route('user');
+
+        if (! $this->user()->can('manageRoles', $target)) {
+            return false;
+        }
+
+        abort_if(
+            $target->is($this->user()) && ! $this->user()->hasRole('Administrator'),
+            403,
+            'You cannot modify your own roles.'
+        );
+
         return true;
     }
 

@@ -2,18 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\TaskStatus;
 use App\Http\Requests\StoreTaskRequest;
 use App\Http\Requests\UpdateTaskRequest;
+use App\Http\Requests\UpdateTaskStatusRequest;
 use App\Http\Resources\TaskResource;
 use App\Models\Project;
 use App\Models\Task;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use App\Http\Requests\UpdateTaskStatusRequest;
-
 
 class TaskController extends Controller
 {
@@ -148,15 +145,13 @@ class TaskController extends Controller
     }
 
     public function updateStatus(UpdateTaskStatusRequest $request, Task $task): TaskResource
-{
-    $this->authorize('updateStatus', $task);
+    {
+        $task->update([
+            'status' => $request->validated('status'),
+        ]);
 
-    $task->update([
-        'status' => $request->validated('status'),
-    ]);
-
-    return new TaskResource($task->fresh(['project:id,title', 'assignee:id,name,email']));
-}
+        return new TaskResource($task->fresh(['project:id,title', 'assignee:id,name,email']));
+    }
 
     public function destroy(Task $task): JsonResponse
     {

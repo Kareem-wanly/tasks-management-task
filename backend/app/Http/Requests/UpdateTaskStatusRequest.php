@@ -10,7 +10,7 @@ class UpdateTaskStatusRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return $this->user()->can('updateStatus', $this->route('task'));
     }
 
     public function rules(): array

@@ -8,14 +8,14 @@ class AddProjectMemberRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return $this->user()->can('manageMembers', $this->route('project'));
     }
 
     public function rules(): array
     {
         return [
             'user_id' => ['required', 'integer', 'exists:users,id'],
-            'role' => ['nullable', 'string', 'max:50'],
+            'role' => ['sometimes', 'string', 'in:member,lead,manager'],
         ];
     }
 }

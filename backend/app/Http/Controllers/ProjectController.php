@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AddProjectMemberRequest;
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Http\Resources\ProjectResource;
@@ -12,7 +13,6 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Http\Requests\AddProjectMemberRequest;
 
 class ProjectController extends Controller
 {
@@ -154,12 +154,10 @@ class ProjectController extends Controller
 
     public function addMember(AddProjectMemberRequest $request, Project $project): JsonResponse
     {
-        $this->authorize('manageMembers', $project);
-
         $validated = $request->validated();
 
         $userId = (int) $validated['user_id'];
-        $role = $validated['role'] ?? null;
+        $role = $validated['role'] ?? 'member';
 
         if ($project->members()->where('users.id', $userId)->exists()) {
             return response()->json([
