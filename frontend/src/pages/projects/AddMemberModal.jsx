@@ -20,19 +20,20 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess, projectId, 
   const fetchAvailableUsers = async () => {
     try {
       setLoadingUsers(true);
-      const res = await usersApi.getAll();
-      const allUsers = res?.data?.data || res?.data || res || [];
+      
+      const res = usersApi.options ? await usersApi.options() : await usersApi.getAll({ per_page: 150 });
+      const allUsers = Array.isArray(res) ? res : (res.items || res.data || []);
       
       const currentMemberIds = new Set([
-        ...(existingMembers || []).map((m) => m.id),
-        ownerId,
+        ...(existingMembers || []).map((m) => Number(m.id)),
+        ownerId ? Number(ownerId) : null,
       ]);
 
-      const available = allUsers.filter((u) => !currentMemberIds.has(u.id));
+      const available = allUsers.filter((u) => !currentMemberIds.has(Number(u.id)));
       setUsers(available);
       
       if (available.length > 0) {
-        setSelectedUserId(available[0].id);
+        setSelectedUserId(String(available[0].id));
       }
     } catch (err) {
       console.error('Failed to load users:', err);
@@ -52,7 +53,7 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess, projectId, 
     try {
       setSubmitting(true);
       setError(null);
-      await projectsApi.addMember(projectId, { user_id: selectedUserId });
+      await projectsApi.addMember(projectId, { user_id: Number(selectedUserId) });
       onSuccess();
       onClose();
     } catch (err) {
@@ -67,10 +68,10 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess, projectId, 
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-      <div className="modal-header">
-        <h3>Add Team Member</h3>
-        <button className="modal-close-btn" onClick={onClose} disabled={submitting}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Add Team Member</h3>
+          <button className="modal-close-btn" onClick={onClose} disabled={submitting}>
             ✕
           </button>
         </div>

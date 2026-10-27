@@ -2,24 +2,15 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import projectsApi from '../../api/projectsApi';
-import apiClient from '../../api/apiClient';
+import usersApi from '../../api/usersApi';
 import ProjectFormModal from './ProjectFormModal';
 import ConfirmModal from './ConfirmModal';
 import './ProjectsPage.css';
 
 export default function ProjectsPage() {
-  const { user, can } = useAuth() || {};
+  const { can } = useAuth() || {};
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-
-  const checkPermission = (perm) => {
-    if (typeof can === 'function') return can(perm);
-    if (user?.role === 'admin' || user?.is_admin || user?.role?.name === 'admin') return true;
-    if (Array.isArray(user?.permissions)) {
-      return user.permissions.includes(perm) || user.permissions.some((p) => (p.name || p) === perm);
-    }
-    return false;
-  };
 
   const currentSearch = searchParams.get('search') || '';
   const currentStatus = searchParams.get('status') || '';
@@ -58,18 +49,16 @@ export default function ProjectsPage() {
   }, [searchInput]);
 
   useEffect(() => {
-    const canViewUsers = checkPermission('users.view') || checkPermission('projects.create');
-    if (!canViewUsers) return;
-
     let isMounted = true;
     async function fetchUsers() {
       try {
-        const res = await apiClient.get('/users?per_page=100');
-        const usersData = res?.data?.data || res?.data || res || [];
+        const res = usersApi.options ? await usersApi.options() : await usersApi.getAll({ per_page: 150 });
+        const usersData = Array.isArray(res) ? res : (res.items || res.data || []);
         if (isMounted && Array.isArray(usersData)) {
           setMembers(usersData);
         }
       } catch (err) {
+        console.error('Failed to load members for filter:', err);
       }
     }
     fetchUsers();
@@ -77,7 +66,7 @@ export default function ProjectsPage() {
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, []);
 
   const fetchProjects = async () => {
     try {
@@ -95,18 +84,15 @@ export default function ProjectsPage() {
       if (currentStatus) params.status = currentStatus;
       if (currentMember) params.member_id = currentMember;
 
-      const res = await projectsApi.getAll(params);
+      const pageData = await projectsApi.getAll(params);
 
-      const projectList = res?.data?.data || res?.data || (Array.isArray(res) ? res : []);
-      const paginationMeta = res?.data?.meta || res?.meta || {
-        current_page: currentPage,
-        last_page: 1,
-        total: Array.isArray(projectList) ? projectList.length : 0,
-        per_page: 10,
-      };
-
-      setProjects(Array.isArray(projectList) ? projectList : []);
-      setMeta(paginationMeta);
+      setProjects(pageData.items || []);
+      setMeta({
+        current_page: pageData.currentPage || currentPage,
+        last_page: pageData.lastPage || 1,
+        total: pageData.total || 0,
+        per_page: pageData.perPage || 10,
+      });
     } catch (err) {
       console.error('Failed to load projects:', err);
       setError('Failed to load projects. Please try again.');
@@ -183,16 +169,12 @@ export default function ProjectsPage() {
     if (!projectToArchive) return;
     try {
       setArchiveLoading(true);
-      if (projectsApi.archive) {
-        await projectsApi.archive(projectToArchive.id);
-      } else {
-        await projectsApi.update(projectToArchive.id, { status: 'archived' });
-      }
+      await projectsApi.archive(projectToArchive.id);
       setArchiveModalOpen(false);
       setProjectToArchive(null);
       fetchProjects();
     } catch (err) {
-      alert(err.data?.message || err.message || 'Failed to archive project.');
+      alert(err.data?.message || err.message || 'Failed to update archive status.');
     } finally {
       setArchiveLoading(false);
     }
@@ -231,7 +213,7 @@ export default function ProjectsPage() {
           <h1>Projects</h1>
           <p>Manage, track, and collaborate on your team projects.</p>
         </div>
-        {checkPermission('projects.create') && (
+        {can && can('projects.create') && (
           <button className="btn-primary" onClick={handleOpenCreate}>
             + Create Project
           </button>
@@ -359,120 +341,126 @@ export default function ProjectsPage() {
               </tr>
             </thead>
             <tbody>
-              {projects.map((project) => (
-                <tr
-                  key={project.id}
-                  onClick={() => navigate(`/projects/${project.id}`)}
-                  className="clickable-row"
-                >
-                  <td className="font-semibold text-primary">{project.title}</td>
-                  <td>
-                    <span className={getStatusBadgeClass(project.status)}>
-                      {project.status?.replace('_', ' ') || 'active'}
-                    </span>
-                  </td>
-                  <td>{formatDate(project.start_date)}</td>
-                  <td>{formatDate(project.due_date)}</td>
-                  <td>
-                    <div className="owner-badge">
-                      <span className="owner-name">{project.owner?.name || 'Unassigned'}</span>
-                      {project.members?.length > 0 && (
-                        <span className="members-count">+{project.members.length} members</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="actions-cell">
-                      {checkPermission('projects.update') && (
-                        <button
-                          className="btn-action edit"
-                          onClick={(e) => handleOpenEdit(project, e)}
-                          title="Edit Project"
-                        >
-                          Edit
-                        </button>
-                      )}
-                      {checkPermission('projects.archive') && project.status !== 'archived' && (
-                        <button
-                          className="btn-action archive"
-                          onClick={(e) => handleOpenArchive(project, e)}
-                          title="Archive Project"
-                        >
-                          Archive
-                        </button>
-                      )}
-                      {checkPermission('projects.delete') && (
-                        <button
-                          className="btn-action delete"
-                          onClick={(e) => handleOpenDelete(project, e)}
-                          title="Delete Project"
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {projects.map((project) => {
+                const isArchived = project.status === 'archived';
+                return (
+                  <tr
+                    key={project.id}
+                    onClick={() => navigate(`/projects/${project.id}`)}
+                    className="clickable-row"
+                  >
+                    <td className="font-semibold text-primary">{project.title}</td>
+                    <td>
+                      <span className={getStatusBadgeClass(project.status)}>
+                        {project.status?.replace('_', ' ') || 'active'}
+                      </span>
+                    </td>
+                    <td>{formatDate(project.start_date)}</td>
+                    <td>{formatDate(project.due_date)}</td>
+                    <td>
+                      <div className="owner-badge">
+                        <span className="owner-name">{project.owner?.name || 'Unassigned'}</span>
+                        {project.members?.length > 0 && (
+                          <span className="members-count">+{project.members.length} members</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="actions-cell">
+                        {can && can('projects.update') && (
+                          <button
+                            className="btn-action edit"
+                            onClick={(e) => handleOpenEdit(project, e)}
+                            title="Edit Project"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {can && can('projects.archive') && (
+                          <button
+                            className="btn-action archive"
+                            onClick={(e) => handleOpenArchive(project, e)}
+                            title={isArchived ? 'Unarchive Project' : 'Archive Project'}
+                          >
+                            {isArchived ? 'Unarchive' : 'Archive'}
+                          </button>
+                        )}
+                        {can && can('projects.delete') && (
+                          <button
+                            className="btn-action delete"
+                            onClick={(e) => handleOpenDelete(project, e)}
+                            title="Delete Project"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       ) : (
         <div className="projects-cards-grid">
-          {projects.map((project) => (
-            <div
-              key={project.id}
-              className="project-card"
-              onClick={() => navigate(`/projects/${project.id}`)}
-            >
-              <div className="project-card-header">
-                <h3>{project.title}</h3>
-                <span className={getStatusBadgeClass(project.status)}>
-                  {project.status?.replace('_', ' ') || 'active'}
-                </span>
-              </div>
-              <p className="project-card-desc">
-                {project.description || 'No description provided for this project.'}
-              </p>
-              <div className="project-card-dates">
-                <div>
-                  <span className="date-label">Start:</span> {formatDate(project.start_date)}
+          {projects.map((project) => {
+            const isArchived = project.status === 'archived';
+            return (
+              <div
+                key={project.id}
+                className="project-card"
+                onClick={() => navigate(`/projects/${project.id}`)}
+              >
+                <div className="project-card-header">
+                  <h3>{project.title}</h3>
+                  <span className={getStatusBadgeClass(project.status)}>
+                    {project.status?.replace('_', ' ') || 'active'}
+                  </span>
                 </div>
-                <div>
-                  <span className="date-label">Due:</span> {formatDate(project.due_date)}
+                <p className="project-card-desc">
+                  {project.description || 'No description provided for this project.'}
+                </p>
+                <div className="project-card-dates">
+                  <div>
+                    <span className="date-label">Start:</span> {formatDate(project.start_date)}
+                  </div>
+                  <div>
+                    <span className="date-label">Due:</span> {formatDate(project.due_date)}
+                  </div>
+                </div>
+                <div className="project-card-footer" onClick={(e) => e.stopPropagation()}>
+                  <span className="owner-tag">Owner: {project.owner?.name || 'N/A'}</span>
+                  <div className="actions-cell">
+                    {can && can('projects.update') && (
+                      <button
+                        className="btn-action edit"
+                        onClick={(e) => handleOpenEdit(project, e)}
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {can && can('projects.archive') && (
+                      <button
+                        className="btn-action archive"
+                        onClick={(e) => handleOpenArchive(project, e)}
+                      >
+                        {isArchived ? 'Unarchive' : 'Archive'}
+                      </button>
+                    )}
+                    {can && can('projects.delete') && (
+                      <button
+                        className="btn-action delete"
+                        onClick={(e) => handleOpenDelete(project, e)}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div className="project-card-footer" onClick={(e) => e.stopPropagation()}>
-                <span className="owner-tag">Owner: {project.owner?.name || 'N/A'}</span>
-                <div className="actions-cell">
-                  {checkPermission('projects.update') && (
-                    <button
-                      className="btn-action edit"
-                      onClick={(e) => handleOpenEdit(project, e)}
-                    >
-                      Edit
-                    </button>
-                  )}
-                  {checkPermission('projects.archive') && project.status !== 'archived' && (
-                    <button
-                      className="btn-action archive"
-                      onClick={(e) => handleOpenArchive(project, e)}
-                    >
-                      Archive
-                    </button>
-                  )}
-                  {checkPermission('projects.delete') && (
-                    <button
-                      className="btn-action delete"
-                      onClick={(e) => handleOpenDelete(project, e)}
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -529,9 +517,9 @@ export default function ProjectsPage() {
         isOpen={archiveModalOpen}
         onClose={() => setArchiveModalOpen(false)}
         onConfirm={handleConfirmArchive}
-        title="Archive Project"
-        message={`Are you sure you want to archive "${projectToArchive?.title}"? It will be hidden from active lists.`}
-        confirmText="Archive Project"
+        title={projectToArchive?.status === 'archived' ? 'Unarchive Project' : 'Archive Project'}
+        message={`Are you sure you want to ${projectToArchive?.status === 'archived' ? 'unarchive' : 'archive'} "${projectToArchive?.title}"?`}
+        confirmText={projectToArchive?.status === 'archived' ? 'Unarchive Project' : 'Archive Project'}
         danger={false}
         loading={archiveLoading}
       />
