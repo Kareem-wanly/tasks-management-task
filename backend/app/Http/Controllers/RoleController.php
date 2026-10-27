@@ -45,7 +45,7 @@ class RoleController extends Controller
 
         return response()->json([
             'message' => 'Role created successfully',
-            'role' => $role->load('permissions:id,name,description'),
+            'data' => $role->load('permissions:id,name,description'),
         ], 201);
     }
 
@@ -64,14 +64,14 @@ class RoleController extends Controller
 
         $systemRoles = ['Administrator', 'Project Manager', 'Member'];
 
-        // #37. Prevent renaming system roles to ensure they remain consistent and protected
+        // Prevent renaming system roles to ensure they remain consistent and protected
         if (in_array($role->name, $systemRoles) && $request->filled('name') && $request->name !== $role->name) {
             return response()->json([
                 'message' => 'System roles cannot be renamed.',
             ], 403);
         }
 
-        // #37. Prevent assigning a system role name to any other role
+        // Prevent assigning a system role name to any other role
         if (! in_array($role->name, $systemRoles) && $request->filled('name') && in_array($request->name, $systemRoles)) {
             return response()->json([
                 'message' => 'Cannot rename a role to a reserved system role name.',
@@ -81,14 +81,14 @@ class RoleController extends Controller
         $validated = $request->validated();
         $role->update(array_intersect_key($validated, array_flip(['name', 'display_name', 'description'])));
 
-        if ($request->has('permissions')) {
-            $this->guardPermissionGrant($request, $role, $request->permissions);
-            $role->permissions()->sync($request->permissions);
+        if (array_key_exists('permissions', $validated)) {
+            $this->guardPermissionGrant($request, $role, $validated['permissions']);
+            $role->permissions()->sync($validated['permissions']);
         }
 
         return response()->json([
             'message' => 'Role updated successfully',
-            'role' => $role->load('permissions:id,name,description'),
+            'data' => $role->load('permissions:id,name,description'),
         ]);
     }
 
@@ -146,7 +146,7 @@ class RoleController extends Controller
 
         return response()->json([
             'message' => 'Role permissions synchronized successfully',
-            'role' => $role->load('permissions:id,name,description'),
+            'data' => $role->load('permissions:id,name,description'),
         ]);
     }
 }

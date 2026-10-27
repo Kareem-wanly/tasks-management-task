@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
 use App\Models\Project;
 use App\Models\Role;
 use App\Models\User;
@@ -49,16 +51,9 @@ class UserController extends Controller
         return response()->json($users);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreUserRequest $request): JsonResponse
     {
-        $this->authorize('create', User::class);
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8'],
-            'role_id' => ['nullable', 'integer', 'exists:roles,id'],
-        ]);
+        $validated = $request->validated();
 
         $user = DB::transaction(function () use ($validated) {
             $user = User::create([
@@ -95,16 +90,9 @@ class UserController extends Controller
         ]);
     }
 
-    public function update(Request $request, User $user): JsonResponse
+    public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
-        $this->authorize('update', $user);
-
-        $validated = $request->validate([
-            'name' => ['sometimes', 'string', 'max:255'],
-            'email' => ['sometimes', 'string', 'email', 'max:255', 'unique:users,email,'.$user->id],
-        ]);
-
-        $user->update($validated);
+        $user->update($request->validated());
 
         return response()->json([
             'message' => 'User details updated successfully',
@@ -112,9 +100,16 @@ class UserController extends Controller
         ]);
     }
 
-    public function destroy(User $user): JsonResponse
+    public function destroy(Request $request, User $user): JsonResponse
     {
         $this->authorize('delete', $user);
+
+        abort_if($user->is($request->user()), 403, 'You cannot delete your own account.');
+        abort_if(
+            $user->hasRole('Administrator') && ! $request->user()->hasRole('Administrator'),
+            403,
+            'Only an Administrator can delete another Administrator.'
+        );
 
         if (Project::withTrashed()->where('owner_id', $user->id)->exists()) {
             return response()->json([

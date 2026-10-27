@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SyncUserRolesRequest;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class UserRoleController extends Controller
@@ -25,32 +25,13 @@ class UserRoleController extends Controller
         ]);
     }
 
-    public function syncRoles(Request $request, User $user): JsonResponse
+    public function syncRoles(SyncUserRolesRequest $request, User $user): JsonResponse
     {
-        $this->authorize('manageRoles', $user);
-
-        abort_if(
-            $user->is($request->user()) && ! $request->user()->hasRole('Administrator'),
-            403,
-            'You cannot modify your own roles.'
-        );
-
-        $request->validate([
-            'roles' => ['required', 'array'],
-            'roles.*' => ['integer', 'exists:roles,id'],
-        ]);
-
         if (! $request->user()->hasRole('Administrator')) {
             $requestedPermissionIds = Permission::whereHas('roles', fn ($q) => $q->whereIn('roles.id', $request->roles))
                 ->pluck('id');
 
-            $myPermissionIds = $request->user()->roles()
-                ->with('permissions')
-                ->get()
-                ->pluck('permissions')
-                ->flatten()
-                ->pluck('id')
-                ->unique();
+            $myPermissionIds = $request->user()->permissionIds();
 
             abort_if(
                 $requestedPermissionIds->diff($myPermissionIds)->isNotEmpty(),
