@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import projectsApi from '../../api/projectsApi';
@@ -49,26 +49,31 @@ export default function ProjectsPage() {
   }, [searchInput]);
 
   useEffect(() => {
-    let isMounted = true;
+    const controller = new AbortController();
+
     async function fetchUsers() {
       try {
-        const res = usersApi.options ? await usersApi.options() : await usersApi.getAll({ per_page: 150 });
+        const res = usersApi.options 
+          ? await usersApi.options({}, { signal: controller.signal }) 
+          : await usersApi.getAll({ per_page: 150 }, { signal: controller.signal });
         const usersData = Array.isArray(res) ? res : (res.items || res.data || []);
-        if (isMounted && Array.isArray(usersData)) {
+        if (Array.isArray(usersData)) {
           setMembers(usersData);
         }
       } catch (err) {
-        console.error('Failed to load members for filter:', err);
+        if (err.name !== 'AbortError') {
+          console.error('Failed to load members for filter:', err);
+        }
       }
     }
     fetchUsers();
 
     return () => {
-      isMounted = false;
+      controller.abort();
     };
   }, []);
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async (signal) => {
     try {
       setLoading(true);
       setError(null);
@@ -84,7 +89,7 @@ export default function ProjectsPage() {
       if (currentStatus) params.status = currentStatus;
       if (currentMember) params.member_id = currentMember;
 
-      const pageData = await projectsApi.getAll(params);
+      const pageData = await projectsApi.getAll(params, { signal });
 
       setProjects(pageData.items || []);
       setMeta({
@@ -94,16 +99,23 @@ export default function ProjectsPage() {
         per_page: pageData.perPage || 10,
       });
     } catch (err) {
+      if (err.name === 'AbortError') return;
+
       console.error('Failed to load projects:', err);
       setError('Failed to load projects. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, currentSort, currentDirection, currentSearch, currentStatus, currentMember]);
 
   useEffect(() => {
-    fetchProjects();
-  }, [searchParams]);
+    const controller = new AbortController();
+    fetchProjects(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
+  }, [fetchProjects]);
 
   const updateFilter = (key, value) => {
     const newParams = new URLSearchParams(searchParams);

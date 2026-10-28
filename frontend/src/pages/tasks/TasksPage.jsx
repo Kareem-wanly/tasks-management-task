@@ -246,7 +246,7 @@ export default function TasksPage() {
     setSearchParams,
   ]);
 
-  const fetchTasks = useCallback(async () => {
+  const fetchTasks = useCallback(async (signal) => {
     dispatch({ type: 'FETCH_INIT' });
     try {
       const params = {
@@ -264,7 +264,7 @@ export default function TasksPage() {
       if (filters.due_date) params.due_date = filters.due_date;
       if (filters.overdue_only) params.overdue = 'true';
 
-      const pageData = await tasksApi.getAll(params);
+      const pageData = await tasksApi.getAll(params, { signal });
 
       dispatch({
         type: 'FETCH_TASKS_SUCCESS',
@@ -277,6 +277,8 @@ export default function TasksPage() {
         },
       });
     } catch (err) {
+      if (err.name === 'AbortError') return;
+
       console.error('Error fetching tasks:', err);
       dispatch({
         type: 'FETCH_TASKS_FAILURE',
@@ -298,7 +300,12 @@ export default function TasksPage() {
   ]);
 
   useEffect(() => {
-    fetchTasks();
+    const controller = new AbortController();
+    fetchTasks(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
   }, [fetchTasks]);
 
   const handleDeleteTask = async () => {
