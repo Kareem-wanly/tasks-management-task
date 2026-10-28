@@ -1,6 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
-import PermissionRoute from './PermissionRoute';
 
 import AppLayout from '../components/layout/AppLayout';
 import ProjectsPage from '../pages/projects/ProjectsPage';
@@ -14,14 +13,16 @@ import TasksPage from '../pages/tasks/TasksPage';
 import TaskDetailsPage from '../pages/tasks/TaskDetailsPage';
 import UsersPage from '../pages/users/UsersPage';
 import RolesPage from '../pages/roles/RolesPage';
-
 import RoleFormPage from '../pages/roles/RoleFormPage';
+
 export default function AppRoutes() {
   return (
     <Routes>
+      
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/403" element={<ForbiddenPage />} />
+      <Route path="/unauthorized" element={<Navigate to="/403" replace />} />
 
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<AppLayout />}>
@@ -33,20 +34,14 @@ export default function AppRoutes() {
           <Route path="tasks" element={<TasksPage />} />
           <Route path="tasks/:id" element={<TaskDetailsPage />} />
 
-          <Route path="/tasks/:id" element={<TaskDetailsPage />} />
-
-          <Route element={<PermissionRoute requiredPermission="users.view" />}>
+          <Route element={<ProtectedRoute permission="users.view" />}>
             <Route path="users" element={<UsersPage />} />
           </Route>
 
-          <Route element={<PermissionRoute requiredPermission="roles.view" />}>
-      <Route path="roles" element={<RolesPage />} />
-      <Route path="roles/create" element={<RoleFormPage />} />
-      <Route path="roles/:id" element={<RoleFormPage />} />
-          </Route>
-
-          <Route element={<PermissionRoute requiredPermission="roles.view" />}>
+          <Route element={<ProtectedRoute permission="roles.view" />}>
             <Route path="roles" element={<RolesPage />} />
+            <Route path="roles/create" element={<RoleFormPage />} />
+            <Route path="roles/:id" element={<RoleFormPage />} />
           </Route>
         </Route>
       </Route>

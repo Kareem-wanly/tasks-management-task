@@ -1,32 +1,55 @@
 import apiClient from './apiClient';
+import { toPage } from './paginate';
 
 const projectsApi = {
-  getAll: async (params = {}) => {
-    const queryParams = new URLSearchParams(params).toString();
+  getAll: async (params = {}, options = {}) => {
+    const cleanedParams = Object.entries(params).reduce((acc, [key, val]) => {
+      if (val !== undefined && val !== null && val !== '') {
+        acc[key] = val;
+      }
+      return acc;
+    }, {});
+
+    const queryParams = new URLSearchParams(cleanedParams).toString();
     const endpoint = queryParams ? `/projects?${queryParams}` : '/projects';
-    return await apiClient.get(endpoint);
+    const res = await apiClient.get(endpoint, options);
+    return toPage(res);
   },
 
-  getById: async (id) => {
-    return await apiClient.get(`/projects/${id}`);
+  options: async (params = {}, options = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    const endpoint = queryParams ? `/projects/options?${queryParams}` : '/projects/options';
+    const res = await apiClient.get(endpoint, options);
+    return res?.data ?? res;
+  },
+
+  getById: async (id, options = {}) => {
+    const res = await apiClient.get(`/projects/${id}`, options);
+    return res?.data ?? res;
   },
 
   create: async (projectData) => {
-    return await apiClient.post('/projects', projectData);
+    const res = await apiClient.post('/projects', projectData);
+    return res?.data ?? res;
   },
 
   update: async (id, projectData) => {
-    return await apiClient.put(`/projects/${id}`, projectData);
+    const res = await apiClient.put(`/projects/${id}`, projectData);
+    return res?.data ?? res;
   },
 
   delete: async (id) => {
     return await apiClient.delete(`/projects/${id}`);
   },
 
-  archive: (id) => apiClient.patch(`/projects/${id}/archive`),
+  archive: async (id) => {
+    const res = await apiClient.patch(`/projects/${id}/archive`);
+    return res?.data ?? res;
+  },
 
   addMember: async (projectId, data) => {
-    return await apiClient.post(`/projects/${projectId}/members`, data);
+    const res = await apiClient.post(`/projects/${projectId}/members`, data);
+    return res?.data ?? res;
   },
 
   removeMember: async (projectId, userId) => {
