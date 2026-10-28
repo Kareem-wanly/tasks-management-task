@@ -12,7 +12,7 @@ import './ProjectDetailsPage.css';
 export default function ProjectDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { can } = useAuth();
+  const { can } = useAuth() || {};
 
   const [project, setProject] = useState(null);
   const [projectTasks, setProjectTasks] = useState([]);
@@ -40,14 +40,14 @@ export default function ProjectDetailsPage() {
 
       const [projectRes, tasksRes] = await Promise.all([
         projectsApi.getById(id),
-        tasksApi.getByProject(id).catch(() => ({ data: [] })),
+        tasksApi.getByProject(id).catch(() => ({ items: [] })),
       ]);
 
-      const projectData = projectRes?.data?.data || projectRes?.data || projectRes;
-      const tasksData = tasksRes?.data?.data || tasksRes?.data || tasksRes || [];
+      const projectData = projectRes?.data ?? projectRes;
+      const tasksData = tasksRes?.items || (Array.isArray(tasksRes) ? tasksRes : (projectData?.tasks || []));
 
       setProject(projectData);
-      setProjectTasks(Array.isArray(tasksData) ? tasksData : (projectData.tasks || []));
+      setProjectTasks(tasksData);
     } catch (err) {
       console.error('Failed to load project details:', err);
       setError(err.data?.message || err.message || 'Failed to load project details.');
@@ -76,14 +76,10 @@ export default function ProjectDetailsPage() {
   const handleConfirmArchive = async () => {
     try {
       setArchiveLoading(true);
-      if (projectsApi.archive) {
-        await projectsApi.archive(id);
-      } else {
-        await projectsApi.update(id, { status: 'archived' });
-      }
-      fetchProjectDetails();
+      await projectsApi.archive(id);
+      await fetchProjectDetails();
     } catch (err) {
-      alert(err.data?.message || err.message || 'Failed to archive project.');
+      alert(err.data?.message || err.message || 'Failed to update project archive status.');
     } finally {
       setArchiveLoading(false);
       setArchiveModalOpen(false);
@@ -189,8 +185,9 @@ export default function ProjectDetailsPage() {
   const allProjectUsers = project.owner ? [project.owner, ...members] : members;
   
   const activities = project.activities || project.activity_logs || [];
-  const canManageMembers = can('projects.manage_members');
-  const canCreateTasks = can('tasks.create');
+  const canManageMembers = can ? can('projects.manage_members') : false;
+  const canCreateTasks = can ? can('tasks.create') : false;
+  const isArchived = project.status === 'archived';
 
   return (
     <div className="project-details-container">
@@ -215,17 +212,17 @@ export default function ProjectDetailsPage() {
         </div>
 
         <div className="header-actions">
-          {can('projects.update') && (
+          {can && can('projects.update') && (
             <button className="btn-edit" onClick={() => setEditModalOpen(true)}>
               Edit Project
             </button>
           )}
-          {can('projects.archive') && project.status !== 'archived' && (
+          {can && can('projects.archive') && (
             <button className="btn-archive" onClick={() => setArchiveModalOpen(true)}>
-              Archive Project
+              {isArchived ? 'Unarchive Project' : 'Archive Project'}
             </button>
           )}
-          {can('projects.delete') && (
+          {can && can('projects.delete') && (
             <button className="btn-danger-outline" onClick={() => setDeleteModalOpen(true)}>
               Delete Project
             </button>
@@ -472,7 +469,6 @@ export default function ProjectDetailsPage() {
         onClose={() => setCreateTaskModalOpen(false)}
         onSuccess={fetchProjectDetails}
         projectId={project.id}
-        members={allProjectUsers}
       />
 
       <ConfirmModal
@@ -501,9 +497,9 @@ export default function ProjectDetailsPage() {
         isOpen={archiveModalOpen}
         onClose={() => setArchiveModalOpen(false)}
         onConfirm={handleConfirmArchive}
-        title="Archive Project"
-        message={`Are you sure you want to archive "${project.title}"?`}
-        confirmText="Archive"
+        title={isArchived ? 'Unarchive Project' : 'Archive Project'}
+        message={`Are you sure you want to ${isArchived ? 'unarchive' : 'archive'} "${project.title}"?`}
+        confirmText={isArchived ? 'Unarchive' : 'Archive'}
         danger={false}
         loading={archiveLoading}
       />

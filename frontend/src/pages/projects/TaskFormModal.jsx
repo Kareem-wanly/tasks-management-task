@@ -4,20 +4,10 @@ import projectsApi from '../../api/projectsApi';
 import { useAuth } from '../../context/AuthContext';
 
 export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = null, task = null }) {
-  const { user, can } = useAuth() || {};
+  const { can } = useAuth() || {};
   const isEdit = Boolean(task);
 
-  const checkPermission = (permission) => {
-    if (typeof can === 'function') return can(permission);
-    if (!user) return false;
-    if (user.role === 'admin' || user.is_admin || user.role?.name === 'admin' || user.role?.name === 'Administrator') return true;
-    if (Array.isArray(user.permissions)) {
-      return user.permissions.includes(permission) || user.permissions.some((p) => (p.name || p) === permission);
-    }
-    return false;
-  };
-
-  const canAssign = checkPermission('tasks.assign');
+  const canAssign = typeof can === 'function' ? can('tasks.assign') : false;
 
   const [projects, setProjects] = useState([]);
   const [members, setMembers] = useState([]);
@@ -39,13 +29,14 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
     if (!isOpen) return;
 
     if (task) {
+      const existingAssigneeId = task.assigned_to ?? task.assignee?.id ?? '';
       setFormData({
         project_id: projectId || task.project_id || task.project?.id || '',
         title: task.title || '',
         description: task.description || '',
         status: task.status ? String(task.status).toLowerCase() : 'todo',
         priority: task.priority ? String(task.priority).toLowerCase() : 'medium',
-        assigned_to: task.assigned_to || task.assignee?.id || '',
+        assigned_to: existingAssigneeId ? String(existingAssigneeId) : '',
         due_date: task.due_date ? task.due_date.split('T')[0] : '',
       });
     } else {
@@ -61,20 +52,32 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
     }
     setErrors({});
 
+    let isMounted = true;
     if (!projectId && !task?.project_id && !task?.project?.id) {
       setLoadingProjects(true);
-      projectsApi
-        .getAll({ per_page: 150 })
+      const fetchProjectsOptions = projectsApi.options
+        ? projectsApi.options()
+        : projectsApi.getAll({ per_page: 150 });
+
+      fetchProjectsOptions
         .then((res) => {
-          const list = res.data?.data || res.data || [];
+          if (!isMounted) return;
+          const list = Array.isArray(res) ? res : (res.items || res.data || []);
           setProjects(Array.isArray(list) ? list : []);
         })
         .catch((err) => console.error('Failed to load projects:', err))
-        .finally(() => setLoadingProjects(false));
+        .finally(() => {
+          if (isMounted) setLoadingProjects(false);
+        });
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [isOpen, projectId, task]);
 
   useEffect(() => {
+    let isMounted = true;
     const activeProjectId = projectId || formData.project_id || task?.project_id || task?.project?.id;
     if (!activeProjectId) {
       setMembers([]);
@@ -84,7 +87,8 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
     projectsApi
       .getById(activeProjectId)
       .then((res) => {
-        const proj = res.data?.data || res.data;
+        if (!isMounted) return;
+        const proj = res?.data ?? res;
         const allMembers = [];
         if (proj?.owner) allMembers.push(proj.owner);
         if (Array.isArray(proj?.members)) {
@@ -97,6 +101,10 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
         setMembers(allMembers);
       })
       .catch((err) => console.error('Failed to load project members:', err));
+
+    return () => {
+      isMounted = false;
+    };
   }, [formData.project_id, projectId, task]);
 
   if (!isOpen) return null;
@@ -124,23 +132,27 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
 
     try {
       const payload = {
-        project_id: Number(activeProjectId),
         title: formData.title.trim(),
         description: formData.description?.trim() || null,
         status: formData.status,
         priority: formData.priority,
-        assigned_to: canAssign && formData.assigned_to ? Number(formData.assigned_to) : (isEdit ? (task.assigned_to || null) : null),
         due_date: formData.due_date || null,
       };
+
+      if (!isEdit) {
+        payload.project_id = Number(activeProjectId);
+      }
+
+      if (canAssign) {
+        payload.assigned_to = formData.assigned_to ? Number(formData.assigned_to) : null;
+      } else if (!isEdit) {
+        payload.assigned_to = null;
+      }
 
       if (isEdit) {
         await tasksApi.update(task.id, payload);
       } else {
-        if (typeof tasksApi.createForProject === 'function') {
-          await tasksApi.createForProject(activeProjectId, payload);
-        } else if (typeof tasksApi.create === 'function') {
-          await tasksApi.create(activeProjectId, payload);
-        }
+        await tasksApi.create(activeProjectId, payload);
       }
 
       onSuccess();

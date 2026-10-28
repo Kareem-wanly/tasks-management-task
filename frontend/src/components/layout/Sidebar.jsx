@@ -8,15 +8,15 @@ export default function Sidebar({ isOpen, onClose }) {
     { to: '/', label: 'Dashboard' },
     { to: '/projects', label: 'Projects' },
     { to: '/tasks', label: 'Tasks' },
-    { to: '/users', label: 'Users', role: 'admin' },
-    { to: '/roles', label: 'Roles', role: 'admin' },
+    { to: '/users', label: 'Users', permission: 'users.view' },
+    { to: '/roles', label: 'Roles', permission: 'roles.view' },
   ];
 
   const visibleLinks = links.filter((link) => {
-    if (link.role && !hasRole(link.role)) {
+    if (link.role && (!hasRole || !hasRole(link.role))) {
       return false;
     }
-    if (link.permission && !can(link.permission)) {
+    if (link.permission && (!can || !can(link.permission))) {
       return false;
     }
     return true;

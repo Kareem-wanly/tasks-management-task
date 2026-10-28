@@ -1,41 +1,56 @@
 import apiClient from './apiClient';
+import { toPage } from './paginate';
 
 const usersApi = {
+  getAll: async (params = {}, options = {}) => {
+    const cleanedParams = Object.entries(params).reduce((acc, [key, val]) => {
+      if (val !== undefined && val !== null && val !== '') {
+        acc[key] = val;
+      }
+      return acc;
+    }, {});
 
-  getAll: async (params = {}) => {
-    const queryParams = new URLSearchParams(params).toString();
+    const queryParams = new URLSearchParams(cleanedParams).toString();
     const endpoint = queryParams ? `/users?${queryParams}` : '/users';
-    return await apiClient.get(endpoint);
+    const res = await apiClient.get(endpoint, options);
+    return toPage(res);
   },
 
-
-  getById: async (id) => {
-    return await apiClient.get(`/users/${id}`);
+  options: async (params = {}, options = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    const endpoint = queryParams ? `/users/options?${queryParams}` : '/users/options';
+    const res = await apiClient.get(endpoint, options);
+    return res?.data ?? res;
   },
 
+  getById: async (id, options = {}) => {
+    const res = await apiClient.get(`/users/${id}`, options);
+    return res?.data ?? res;
+  },
 
   create: async (userData) => {
-    return await apiClient.post('/users', userData);
+    const res = await apiClient.post('/users', userData);
+    return res?.data ?? res;
   },
-
 
   update: async (id, userData) => {
-    return await apiClient.put(`/users/${id}`, userData);
+    const res = await apiClient.put(`/users/${id}`, userData);
+    return res?.data ?? res;
   },
-
 
   delete: async (id) => {
     return await apiClient.delete(`/users/${id}`);
   },
 
-  getUserRoles: async (id) => {
-    return await apiClient.get(`/users/${id}/roles`);
+  getUserRoles: async (id, options = {}) => {
+    const res = await apiClient.get(`/users/${id}/roles`, options);
+    return res?.data ?? res;
   },
 
   syncRoles: async (id, roles) => {
-    return await apiClient.put(`/users/${id}/roles`, { roles });
+    const res = await apiClient.put(`/users/${id}/roles`, { roles });
+    return res?.data ?? res;
   },
-
 };
 
 export default usersApi;

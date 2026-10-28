@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import authApi from '../api/authApi';
+import { getToken, setToken, clearToken } from '../api/tokenStorage';
 
 const AuthContext = createContext(null);
 
@@ -8,6 +9,7 @@ export function AuthProvider({ children }) {
   const [roles, setRoles] = useState([]);
   const [permissions, setPermissions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [startupError, setStartupError] = useState(null);
 
   const extractUserMeta = useCallback((userData) => {
     let userRoles = [];
@@ -15,10 +17,6 @@ export function AuthProvider({ children }) {
 
     if (!userData) return { userRoles, userPermissions };
 
-    if (userData.role) {
-      const singleRole = typeof userData.role === 'object' ? userData.role.name : userData.role;
-      if (singleRole) userRoles.push(singleRole);
-    }
     if (Array.isArray(userData.roles)) {
       userData.roles.forEach((r) => {
         const rName = typeof r === 'object' ? r.name : r;
@@ -26,19 +24,9 @@ export function AuthProvider({ children }) {
           userRoles.push(rName);
         }
       });
-    }
-
-    if (Array.isArray(userData.roles)) {
-      userData.roles.forEach((role) => {
-        if (role && typeof role === 'object' && Array.isArray(role.permissions)) {
-          role.permissions.forEach((p) => {
-            const permName = typeof p === 'object' ? p.name : p;
-            if (permName && !userPermissions.includes(permName)) {
-              userPermissions.push(permName);
-            }
-          });
-        }
-      });
+    } else if (userData.role) {
+      const singleRole = typeof userData.role === 'object' ? userData.role.name : userData.role;
+      if (singleRole) userRoles.push(singleRole);
     }
 
     const directPerms = userData.effective_permissions || userData.permissions;
@@ -54,8 +42,15 @@ export function AuthProvider({ children }) {
     return { userRoles, userPermissions };
   }, []);
 
+  const resetSession = useCallback(() => {
+    clearToken();
+    setUser(null);
+    setRoles([]);
+    setPermissions([]);
+  }, []);
+
   const restoreAuthentication = useCallback(async () => {
-    const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+    const token = getToken();
 
     if (!token) {
       setIsLoading(false);
@@ -63,9 +58,9 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const res = await authApi.getCurrentUser ? await authApi.getCurrentUser() : await authApi.me();
-      const payload = res.data || res;
-      const currentUser = payload.user || payload.data || payload;
+      setStartupError(null);
+      const res = await authApi.getCurrentUser();
+      const currentUser = res?.user || res?.data || res;
       const { userRoles, userPermissions } = extractUserMeta(currentUser);
 
       setUser(currentUser);
@@ -73,30 +68,40 @@ export function AuthProvider({ children }) {
       setPermissions(userPermissions);
     } catch (error) {
       console.error('Session restoration failed:', error);
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('token');
-      setUser(null);
-      setRoles([]);
-      setPermissions([]);
+      if (error?.status === 401) {
+        resetSession();
+      } else {
+        setStartupError('Could not connect to the server. Please check your connection.');
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [extractUserMeta]);
+  }, [extractUserMeta, resetSession]);
 
   useEffect(() => {
     restoreAuthentication();
   }, [restoreAuthentication]);
 
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      resetSession();
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    };
+  }, [resetSession]);
+
   const login = async (credentials) => {
     const res = await authApi.login(credentials);
-    const payload = res.data || res;
+    const payload = res?.data || res;
 
     const token = payload.access_token || payload.token;
     const currentUser = payload.user || payload.data || payload;
 
     if (token) {
-      localStorage.setItem('auth_token', token);
-      localStorage.setItem('token', token);
+      setToken(token);
     }
 
     const { userRoles, userPermissions } = extractUserMeta(currentUser);
@@ -104,20 +109,20 @@ export function AuthProvider({ children }) {
     setUser(currentUser);
     setRoles(userRoles);
     setPermissions(userPermissions);
+    setStartupError(null);
 
     return payload;
   };
 
   const register = async (userData) => {
     const res = await authApi.register(userData);
-    const payload = res.data || res;
+    const payload = res?.data || res;
 
     const token = payload.access_token || payload.token;
     const currentUser = payload.user || payload.data || payload;
 
     if (token) {
-      localStorage.setItem('auth_token', token);
-      localStorage.setItem('token', token);
+      setToken(token);
     }
 
     const { userRoles, userPermissions } = extractUserMeta(currentUser);
@@ -125,6 +130,7 @@ export function AuthProvider({ children }) {
     setUser(currentUser);
     setRoles(userRoles);
     setPermissions(userPermissions);
+    setStartupError(null);
 
     return payload;
   };
@@ -135,13 +141,9 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error('Logout error on server:', error);
     } finally {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('token');
-      setUser(null);
-      setRoles([]);
-      setPermissions([]);
+      resetSession();
     }
-  }, []);
+  }, [resetSession]);
 
   const hasRole = useCallback(
     (role) => {
@@ -159,11 +161,8 @@ export function AuthProvider({ children }) {
     (permissionName) => {
       if (!user) return false;
 
-      const isAdmin =
-        user.is_admin ||
-        roles.some((r) => ['administrator', 'admin'].includes(String(r).toLowerCase())) ||
-        (user.role && ['administrator', 'admin'].includes(String(typeof user.role === 'object' ? user.role.name : user.role).toLowerCase()));
-
+      // مطابقة دور المدير العام
+      const isAdmin = roles.some((r) => ['administrator', 'admin'].includes(String(r).toLowerCase()));
       if (isAdmin) return true;
 
       return permissions.includes(permissionName);
@@ -178,8 +177,9 @@ export function AuthProvider({ children }) {
     setRoles,
     permissions,
     setPermissions,
-    loading: isLoading, 
+    loading: isLoading,
     isLoading,
+    startupError,
     isAuthenticated: Boolean(user),
     login,
     register,
