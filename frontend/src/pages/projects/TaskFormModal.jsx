@@ -52,20 +52,32 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
     }
     setErrors({});
 
+    let isMounted = true;
     if (!projectId && !task?.project_id && !task?.project?.id) {
       setLoadingProjects(true);
-      projectsApi
-        .getAll({ per_page: 150 })
+      const fetchProjectsOptions = projectsApi.options
+        ? projectsApi.options()
+        : projectsApi.getAll({ per_page: 150 });
+
+      fetchProjectsOptions
         .then((res) => {
-          const list = res.items || res.data || [];
+          if (!isMounted) return;
+          const list = Array.isArray(res) ? res : (res.items || res.data || []);
           setProjects(Array.isArray(list) ? list : []);
         })
         .catch((err) => console.error('Failed to load projects:', err))
-        .finally(() => setLoadingProjects(false));
+        .finally(() => {
+          if (isMounted) setLoadingProjects(false);
+        });
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [isOpen, projectId, task]);
 
   useEffect(() => {
+    let isMounted = true;
     const activeProjectId = projectId || formData.project_id || task?.project_id || task?.project?.id;
     if (!activeProjectId) {
       setMembers([]);
@@ -75,6 +87,7 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
     projectsApi
       .getById(activeProjectId)
       .then((res) => {
+        if (!isMounted) return;
         const proj = res?.data ?? res;
         const allMembers = [];
         if (proj?.owner) allMembers.push(proj.owner);
@@ -88,6 +101,10 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
         setMembers(allMembers);
       })
       .catch((err) => console.error('Failed to load project members:', err));
+
+    return () => {
+      isMounted = false;
+    };
   }, [formData.project_id, projectId, task]);
 
   if (!isOpen) return null;
@@ -126,12 +143,9 @@ export default function TaskFormModal({ isOpen, onClose, onSuccess, projectId = 
         payload.project_id = Number(activeProjectId);
       }
 
-      
       if (canAssign) {
-       
         payload.assigned_to = formData.assigned_to ? Number(formData.assigned_to) : null;
       } else if (!isEdit) {
-        
         payload.assigned_to = null;
       }
 

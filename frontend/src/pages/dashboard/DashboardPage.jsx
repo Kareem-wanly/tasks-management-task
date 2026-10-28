@@ -14,7 +14,7 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState([]);
 
   useEffect(() => {
-    let isMounted = true;
+    const controller = new AbortController();
 
     async function fetchDashboardData() {
       try {
@@ -22,12 +22,13 @@ export default function DashboardPage() {
         setError(null);
 
         const [projectsRes, tasksRes] = await Promise.all([
-          projectsApi.getAll({ per_page: 150 }),
-          tasksApi.getAll({ per_page: 150 }),
+          projectsApi.getAll({ per_page: 150 }, { signal: controller.signal }),
+          tasksApi.getAll({ per_page: 150 }, { signal: controller.signal }),
         ]);
 
-        const extractData = (res) => {
+        const extractList = (res) => {
           if (!res) return [];
+          if (Array.isArray(res.items)) return res.items;
           if (Array.isArray(res.data?.data)) return res.data.data;
           if (Array.isArray(res.data)) return res.data;
           if (Array.isArray(res.projects)) return res.projects;
@@ -36,26 +37,25 @@ export default function DashboardPage() {
           return [];
         };
 
-        if (isMounted) {
-          setProjects(extractData(projectsRes));
-          setTasks(extractData(tasksRes));
-        }
+        setProjects(extractList(projectsRes));
+        setTasks(extractList(tasksRes));
       } catch (err) {
+        if (err.name === 'AbortError') return;
         console.error('Failed to load dashboard data:', err);
-        if (isMounted) {
-          setError(err.data?.message || 'Failed to load dashboard metrics. Please try again.');
-        }
+        setError(err.data?.message || err.message || 'Failed to load dashboard metrics. Please try again.');
       } finally {
-        if (isMounted) setLoading(false);
+        setLoading(false);
       }
     }
 
     fetchDashboardData();
-    return () => { isMounted = false; };
+    return () => {
+      controller.abort();
+    };
   }, []);
 
   const totalProjects = projects.length;
-  const activeProjects = projects.filter((p) => p.status === 'active').length;
+  const activeProjects = projects.filter((p) => p.status === 'active' || p.status === 'in_progress').length;
 
   const myTasks = tasks.filter((t) => {
     const assigneeId = t.assigned_to?.id || t.assigned_user?.id || t.assignee?.id || t.assigned_to;
@@ -64,12 +64,12 @@ export default function DashboardPage() {
 
   const inProgressTasks = tasks.filter((t) => t.status === 'in_progress').length;
   const reviewTasks = tasks.filter((t) => t.status === 'review').length;
-  const completedTasks = tasks.filter((t) => t.status === 'completed').length;
-  const todoTasks = tasks.filter((t) => t.status === 'todo' || t.status === 'pending').length;
+  const completedTasks = tasks.filter((t) => t.status === 'completed' || t.status === 'done').length;
+  const todoTasks = tasks.filter((t) => t.status === 'todo' || t.status === 'pending' || !t.status).length;
 
   const startOfToday = new Date().setHours(0, 0, 0, 0);
   const overdueTasks = tasks.filter((t) => {
-    if (t.status === 'completed') return false;
+    if (t.status === 'completed' || t.status === 'done') return false;
     if (t.is_overdue) return true;
     if (!t.due_date) return false;
     return new Date(t.due_date).getTime() < startOfToday;
@@ -78,7 +78,7 @@ export default function DashboardPage() {
   const priorityCounts = {
     urgent: tasks.filter((t) => t.priority === 'urgent').length,
     high: tasks.filter((t) => t.priority === 'high').length,
-    medium: tasks.filter((t) => t.priority === 'medium').length,
+    medium: tasks.filter((t) => t.priority === 'medium' || !t.priority).length,
     low: tasks.filter((t) => t.priority === 'low').length,
   };
 
@@ -315,7 +315,7 @@ export default function DashboardPage() {
                   const pId = t.project_id || t.project?.id;
                   return Number(pId) === Number(project.id);
                 });
-                const projCompleted = projectTasks.filter((t) => t.status === 'completed').length;
+                const projCompleted = projectTasks.filter((t) => t.status === 'completed' || t.status === 'done').length;
                 const progressPercent = projectTasks.length
                   ? Math.round((projCompleted / projectTasks.length) * 100)
                   : project.status === 'completed'
