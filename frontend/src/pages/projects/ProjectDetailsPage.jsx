@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import projectsApi from '../../api/projectsApi';
 import tasksApi from '../../api/tasksApi';
 import ProjectFormModal from './ProjectFormModal';
@@ -13,6 +14,7 @@ export default function ProjectDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { can } = useAuth() || {};
+  const { showToast } = useToast ? useToast() : { showToast: () => {} };
 
   const [project, setProject] = useState(null);
   const [projectTasks, setProjectTasks] = useState([]);
@@ -33,40 +35,60 @@ export default function ProjectDetailsPage() {
 
   const [activeTab, setActiveTab] = useState('tasks');
 
-  const fetchProjectDetails = async () => {
+  const fetchProjectDetails = useCallback(async (signal) => {
     try {
       setLoading(true);
       setError(null);
 
       const [projectRes, tasksRes] = await Promise.all([
-        projectsApi.getById(id),
-        tasksApi.getByProject(id).catch(() => ({ items: [] })),
+        projectsApi.getById(id, { signal }),
+        tasksApi.getByProject(id, {}, { signal }).catch((err) => {
+          if (err.name === 'AbortError') throw err;
+          return { items: [] };
+        }),
       ]);
 
       const projectData = projectRes?.data ?? projectRes;
-      const tasksData = tasksRes?.items || (Array.isArray(tasksRes) ? tasksRes : (projectData?.tasks || []));
+      
+      let tasksData = [];
+      if (Array.isArray(tasksRes?.items)) {
+        tasksData = tasksRes.items;
+      } else if (Array.isArray(tasksRes)) {
+        tasksData = tasksRes;
+      } else if (Array.isArray(tasksRes?.data)) {
+        tasksData = tasksRes.data;
+      } else if (Array.isArray(projectData?.tasks)) {
+        tasksData = projectData.tasks;
+      }
 
       setProject(projectData);
       setProjectTasks(tasksData);
     } catch (err) {
+      if (err.name === 'AbortError') return;
       console.error('Failed to load project details:', err);
       setError(err.data?.message || err.message || 'Failed to load project details.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
-    fetchProjectDetails();
-  }, [id]);
+    const controller = new AbortController();
+    fetchProjectDetails(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
+  }, [fetchProjectDetails]);
 
   const handleConfirmDelete = async () => {
     try {
       setDeleteLoading(true);
       await projectsApi.delete(id);
+      showToast?.('Project deleted successfully.', 'success');
       navigate('/projects');
     } catch (err) {
-      alert(err.data?.message || err.message || 'Failed to delete project.');
+      showToast?.(err.data?.message || err.message || 'Failed to delete project.', 'error');
     } finally {
       setDeleteLoading(false);
       setDeleteModalOpen(false);
@@ -76,10 +98,16 @@ export default function ProjectDetailsPage() {
   const handleConfirmArchive = async () => {
     try {
       setArchiveLoading(true);
+      const isArchived = project?.status === 'archived';
       await projectsApi.archive(id);
-      await fetchProjectDetails();
+      showToast?.(`Project ${isArchived ? 'unarchived' : 'archived'} successfully.`, 'success');
+      setProject((prev) => ({
+        ...prev,
+        status: isArchived ? 'active' : 'archived',
+      }));
+      fetchProjectDetails();
     } catch (err) {
-      alert(err.data?.message || err.message || 'Failed to update project archive status.');
+      showToast?.(err.data?.message || err.message || 'Failed to update project archive status.', 'error');
     } finally {
       setArchiveLoading(false);
       setArchiveModalOpen(false);
@@ -91,10 +119,14 @@ export default function ProjectDetailsPage() {
     try {
       setRemoveMemberLoading(true);
       await projectsApi.removeMember(project.id, memberToRemove.id);
+      showToast?.(`Member "${memberToRemove.name}" removed successfully.`, 'success');
+      setProject((prev) => ({
+        ...prev,
+        members: (prev.members || []).filter((m) => m.id !== memberToRemove.id),
+      }));
       setMemberToRemove(null);
-      fetchProjectDetails();
     } catch (err) {
-      alert(err.data?.message || err.message || 'Failed to remove member from project.');
+      showToast?.(err.data?.message || err.message || 'Failed to remove member from project.', 'error');
     } finally {
       setRemoveMemberLoading(false);
     }
@@ -335,27 +367,35 @@ export default function ProjectDetailsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {tasks.map((task) => (
-                        <tr key={task.id}>
-                          <td className="font-semibold">
-                            <Link to={`/tasks/${task.id}`} className="task-title-link">
-                              {task.title}
-                            </Link>
-                          </td>
-                          <td>
-                            <span className={getStatusBadgeClass(task.status)}>
-                              {task.status?.replace('_', ' ') || 'todo'}
-                            </span>
-                          </td>
-                          <td>
-                            <span className={getPriorityBadgeClass(task.priority)}>
-                              {task.priority || 'medium'}
-                            </span>
-                          </td>
-                          <td>{task.assigned_to?.name || task.assignee?.name || 'Unassigned'}</td>
-                          <td>{formatDate(task.due_date)}</td>
-                        </tr>
-                      ))}
+                      {tasks.map((task) => {
+                        const assigneeName =
+                          task.assigned_to?.name ||
+                          task.assigned_user?.name ||
+                          task.assignee?.name ||
+                          'Unassigned';
+
+                        return (
+                          <tr key={task.id}>
+                            <td className="font-semibold">
+                              <Link to={`/tasks/${task.id}`} className="task-title-link">
+                                {task.title}
+                              </Link>
+                            </td>
+                            <td>
+                              <span className={getStatusBadgeClass(task.status)}>
+                                {task.status?.replace('_', ' ') || 'todo'}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={getPriorityBadgeClass(task.priority)}>
+                                {task.priority || 'medium'}
+                              </span>
+                            </td>
+                            <td>{assigneeName}</td>
+                            <td>{formatDate(task.due_date)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -451,14 +491,14 @@ export default function ProjectDetailsPage() {
       <ProjectFormModal
         isOpen={editModalOpen}
         onClose={() => setEditModalOpen(false)}
-        onSuccess={fetchProjectDetails}
+        onSuccess={() => fetchProjectDetails()}
         project={project}
       />
 
       <AddMemberModal
         isOpen={addMemberModalOpen}
         onClose={() => setAddMemberModalOpen(false)}
-        onSuccess={fetchProjectDetails}
+        onSuccess={() => fetchProjectDetails()}
         projectId={project.id}
         existingMembers={members}
         ownerId={project.owner?.id}
@@ -467,7 +507,7 @@ export default function ProjectDetailsPage() {
       <TaskFormModal
         isOpen={createTaskModalOpen}
         onClose={() => setCreateTaskModalOpen(false)}
-        onSuccess={fetchProjectDetails}
+        onSuccess={() => fetchProjectDetails()}
         projectId={project.id}
       />
 

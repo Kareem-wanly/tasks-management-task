@@ -34,13 +34,18 @@ export default function TaskDetailsPage() {
   const [commentToDelete, setCommentToDelete] = useState(null);
   const [deleteCommentLoading, setDeleteCommentLoading] = useState(false);
 
-  const fetchTaskDetails = useCallback(async () => {
+  const fetchTaskDetails = useCallback(async (signal) => {
     try {
       setLoading(true);
       setError(null);
-      const data = await tasksApi.getById(id);
-      setTask(data);
+      const res = await tasksApi.getById(id, { signal });
+      const data = res?.data ?? res;
+      setTask({
+        ...data,
+        comments: Array.isArray(data?.comments) ? data.comments : [],
+      });
     } catch (err) {
+      if (err.name === 'AbortError') return;
       console.error('Failed to load task:', err);
       setError(err.data?.message || err.message || 'Failed to load task details.');
     } finally {
@@ -49,22 +54,36 @@ export default function TaskDetailsPage() {
   }, [id]);
 
   useEffect(() => {
-    fetchTaskDetails();
+    const controller = new AbortController();
+    fetchTaskDetails(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
   }, [fetchTaskDetails]);
 
   const handleStatusChange = async (newStatus) => {
     if (!task || task.status === newStatus) return;
+    const prevStatus = task.status;
+    const prevCompletedAt = task.completed_at;
+
     try {
       setStatusLoading(true);
-      await tasksApi.updateStatus(task.id, newStatus);
       setTask((prev) => ({
         ...prev,
         status: newStatus,
         completed_at: newStatus === 'completed' ? new Date().toISOString() : null,
       }));
+
+      await tasksApi.updateStatus(task.id, newStatus);
       showToast?.('Task status updated successfully.', 'success');
     } catch (err) {
-      alert(err.data?.message || err.message || 'Failed to update task status.');
+      setTask((prev) => ({
+        ...prev,
+        status: prevStatus,
+        completed_at: prevCompletedAt,
+      }));
+      showToast?.(err.data?.message || err.message || 'Failed to update task status.', 'error');
     } finally {
       setStatusLoading(false);
     }
@@ -78,7 +97,7 @@ export default function TaskDetailsPage() {
       showToast?.('Task deleted successfully.', 'success');
       navigate('/tasks');
     } catch (err) {
-      alert(err.data?.message || err.message || 'Failed to delete task.');
+      showToast?.(err.data?.message || err.message || 'Failed to delete task.', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -93,12 +112,13 @@ export default function TaskDetailsPage() {
       setCommentError(null);
 
       const added = await tasksApi.addComment(task.id, commentBody.trim());
+      const addedData = added?.data ?? added;
 
       const normalizedComment = {
-        ...added,
-        user: added.user || user,
-        user_id: added.user_id || user?.id,
-        created_at: added.created_at || new Date().toISOString(),
+        ...addedData,
+        user: addedData.user || user,
+        user_id: addedData.user_id || user?.id,
+        created_at: addedData.created_at || new Date().toISOString(),
       };
 
       setTask((prev) => ({
@@ -131,7 +151,7 @@ export default function TaskDetailsPage() {
       setEditCommentText('');
       showToast?.('Comment updated successfully.', 'success');
     } catch (err) {
-      alert(err.data?.message || err.message || 'Failed to update comment.');
+      showToast?.(err.data?.message || err.message || 'Failed to update comment.', 'error');
     } finally {
       setUpdatingComment(false);
     }
@@ -150,7 +170,7 @@ export default function TaskDetailsPage() {
       setCommentToDelete(null);
       showToast?.('Comment deleted successfully.', 'success');
     } catch (err) {
-      alert(err.data?.message || err.message || 'Failed to delete comment.');
+      showToast?.(err.data?.message || err.message || 'Failed to delete comment.', 'error');
     } finally {
       setDeleteCommentLoading(false);
     }
