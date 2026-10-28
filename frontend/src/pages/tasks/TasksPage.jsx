@@ -108,6 +108,10 @@ function tasksReducer(state, action) {
           sortBy: action.payload.sortBy,
           sortDir: action.payload.sortDir,
         },
+        pagination: {
+          ...state.pagination,
+          current_page: 1,
+        },
       };
 
     case 'SET_PAGE':
@@ -116,6 +120,25 @@ function tasksReducer(state, action) {
         pagination: {
           ...state.pagination,
           current_page: action.payload,
+        },
+      };
+
+    case 'SYNC_URL_PARAMS':
+      return {
+        ...state,
+        filters: {
+          search: action.payload.search ?? state.filters.search,
+          status: action.payload.status ?? state.filters.status,
+          priority: action.payload.priority ?? state.filters.priority,
+          project_id: action.payload.project_id ?? state.filters.project_id,
+          assigned_to: action.payload.assigned_to ?? state.filters.assigned_to,
+          due_date: action.payload.due_date ?? state.filters.due_date,
+          overdue_only: action.payload.overdue_only ?? state.filters.overdue_only,
+        },
+        sorting: action.payload.sorting ?? state.sorting,
+        pagination: {
+          ...state.pagination,
+          current_page: action.payload.page ?? state.pagination.current_page,
         },
       };
 
@@ -140,19 +163,9 @@ function tasksReducer(state, action) {
 }
 
 export default function TasksPage() {
-  const { user, can } = useAuth() || {};
+  const { can } = useAuth() || {};
   const { showToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-
-  const checkPermission = (permission) => {
-    if (typeof can === 'function') return can(permission);
-    if (!user) return false;
-    if (user.role === 'admin' || user.is_admin || user.role?.name === 'admin' || user.role?.name === 'Administrator') return true;
-    if (Array.isArray(user.permissions)) {
-      return user.permissions.includes(permission) || user.permissions.some((p) => (p.name || p) === permission);
-    }
-    return false;
-  };
 
   const [state, dispatch] = useReducer(tasksReducer, {
     ...initialState,
@@ -184,13 +197,13 @@ export default function TasksPage() {
     const fetchMetadata = async () => {
       try {
         const [projRes, userRes] = await Promise.all([
-          projectsApi.getAll({ per_page: 150 }),
-          usersApi && usersApi.getAll ? usersApi.getAll({ per_page: 150 }) : Promise.resolve({ data: [] }),
+          projectsApi.options ? projectsApi.options() : projectsApi.getAll({ per_page: 150 }),
+          usersApi.options ? usersApi.options() : usersApi.getAll({ per_page: 150 }),
         ]);
 
         if (isMounted) {
-          const projList = projRes.data?.data || projRes.data || [];
-          const userList = userRes.data?.data || userRes.data || [];
+          const projList = Array.isArray(projRes) ? projRes : (projRes.items || projRes.data || []);
+          const userList = Array.isArray(userRes) ? userRes : (userRes.items || userRes.data || []);
           dispatch({ type: 'SET_PROJECTS', payload: Array.isArray(projList) ? projList : [] });
           dispatch({ type: 'SET_USERS', payload: Array.isArray(userList) ? userList : [] });
         }
@@ -233,14 +246,14 @@ export default function TasksPage() {
     setSearchParams,
   ]);
 
-  const fetchTasks = useCallback(async () => {
+  const fetchTasks = useCallback(async (signal) => {
     dispatch({ type: 'FETCH_INIT' });
     try {
       const params = {
         page: pagination.current_page,
         per_page: pagination.per_page,
-        sort_by: sorting.sortBy,       
-        sort_order: sorting.sortDir,   
+        sort_by: sorting.sortBy,
+        sort_order: sorting.sortDir,
       };
 
       if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
@@ -249,30 +262,27 @@ export default function TasksPage() {
       if (filters.project_id) params.project_id = filters.project_id;
       if (filters.assigned_to) params.assigned_to = filters.assigned_to;
       if (filters.due_date) params.due_date = filters.due_date;
+      if (filters.overdue_only) params.overdue = 'true';
 
-      if (filters.overdue_only) {
-  params.overdue = 'true';
-}
-
-      const res = await tasksApi.getAll(params);
-      const data = res.data?.data || res.data || [];
-      const meta = res.data?.meta || res.data;
+      const pageData = await tasksApi.getAll(params, { signal });
 
       dispatch({
         type: 'FETCH_TASKS_SUCCESS',
         payload: {
-          tasks: Array.isArray(data) ? data : [],
-          current_page: meta?.current_page || pagination.current_page,
-          last_page: meta?.last_page || 1,
-          per_page: meta?.per_page || 10,
-          total: meta?.total || 0,
+          tasks: pageData.items || [],
+          current_page: pageData.currentPage || pagination.current_page,
+          last_page: pageData.lastPage || 1,
+          per_page: pageData.perPage || pagination.per_page,
+          total: pageData.total || 0,
         },
       });
     } catch (err) {
+      if (err.name === 'AbortError') return;
+
       console.error('Error fetching tasks:', err);
       dispatch({
         type: 'FETCH_TASKS_FAILURE',
-        payload: err.data?.message || 'Failed to load tasks.',
+        payload: err.data?.message || err.message || 'Failed to load tasks.',
       });
     }
   }, [
@@ -290,7 +300,12 @@ export default function TasksPage() {
   ]);
 
   useEffect(() => {
-    fetchTasks();
+    const controller = new AbortController();
+    fetchTasks(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
   }, [fetchTasks]);
 
   const handleDeleteTask = async () => {
@@ -303,7 +318,7 @@ export default function TasksPage() {
       fetchTasks();
     } catch (err) {
       console.error('Failed to delete task:', err);
-      showToast(err.data?.message || 'Failed to delete task.', 'error');
+      showToast(err.data?.message || err.message || 'Failed to delete task.', 'error');
     } finally {
       dispatch({ type: 'SET_ACTION_LOADING', payload: false });
     }
@@ -358,7 +373,7 @@ export default function TasksPage() {
           <h1>Tasks Management</h1>
           <p className="subtitle">Search, filter, and track all project tasks</p>
         </div>
-        {checkPermission('tasks.create') && (
+        {can && can('tasks.create') && (
           <button className="btn-primary" onClick={() => dispatch({ type: 'OPEN_CREATE_MODAL' })}>
             + Create Task
           </button>
@@ -584,7 +599,7 @@ export default function TasksPage() {
                         )}
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        {checkPermission('tasks.delete') && (
+                        {can && can('tasks.delete') && (
                           <button
                             type="button"
                             className="btn-delete"

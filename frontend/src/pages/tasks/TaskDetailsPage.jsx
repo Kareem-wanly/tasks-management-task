@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import tasksApi from '../../api/tasksApi';
-import commentsApi from '../../api/commentsApi';
+import apiClient from '../../api/apiClient';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import TaskFormModal from '../projects/TaskFormModal';
 import ConfirmModal from '../projects/ConfirmModal';
 import './TaskDetailsPage.css';
@@ -11,15 +12,7 @@ export default function TaskDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, can } = useAuth() || {};
-
-  const checkPermission = (permission) => {
-    if (typeof can === 'function') return can(permission);
-    if (user?.role === 'admin' || user?.is_admin || user?.role?.name === 'admin' || user?.role?.name === 'Administrator') return true;
-    if (Array.isArray(user?.permissions)) {
-      return user.permissions.includes(permission) || user.permissions.some((p) => (p.name || p) === permission);
-    }
-    return false;
-  };
+  const { showToast } = useToast ? useToast() : { showToast: () => {} };
 
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -41,37 +34,56 @@ export default function TaskDetailsPage() {
   const [commentToDelete, setCommentToDelete] = useState(null);
   const [deleteCommentLoading, setDeleteCommentLoading] = useState(false);
 
-  const fetchTaskDetails = useCallback(async () => {
+  const fetchTaskDetails = useCallback(async (signal) => {
     try {
       setLoading(true);
       setError(null);
-      const res = await tasksApi.getById(id);
-      const data = res.data?.data || res.data || res;
-      setTask(data);
+      const res = await tasksApi.getById(id, { signal });
+      const data = res?.data ?? res;
+      setTask({
+        ...data,
+        comments: Array.isArray(data?.comments) ? data.comments : [],
+      });
     } catch (err) {
+      if (err.name === 'AbortError') return;
       console.error('Failed to load task:', err);
-      setError(err.data?.message || 'Failed to load task details.');
+      setError(err.data?.message || err.message || 'Failed to load task details.');
     } finally {
       setLoading(false);
     }
   }, [id]);
 
   useEffect(() => {
-    fetchTaskDetails();
+    const controller = new AbortController();
+    fetchTaskDetails(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
   }, [fetchTaskDetails]);
 
   const handleStatusChange = async (newStatus) => {
     if (!task || task.status === newStatus) return;
+    const prevStatus = task.status;
+    const prevCompletedAt = task.completed_at;
+
     try {
       setStatusLoading(true);
-      await tasksApi.updateStatus(task.id, newStatus);
       setTask((prev) => ({
         ...prev,
         status: newStatus,
         completed_at: newStatus === 'completed' ? new Date().toISOString() : null,
       }));
+
+      await tasksApi.updateStatus(task.id, newStatus);
+      showToast?.('Task status updated successfully.', 'success');
     } catch (err) {
-      alert(err.data?.message || 'Failed to update task status.');
+      setTask((prev) => ({
+        ...prev,
+        status: prevStatus,
+        completed_at: prevCompletedAt,
+      }));
+      showToast?.(err.data?.message || err.message || 'Failed to update task status.', 'error');
     } finally {
       setStatusLoading(false);
     }
@@ -82,9 +94,10 @@ export default function TaskDetailsPage() {
       setActionLoading(true);
       await tasksApi.delete(task.id);
       setIsDeleteOpen(false);
+      showToast?.('Task deleted successfully.', 'success');
       navigate('/tasks');
     } catch (err) {
-      alert(err.data?.message || 'Failed to delete task.');
+      showToast?.(err.data?.message || err.message || 'Failed to delete task.', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -97,20 +110,26 @@ export default function TaskDetailsPage() {
     try {
       setCommentSubmitting(true);
       setCommentError(null);
-      const res = commentsApi?.create
-        ? await commentsApi.create(task.id, { body: commentBody.trim() })
-        : await tasksApi.addComment(task.id, commentBody.trim());
 
-      const newComment = res.data?.data || res.data || res;
+      const added = await tasksApi.addComment(task.id, commentBody.trim());
+      const addedData = added?.data ?? added;
+
+      const normalizedComment = {
+        ...addedData,
+        user: addedData.user || user,
+        user_id: addedData.user_id || user?.id,
+        created_at: addedData.created_at || new Date().toISOString(),
+      };
 
       setTask((prev) => ({
         ...prev,
-        comments: [...(prev.comments || []), newComment],
+        comments: [...(prev.comments || []), normalizedComment],
       }));
       setCommentBody('');
+      showToast?.('Comment added successfully.', 'success');
     } catch (err) {
       console.error('Failed to add comment:', err);
-      setCommentError(err.data?.message || 'Failed to post comment.');
+      setCommentError(err.data?.message || err.message || 'Failed to post comment.');
     } finally {
       setCommentSubmitting(false);
     }
@@ -120,11 +139,7 @@ export default function TaskDetailsPage() {
     if (!editCommentText.trim()) return;
     try {
       setUpdatingComment(true);
-      if (commentsApi?.update) {
-        await commentsApi.update(commentId, { body: editCommentText.trim() });
-      } else if (tasksApi?.updateComment) {
-        await tasksApi.updateComment(commentId, editCommentText.trim());
-      }
+      await apiClient.put(`/comments/${commentId}`, { body: editCommentText.trim() });
 
       setTask((prev) => ({
         ...prev,
@@ -134,8 +149,9 @@ export default function TaskDetailsPage() {
       }));
       setEditingCommentId(null);
       setEditCommentText('');
+      showToast?.('Comment updated successfully.', 'success');
     } catch (err) {
-      alert(err.data?.message || 'Failed to update comment.');
+      showToast?.(err.data?.message || err.message || 'Failed to update comment.', 'error');
     } finally {
       setUpdatingComment(false);
     }
@@ -145,18 +161,16 @@ export default function TaskDetailsPage() {
     if (!commentToDelete) return;
     try {
       setDeleteCommentLoading(true);
-      if (commentsApi?.delete) {
-        await commentsApi.delete(commentToDelete.id);
-      } else {
-        await tasksApi.deleteComment(commentToDelete.id);
-      }
+      await tasksApi.deleteComment(commentToDelete.id);
+
       setTask((prev) => ({
         ...prev,
         comments: (prev.comments || []).filter((c) => c.id !== commentToDelete.id),
       }));
       setCommentToDelete(null);
+      showToast?.('Comment deleted successfully.', 'success');
     } catch (err) {
-      alert(err.data?.message || 'Failed to delete comment.');
+      showToast?.(err.data?.message || err.message || 'Failed to delete comment.', 'error');
     } finally {
       setDeleteCommentLoading(false);
     }
@@ -207,11 +221,11 @@ export default function TaskDetailsPage() {
     task.status !== 'completed' &&
     new Date(task.due_date) < new Date().setHours(0, 0, 0, 0);
 
-  const canEditTask = checkPermission('tasks.update');
-  const canDeleteTask = checkPermission('tasks.delete');
-  const canChangeStatus = checkPermission('tasks.change_status') || canEditTask;
-  const canCreateComment = checkPermission('comments.create');
-  const canManageAllComments = checkPermission('comments.manage_all');
+  const canEditTask = can ? can('tasks.update') : false;
+  const canDeleteTask = can ? can('tasks.delete') : false;
+  const canChangeStatus = (can ? can('tasks.change_status') : false) || canEditTask;
+  const canCreateComment = can ? can('comments.create') : false;
+  const canManageAllComments = can ? can('comments.manage_all') : false;
 
   return (
     <div className="task-details-container">
@@ -305,8 +319,8 @@ export default function TaskDetailsPage() {
               ) : (
                 task.comments.map((comment) => {
                   const isOwner = Number(user?.id) === Number(comment.user_id || comment.user?.id);
-                  const canEditComment = (isOwner && checkPermission('comments.update')) || canManageAllComments;
-                  const canDeleteComment = (isOwner && checkPermission('comments.delete')) || canManageAllComments;
+                  const canEditComment = (isOwner && (can ? can('comments.update') : false)) || canManageAllComments;
+                  const canDeleteComment = (isOwner && (can ? can('comments.delete') : false)) || canManageAllComments;
 
                   return (
                     <div key={comment.id} className="comment-bubble-item">

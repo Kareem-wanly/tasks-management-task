@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import projectsApi from '../../api/projectsApi';
 import tasksApi from '../../api/tasksApi';
 import ProjectFormModal from './ProjectFormModal';
@@ -12,7 +13,8 @@ import './ProjectDetailsPage.css';
 export default function ProjectDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { can } = useAuth();
+  const { can } = useAuth() || {};
+  const { showToast } = useToast ? useToast() : { showToast: () => {} };
 
   const [project, setProject] = useState(null);
   const [projectTasks, setProjectTasks] = useState([]);
@@ -33,40 +35,60 @@ export default function ProjectDetailsPage() {
 
   const [activeTab, setActiveTab] = useState('tasks');
 
-  const fetchProjectDetails = async () => {
+  const fetchProjectDetails = useCallback(async (signal) => {
     try {
       setLoading(true);
       setError(null);
 
       const [projectRes, tasksRes] = await Promise.all([
-        projectsApi.getById(id),
-        tasksApi.getByProject(id).catch(() => ({ data: [] })),
+        projectsApi.getById(id, { signal }),
+        tasksApi.getByProject(id, {}, { signal }).catch((err) => {
+          if (err.name === 'AbortError') throw err;
+          return { items: [] };
+        }),
       ]);
 
-      const projectData = projectRes?.data?.data || projectRes?.data || projectRes;
-      const tasksData = tasksRes?.data?.data || tasksRes?.data || tasksRes || [];
+      const projectData = projectRes?.data ?? projectRes;
+      
+      let tasksData = [];
+      if (Array.isArray(tasksRes?.items)) {
+        tasksData = tasksRes.items;
+      } else if (Array.isArray(tasksRes)) {
+        tasksData = tasksRes;
+      } else if (Array.isArray(tasksRes?.data)) {
+        tasksData = tasksRes.data;
+      } else if (Array.isArray(projectData?.tasks)) {
+        tasksData = projectData.tasks;
+      }
 
       setProject(projectData);
-      setProjectTasks(Array.isArray(tasksData) ? tasksData : (projectData.tasks || []));
+      setProjectTasks(tasksData);
     } catch (err) {
+      if (err.name === 'AbortError') return;
       console.error('Failed to load project details:', err);
       setError(err.data?.message || err.message || 'Failed to load project details.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
-    fetchProjectDetails();
-  }, [id]);
+    const controller = new AbortController();
+    fetchProjectDetails(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
+  }, [fetchProjectDetails]);
 
   const handleConfirmDelete = async () => {
     try {
       setDeleteLoading(true);
       await projectsApi.delete(id);
+      showToast?.('Project deleted successfully.', 'success');
       navigate('/projects');
     } catch (err) {
-      alert(err.data?.message || err.message || 'Failed to delete project.');
+      showToast?.(err.data?.message || err.message || 'Failed to delete project.', 'error');
     } finally {
       setDeleteLoading(false);
       setDeleteModalOpen(false);
@@ -76,14 +98,16 @@ export default function ProjectDetailsPage() {
   const handleConfirmArchive = async () => {
     try {
       setArchiveLoading(true);
-      if (projectsApi.archive) {
-        await projectsApi.archive(id);
-      } else {
-        await projectsApi.update(id, { status: 'archived' });
-      }
+      const isArchived = project?.status === 'archived';
+      await projectsApi.archive(id);
+      showToast?.(`Project ${isArchived ? 'unarchived' : 'archived'} successfully.`, 'success');
+      setProject((prev) => ({
+        ...prev,
+        status: isArchived ? 'active' : 'archived',
+      }));
       fetchProjectDetails();
     } catch (err) {
-      alert(err.data?.message || err.message || 'Failed to archive project.');
+      showToast?.(err.data?.message || err.message || 'Failed to update project archive status.', 'error');
     } finally {
       setArchiveLoading(false);
       setArchiveModalOpen(false);
@@ -95,10 +119,14 @@ export default function ProjectDetailsPage() {
     try {
       setRemoveMemberLoading(true);
       await projectsApi.removeMember(project.id, memberToRemove.id);
+      showToast?.(`Member "${memberToRemove.name}" removed successfully.`, 'success');
+      setProject((prev) => ({
+        ...prev,
+        members: (prev.members || []).filter((m) => m.id !== memberToRemove.id),
+      }));
       setMemberToRemove(null);
-      fetchProjectDetails();
     } catch (err) {
-      alert(err.data?.message || err.message || 'Failed to remove member from project.');
+      showToast?.(err.data?.message || err.message || 'Failed to remove member from project.', 'error');
     } finally {
       setRemoveMemberLoading(false);
     }
@@ -189,8 +217,9 @@ export default function ProjectDetailsPage() {
   const allProjectUsers = project.owner ? [project.owner, ...members] : members;
   
   const activities = project.activities || project.activity_logs || [];
-  const canManageMembers = can('projects.manage_members');
-  const canCreateTasks = can('tasks.create');
+  const canManageMembers = can ? can('projects.manage_members') : false;
+  const canCreateTasks = can ? can('tasks.create') : false;
+  const isArchived = project.status === 'archived';
 
   return (
     <div className="project-details-container">
@@ -215,17 +244,17 @@ export default function ProjectDetailsPage() {
         </div>
 
         <div className="header-actions">
-          {can('projects.update') && (
+          {can && can('projects.update') && (
             <button className="btn-edit" onClick={() => setEditModalOpen(true)}>
               Edit Project
             </button>
           )}
-          {can('projects.archive') && project.status !== 'archived' && (
+          {can && can('projects.archive') && (
             <button className="btn-archive" onClick={() => setArchiveModalOpen(true)}>
-              Archive Project
+              {isArchived ? 'Unarchive Project' : 'Archive Project'}
             </button>
           )}
-          {can('projects.delete') && (
+          {can && can('projects.delete') && (
             <button className="btn-danger-outline" onClick={() => setDeleteModalOpen(true)}>
               Delete Project
             </button>
@@ -338,27 +367,35 @@ export default function ProjectDetailsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {tasks.map((task) => (
-                        <tr key={task.id}>
-                          <td className="font-semibold">
-                            <Link to={`/tasks/${task.id}`} className="task-title-link">
-                              {task.title}
-                            </Link>
-                          </td>
-                          <td>
-                            <span className={getStatusBadgeClass(task.status)}>
-                              {task.status?.replace('_', ' ') || 'todo'}
-                            </span>
-                          </td>
-                          <td>
-                            <span className={getPriorityBadgeClass(task.priority)}>
-                              {task.priority || 'medium'}
-                            </span>
-                          </td>
-                          <td>{task.assigned_to?.name || task.assignee?.name || 'Unassigned'}</td>
-                          <td>{formatDate(task.due_date)}</td>
-                        </tr>
-                      ))}
+                      {tasks.map((task) => {
+                        const assigneeName =
+                          task.assigned_to?.name ||
+                          task.assigned_user?.name ||
+                          task.assignee?.name ||
+                          'Unassigned';
+
+                        return (
+                          <tr key={task.id}>
+                            <td className="font-semibold">
+                              <Link to={`/tasks/${task.id}`} className="task-title-link">
+                                {task.title}
+                              </Link>
+                            </td>
+                            <td>
+                              <span className={getStatusBadgeClass(task.status)}>
+                                {task.status?.replace('_', ' ') || 'todo'}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={getPriorityBadgeClass(task.priority)}>
+                                {task.priority || 'medium'}
+                              </span>
+                            </td>
+                            <td>{assigneeName}</td>
+                            <td>{formatDate(task.due_date)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -454,14 +491,14 @@ export default function ProjectDetailsPage() {
       <ProjectFormModal
         isOpen={editModalOpen}
         onClose={() => setEditModalOpen(false)}
-        onSuccess={fetchProjectDetails}
+        onSuccess={() => fetchProjectDetails()}
         project={project}
       />
 
       <AddMemberModal
         isOpen={addMemberModalOpen}
         onClose={() => setAddMemberModalOpen(false)}
-        onSuccess={fetchProjectDetails}
+        onSuccess={() => fetchProjectDetails()}
         projectId={project.id}
         existingMembers={members}
         ownerId={project.owner?.id}
@@ -470,9 +507,8 @@ export default function ProjectDetailsPage() {
       <TaskFormModal
         isOpen={createTaskModalOpen}
         onClose={() => setCreateTaskModalOpen(false)}
-        onSuccess={fetchProjectDetails}
+        onSuccess={() => fetchProjectDetails()}
         projectId={project.id}
-        members={allProjectUsers}
       />
 
       <ConfirmModal
@@ -501,9 +537,9 @@ export default function ProjectDetailsPage() {
         isOpen={archiveModalOpen}
         onClose={() => setArchiveModalOpen(false)}
         onConfirm={handleConfirmArchive}
-        title="Archive Project"
-        message={`Are you sure you want to archive "${project.title}"?`}
-        confirmText="Archive"
+        title={isArchived ? 'Unarchive Project' : 'Archive Project'}
+        message={`Are you sure you want to ${isArchived ? 'unarchive' : 'archive'} "${project.title}"?`}
+        confirmText={isArchived ? 'Unarchive' : 'Archive'}
         danger={false}
         loading={archiveLoading}
       />
