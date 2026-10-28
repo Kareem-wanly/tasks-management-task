@@ -1,14 +1,15 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
+import { getToken, clearToken } from './tokenStorage';
 
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
 async function request(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
-  const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+  const token = getToken();
 
   const headers = {
     'Accept': 'application/json',
-    ...options.headers,
+    ...(options.headers || {}),
   };
 
   if (!(options.body instanceof FormData)) {
@@ -20,9 +21,9 @@ async function request(endpoint, options = {}) {
   }
 
   const config = {
+    ...options,
     method: options.method || 'GET',
     headers,
-    ...options,
   };
 
   if (config.body && typeof config.body === 'object' && !(config.body instanceof FormData)) {
@@ -33,6 +34,9 @@ async function request(endpoint, options = {}) {
   try {
     response = await fetch(url, config);
   } catch (networkError) {
+    if (networkError.name === 'AbortError') {
+      throw networkError;
+    }
     console.error('Fetch error:', networkError);
     const error = new Error('Could not connect to the server. Please check your internet connection.');
     error.status = 0;
@@ -62,10 +66,7 @@ async function request(endpoint, options = {}) {
 
     switch (response.status) {
       case 401: 
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('token');
-        localStorage.removeItem('auth_user');
-        localStorage.removeItem('user');
+        clearToken();
         window.dispatchEvent(new Event('auth:unauthorized'));
         break;
 
