@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import rolesApi from '../../api/rolesApi';
+import { useToast } from '../../context/ToastContext';
 import './RoleFormPage.css';
 
 export default function RoleFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEditing = Boolean(id && id !== 'create');
+  const { showToast } = useToast ? useToast() : { showToast: () => {} };
 
   const [formData, setFormData] = useState({
     name: '',
@@ -25,21 +27,24 @@ export default function RoleFormPage() {
   const [validationErrors, setValidationErrors] = useState({});
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const permsRes = await rolesApi.getPermissions();
+        const permsRes = await rolesApi.getPermissions({}, { signal: controller.signal });
         const rawPerms = permsRes?.data || permsRes || {};
         const permsList =
           rawPerms.permissions ||
           rawPerms.data ||
           (Array.isArray(rawPerms) ? rawPerms : []);
-        setAllPermissions(Array.isArray(permsList) ? permsList : []);
+        const validPerms = Array.isArray(permsList) ? permsList : [];
+        setAllPermissions(validPerms);
 
         if (isEditing) {
-          const roleRes = await rolesApi.getById(id);
+          const roleRes = await rolesApi.getById(id, { signal: controller.signal });
           const rawRole = roleRes?.data || roleRes || {};
           const role = rawRole.role || rawRole.data || rawRole;
 
@@ -52,12 +57,17 @@ export default function RoleFormPage() {
             });
 
             if (Array.isArray(role.permissions)) {
-              const assignedIds = role.permissions.map((p) => Number(p.id ?? p));
+              const assignedIds = role.permissions.map((p) => {
+                if (typeof p === 'object' && p !== null) return Number(p.id);
+                const found = validPerms.find((perm) => perm.name === p || perm.id === p);
+                return found ? Number(found.id) : Number(p);
+              }).filter(Boolean);
               setSelectedPermissionIds(assignedIds);
             }
           }
         }
       } catch (err) {
+        if (err.name === 'AbortError') return;
         console.error('Failed to load role form data:', err);
         setError(err.data?.message || err.message || 'Failed to load role data.');
       } finally {
@@ -66,6 +76,7 @@ export default function RoleFormPage() {
     };
 
     fetchData();
+    return () => controller.abort();
   }, [id, isEditing]);
 
   const groupedPermissions = useMemo(() => {
@@ -86,13 +97,16 @@ export default function RoleFormPage() {
     }, {});
   }, [allPermissions, searchQuery]);
 
-  const isSystemRole = isEditing && ['Administrator', 'Project Manager', 'Member'].includes(roleDetails?.name);
+  const isSystemRole = isEditing && ['Administrator', 'admin', 'Project Manager', 'Member'].includes(roleDetails?.name);
 
   const handleTogglePermission = (permId) => {
     const idNum = Number(permId);
     setSelectedPermissionIds((prev) =>
       prev.includes(idNum) ? prev.filter((i) => i !== idNum) : [...prev, idNum]
     );
+    if (validationErrors.permissions) {
+      setValidationErrors((prev) => ({ ...prev, permissions: null }));
+    }
   };
 
   const handleToggleCategory = (permsInGroup) => {
@@ -114,22 +128,39 @@ export default function RoleFormPage() {
     }
   };
 
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (validationErrors[field]) {
+      setValidationErrors((prev) => ({ ...prev, [field]: null }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
     setError(null);
     setValidationErrors({});
 
+    const selectedPermNames = allPermissions
+      .filter((p) => selectedPermissionIds.includes(Number(p.id)))
+      .map((p) => p.name);
+
     const payload = {
       ...formData,
+      name: formData.name.trim(),
+      display_name: formData.display_name?.trim() || formData.name.trim(),
+      description: formData.description?.trim() || null,
       permissions: selectedPermissionIds,
+      permission_names: selectedPermNames,
     };
 
     try {
       if (isEditing) {
         await rolesApi.update(id, payload);
+        showToast?.('Role updated successfully.', 'success');
       } else {
         await rolesApi.create(payload);
+        showToast?.('Role created successfully.', 'success');
       }
       navigate('/roles');
     } catch (err) {
@@ -204,7 +235,7 @@ export default function RoleFormPage() {
                 type="text"
                 placeholder="e.g. Lead Developer"
                 value={formData.display_name}
-                onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
+                onChange={(e) => handleInputChange('display_name', e.target.value)}
                 className={validationErrors.display_name ? 'input-error' : ''}
                 required
               />
@@ -222,7 +253,7 @@ export default function RoleFormPage() {
                 disabled={isSystemRole}
                 placeholder="e.g. lead_developer"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => handleInputChange('name', e.target.value)}
                 className={validationErrors.name ? 'input-error' : ''}
                 required
               />
@@ -240,8 +271,11 @@ export default function RoleFormPage() {
                 rows={3}
                 placeholder="Briefly describe what this role allows..."
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) => handleInputChange('description', e.target.value)}
               />
+              {validationErrors.description && (
+                <span className="error-msg">{validationErrors.description[0]}</span>
+              )}
             </div>
 
             {isEditing && (
@@ -286,6 +320,12 @@ export default function RoleFormPage() {
                 </button>
               </div>
             </div>
+
+            {validationErrors.permissions && (
+              <div className="alert-banner danger mb-3" style={{ margin: '0 0 1rem 0' }}>
+                {validationErrors.permissions[0]}
+              </div>
+            )}
 
             <div className="permission-groups-container">
               {Object.keys(groupedPermissions).length === 0 ? (
