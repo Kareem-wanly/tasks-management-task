@@ -1,22 +1,20 @@
 import apiClient from './apiClient';
+import { toPage } from './paginate';
 
 const activitiesApi = {
 
-  getAll: async (params = {}) => {
+  getAll: async (params = {}, options = {}) => {
     const queryParams = new URLSearchParams(params).toString();
     const endpoint = queryParams ? `/activities?${queryParams}` : '/activities';
-    return await apiClient.get(endpoint);
+    return toPage(await apiClient.get(endpoint, options));
   },
 
-
-  getByProject: async (projectId) => {
-    return await apiClient.get(`/projects/${projectId}/activities`);
-  },
-
-
-
-  getByTask: async (taskId) => {
-    return await apiClient.get(`/tasks/${taskId}/activities`);
+  getByProject: async (projectId, params = {}, options = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    const endpoint = queryParams
+      ? `/projects/${projectId}/activities?${queryParams}`
+      : `/projects/${projectId}/activities`;
+    return toPage(await apiClient.get(endpoint, options));
   },
 };
 

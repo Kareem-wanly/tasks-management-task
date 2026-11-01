@@ -68,13 +68,11 @@ class AuthController extends Controller
     }
 
     public function me(Request $request): JsonResponse
-{
-    $user = $request->user()->load(['roles.permissions', 'permissions']);
-
-    return response()->json([
-        'user' => new UserResource($user),
-    ]);
-}
+    {
+        return response()->json([
+            'user' => new UserResource($request->user()->load('roles')),
+        ]);
+    }
 
     public function logout(Request $request): JsonResponse
     {

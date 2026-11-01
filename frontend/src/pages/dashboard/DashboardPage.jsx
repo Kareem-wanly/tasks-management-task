@@ -22,8 +22,8 @@ export default function DashboardPage() {
         setError(null);
 
         const [projectsRes, tasksRes] = await Promise.all([
-          projectsApi.getAll({ per_page: 150 }, { signal: controller.signal }),
-          tasksApi.getAll({ per_page: 150 }, { signal: controller.signal }),
+          projectsApi.getAll({ per_page: 100 }, { signal: controller.signal }),
+          tasksApi.getAll({ per_page: 100 }, { signal: controller.signal }),
         ]);
 
         const extractList = (res) => {
@@ -64,12 +64,12 @@ export default function DashboardPage() {
 
   const inProgressTasks = tasks.filter((t) => t.status === 'in_progress').length;
   const reviewTasks = tasks.filter((t) => t.status === 'review').length;
-  const completedTasks = tasks.filter((t) => t.status === 'completed' || t.status === 'done').length;
-  const todoTasks = tasks.filter((t) => t.status === 'todo' || t.status === 'pending' || !t.status).length;
+  const completedTasks = tasks.filter((t) => t.status === 'completed').length;
+  const todoTasks = tasks.filter((t) => t.status === 'todo').length;
 
   const startOfToday = new Date().setHours(0, 0, 0, 0);
   const overdueTasks = tasks.filter((t) => {
-    if (t.status === 'completed' || t.status === 'done') return false;
+    if (t.status === 'completed') return false;
     if (t.is_overdue) return true;
     if (!t.due_date) return false;
     return new Date(t.due_date).getTime() < startOfToday;
@@ -78,7 +78,7 @@ export default function DashboardPage() {
   const priorityCounts = {
     urgent: tasks.filter((t) => t.priority === 'urgent').length,
     high: tasks.filter((t) => t.priority === 'high').length,
-    medium: tasks.filter((t) => t.priority === 'medium' || !t.priority).length,
+    medium: tasks.filter((t) => t.priority === 'medium').length,
     low: tasks.filter((t) => t.priority === 'low').length,
   };
 
@@ -315,7 +315,7 @@ export default function DashboardPage() {
                   const pId = t.project_id || t.project?.id;
                   return Number(pId) === Number(project.id);
                 });
-                const projCompleted = projectTasks.filter((t) => t.status === 'completed' || t.status === 'done').length;
+                const projCompleted = projectTasks.filter((t) => t.status === 'completed').length;
                 const progressPercent = projectTasks.length
                   ? Math.round((projCompleted / projectTasks.length) * 100)
                   : project.status === 'completed'

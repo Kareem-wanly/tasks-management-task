@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import projectsApi from '../../api/projectsApi';
 import usersApi from '../../api/usersApi';
 import ProjectFormModal from './ProjectFormModal';
@@ -8,7 +9,9 @@ import ConfirmModal from './ConfirmModal';
 import './ProjectsPage.css';
 
 export default function ProjectsPage() {
-  const { can } = useAuth() || {};
+  const { can } = useAuth();
+  const { showToast } = useToast();
+  const canViewUsers = can('users.view');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -49,17 +52,13 @@ export default function ProjectsPage() {
   }, [searchInput]);
 
   useEffect(() => {
+    // /users/options needs users.view; without it the member filter is simply hidden
+    if (!canViewUsers) return;
     const controller = new AbortController();
 
     async function fetchUsers() {
       try {
-        const res = usersApi.options 
-          ? await usersApi.options({}, { signal: controller.signal }) 
-          : await usersApi.getAll({ per_page: 150 }, { signal: controller.signal });
-        const usersData = Array.isArray(res) ? res : (res.items || res.data || []);
-        if (Array.isArray(usersData)) {
-          setMembers(usersData);
-        }
+        setMembers(await usersApi.options({}, { signal: controller.signal }));
       } catch (err) {
         if (err.name !== 'AbortError') {
           console.error('Failed to load members for filter:', err);
@@ -71,7 +70,7 @@ export default function ProjectsPage() {
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [canViewUsers]);
 
   const fetchProjects = useCallback(async (signal) => {
     try {
@@ -161,11 +160,12 @@ export default function ProjectsPage() {
     try {
       setDeleteLoading(true);
       await projectsApi.delete(projectToDelete.id);
+      showToast(`Project "${projectToDelete.title}" was deleted successfully.`, 'success');
       setDeleteModalOpen(false);
       setProjectToDelete(null);
       fetchProjects();
     } catch (err) {
-      alert(err.data?.message || err.message || 'Failed to delete project.');
+      showToast(err.data?.message || err.message || 'Failed to delete project.', 'error');
     } finally {
       setDeleteLoading(false);
     }
@@ -182,11 +182,15 @@ export default function ProjectsPage() {
     try {
       setArchiveLoading(true);
       await projectsApi.archive(projectToArchive.id);
+      showToast(
+        `Project "${projectToArchive.title}" was ${projectToArchive.status === 'archived' ? 'unarchived' : 'archived'} successfully.`,
+        'success'
+      );
       setArchiveModalOpen(false);
       setProjectToArchive(null);
       fetchProjects();
     } catch (err) {
-      alert(err.data?.message || err.message || 'Failed to update archive status.');
+      showToast(err.data?.message || err.message || 'Failed to update archive status.', 'error');
     } finally {
       setArchiveLoading(false);
     }
@@ -225,7 +229,7 @@ export default function ProjectsPage() {
           <h1>Projects</h1>
           <p>Manage, track, and collaborate on your team projects.</p>
         </div>
-        {can && can('projects.create') && (
+        {can('projects.create') && (
           <button className="btn-primary" onClick={handleOpenCreate}>
             + Create Project
           </button>
@@ -372,14 +376,14 @@ export default function ProjectsPage() {
                     <td>
                       <div className="owner-badge">
                         <span className="owner-name">{project.owner?.name || 'Unassigned'}</span>
-                        {project.members?.length > 0 && (
-                          <span className="members-count">+{project.members.length} members</span>
+                        {project.members_count > 0 && (
+                          <span className="members-count">+{project.members_count} members</span>
                         )}
                       </div>
                     </td>
                     <td className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="actions-cell">
-                        {can && can('projects.update') && (
+                        {can('projects.update') && (
                           <button
                             className="btn-action edit"
                             onClick={(e) => handleOpenEdit(project, e)}
@@ -388,7 +392,7 @@ export default function ProjectsPage() {
                             Edit
                           </button>
                         )}
-                        {can && can('projects.archive') && (
+                        {can('projects.archive') && (
                           <button
                             className="btn-action archive"
                             onClick={(e) => handleOpenArchive(project, e)}
@@ -397,7 +401,7 @@ export default function ProjectsPage() {
                             {isArchived ? 'Unarchive' : 'Archive'}
                           </button>
                         )}
-                        {can && can('projects.delete') && (
+                        {can('projects.delete') && (
                           <button
                             className="btn-action delete"
                             onClick={(e) => handleOpenDelete(project, e)}
@@ -444,7 +448,7 @@ export default function ProjectsPage() {
                 <div className="project-card-footer" onClick={(e) => e.stopPropagation()}>
                   <span className="owner-tag">Owner: {project.owner?.name || 'N/A'}</span>
                   <div className="actions-cell">
-                    {can && can('projects.update') && (
+                    {can('projects.update') && (
                       <button
                         className="btn-action edit"
                         onClick={(e) => handleOpenEdit(project, e)}
@@ -452,7 +456,7 @@ export default function ProjectsPage() {
                         Edit
                       </button>
                     )}
-                    {can && can('projects.archive') && (
+                    {can('projects.archive') && (
                       <button
                         className="btn-action archive"
                         onClick={(e) => handleOpenArchive(project, e)}
@@ -460,7 +464,7 @@ export default function ProjectsPage() {
                         {isArchived ? 'Unarchive' : 'Archive'}
                       </button>
                     )}
-                    {can && can('projects.delete') && (
+                    {can('projects.delete') && (
                       <button
                         className="btn-action delete"
                         onClick={(e) => handleOpenDelete(project, e)}

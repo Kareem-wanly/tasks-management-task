@@ -8,7 +8,7 @@ export default function RoleFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEditing = Boolean(id && id !== 'create');
-  const { showToast } = useToast ? useToast() : { showToast: () => {} };
+  const { showToast } = useToast();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -34,7 +34,7 @@ export default function RoleFormPage() {
         setLoading(true);
         setError(null);
 
-        const permsRes = await rolesApi.getPermissions({}, { signal: controller.signal });
+        const permsRes = await rolesApi.getPermissions({ signal: controller.signal });
         const rawPerms = permsRes?.data || permsRes || {};
         const permsList =
           rawPerms.permissions ||
@@ -157,10 +157,10 @@ export default function RoleFormPage() {
     try {
       if (isEditing) {
         await rolesApi.update(id, payload);
-        showToast?.('Role updated successfully.', 'success');
+        showToast('Role updated successfully.', 'success');
       } else {
         await rolesApi.create(payload);
-        showToast?.('Role created successfully.', 'success');
+        showToast('Role created successfully.', 'success');
       }
       navigate('/roles');
     } catch (err) {

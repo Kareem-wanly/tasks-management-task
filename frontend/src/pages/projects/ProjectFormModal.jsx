@@ -3,6 +3,8 @@ import projectsApi from '../../api/projectsApi';
 
 export default function ProjectFormModal({ isOpen, onClose, onSuccess, project = null }) {
   const isEditMode = Boolean(project);
+  // Archiving is a separate toggle (PATCH /projects/{id}/archive); the form can't set or keep that status
+  const isArchived = project?.status === 'archived';
 
   const [formData, setFormData] = useState({
     title: '',
@@ -60,7 +62,8 @@ export default function ProjectFormModal({ isOpen, onClose, onSuccess, project =
 
     try {
       if (isEditMode) {
-        await projectsApi.update(project.id, formData);
+        const { status, ...rest } = formData;
+        await projectsApi.update(project.id, isArchived ? rest : { ...rest, status });
       } else {
         await projectsApi.create(formData);
       }
@@ -135,14 +138,19 @@ export default function ProjectFormModal({ isOpen, onClose, onSuccess, project =
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
-                disabled={submitting}
+                disabled={submitting || isArchived}
               >
+                {isArchived && <option value="archived">Archived</option>}
                 <option value="active">Active</option>
-  <option value="in_progress">In Progress</option>
-  <option value="on_hold">On Hold</option>
-  <option value="completed">Completed</option>
-  <option value="archived">Archived</option>
+                <option value="in_progress">In Progress</option>
+                <option value="on_hold">On Hold</option>
+                <option value="completed">Completed</option>
               </select>
+              {isArchived && (
+                <small style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                  Unarchive the project to change its status.
+                </small>
+              )}
               {errors.status && <span className="field-error-text">{errors.status[0]}</span>}
             </div>
 

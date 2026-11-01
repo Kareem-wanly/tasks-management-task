@@ -4,15 +4,16 @@ import usersApi from '../../api/usersApi';
 import rolesApi from '../../api/rolesApi';
 import useDebounce from '../../hooks/useDebounce';
 import UserModal from './UserModal';
+import AssignRoleModal from './AssignRoleModal';
 import ConfirmModal from '../projects/ConfirmModal';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import './UsersPage.css';
 
 export default function UsersPage() {
-  const { user: currentUser, can } = useAuth() || {};
+  const { user: currentUser, can } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { showToast } = useToast ? useToast() : { showToast: () => {} };
+  const { showToast } = useToast();
 
   const initialSearch = searchParams.get('search') || '';
   const initialRole = searchParams.get('role') || '';
@@ -33,6 +34,7 @@ export default function UsersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [userToEdit, setUserToEdit] = useState(null);
   const [userToDelete, setUserToDelete] = useState(null);
+  const [userForRoles, setUserForRoles] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
@@ -72,19 +74,11 @@ export default function UsersPage() {
         page: currentPage,
       }, { signal });
 
-      const data = res.items || res.data?.data || res.data?.users || res.data || [];
-      setUsers(Array.isArray(data) ? data : []);
-
-      const metaData = res.meta || res.data?.meta || {
-        current_page: res.current_page || res.data?.current_page || 1,
-        last_page: res.last_page || res.data?.last_page || 1,
-        total: res.total || res.data?.total || (Array.isArray(data) ? data.length : 0),
-      };
-
+      setUsers(res.items);
       setMeta({
-        current_page: metaData.current_page || 1,
-        last_page: metaData.last_page || 1,
-        total: metaData.total || 0,
+        current_page: res.currentPage,
+        last_page: res.lastPage,
+        total: res.total,
       });
     } catch (err) {
       if (err.name === 'AbortError') return;
@@ -118,7 +112,7 @@ export default function UsersPage() {
     if (!userToDelete) return;
 
     if (Number(userToDelete.id) === Number(currentUser?.id)) {
-      showToast?.('You cannot delete your own account.', 'error');
+      showToast('You cannot delete your own account.', 'error');
       setUserToDelete(null);
       return;
     }
@@ -126,7 +120,7 @@ export default function UsersPage() {
     try {
       setDeleteLoading(true);
       await usersApi.delete(userToDelete.id);
-      showToast?.(`User "${userToDelete.name}" was deleted successfully.`, 'success');
+      showToast(`User "${userToDelete.name}" was deleted successfully.`, 'success');
       setUserToDelete(null);
 
       if (users.length === 1 && currentPage > 1) {
@@ -135,23 +129,20 @@ export default function UsersPage() {
         fetchUsers();
       }
     } catch (err) {
-      showToast?.(err.data?.message || err.message || 'Failed to delete user.', 'error');
+      showToast(err.data?.message || err.message || 'Failed to delete user.', 'error');
     } finally {
       setDeleteLoading(false);
     }
   };
 
-  const canCreate = typeof can === 'function' ? can('users.create') : true;
-  const canEdit = typeof can === 'function' ? can('users.update') : true;
-  const canDelete = typeof can === 'function' ? can('users.delete') : true;
+  const canCreate = can('users.create');
+  const canEdit = can('users.update');
+  const canDelete = can('users.delete');
+  const canAssignRoles = can('roles.assign');
+  const hasActions = canEdit || canDelete || canAssignRoles;
 
-  const getUserRoleLabel = (u) => {
-    if (Array.isArray(u.roles) && u.roles.length > 0) {
-      const firstRole = u.roles[0];
-      return typeof firstRole === 'object' ? (firstRole.display_name || firstRole.name) : firstRole;
-    }
-    return u.role?.display_name || u.role?.name || u.role || 'Member';
-  };
+  const getUserRoleLabel = (u) =>
+    (u.roles || []).map((r) => r.display_name || r.name).join(', ') || 'No role';
 
   return (
     <div className="users-page-container">
@@ -222,9 +213,8 @@ export default function UsersPage() {
                 <tr>
                   <th>User</th>
                   <th>Role</th>
-                  <th>Status</th>
                   <th>Joined Date</th>
-                  {(canEdit || canDelete) && <th style={{ textAlign: 'right' }}>Actions</th>}
+                  {hasActions && <th style={{ textAlign: 'right' }}>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -251,15 +241,10 @@ export default function UsersPage() {
                           {getUserRoleLabel(u)}
                         </span>
                       </td>
-                      <td>
-                        <span className={`badge-status ${u.is_active === false ? 'inactive' : 'active'}`}>
-                          {u.is_active === false ? 'Inactive' : 'Active'}
-                        </span>
-                      </td>
                       <td className="user-date-col">
                         {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}
                       </td>
-                      {(canEdit || canDelete) && (
+                      {hasActions && (
                         <td style={{ textAlign: 'right' }}>
                           <div className="table-actions">
                             {canEdit && (
@@ -274,7 +259,15 @@ export default function UsersPage() {
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                               </button>
                             )}
-                            {/* F15: تعطيل أو إخفاء خيار حذف الحساب للنفس */}
+                            {canAssignRoles && !isCurrent && (
+                              <button
+                                className="btn-table-action edit"
+                                onClick={() => setUserForRoles(u)}
+                                title="Manage roles"
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                              </button>
+                            )}
                             {canDelete && !isCurrent && (
                               <button
                                 className="btn-table-action delete"
@@ -336,6 +329,18 @@ export default function UsersPage() {
           }}
         />
       )}
+
+      <AssignRoleModal
+        isOpen={Boolean(userForRoles)}
+        user={userForRoles}
+        onClose={() => setUserForRoles(null)}
+        onSuccess={() => {
+          showToast(`Roles for "${userForRoles.name}" were updated successfully.`, 'success');
+          setUserForRoles(null);
+          fetchUsers();
+        }}
+      />
+
 
       {userToDelete && (
         <ConfirmModal

@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import projectsApi from '../../api/projectsApi';
 import tasksApi from '../../api/tasksApi';
+import activitiesApi from '../../api/activitiesApi';
 import ProjectFormModal from './ProjectFormModal';
 import ConfirmModal from './ConfirmModal';
 import AddMemberModal from './AddMemberModal';
@@ -13,11 +14,19 @@ import './ProjectDetailsPage.css';
 export default function ProjectDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { can } = useAuth() || {};
-  const { showToast } = useToast ? useToast() : { showToast: () => {} };
+  const { can } = useAuth();
+  const { showToast } = useToast();
 
   const [project, setProject] = useState(null);
-  const [projectTasks, setProjectTasks] = useState([]);
+  const [tasksPage, setTasksPage] = useState(1);
+  const [tasksData, setTasksData] = useState({ items: [], lastPage: 1, total: 0 });
+  const [tasksLoading, setTasksLoading] = useState(true);
+  const [tasksError, setTasksError] = useState(null);
+  const [tasksReloadKey, setTasksReloadKey] = useState(0);
+  const [activitiesPage, setActivitiesPage] = useState(1);
+  const [activitiesData, setActivitiesData] = useState({ items: [], lastPage: 1, total: 0 });
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
+  const [activitiesError, setActivitiesError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -39,30 +48,7 @@ export default function ProjectDetailsPage() {
     try {
       setLoading(true);
       setError(null);
-
-      const [projectRes, tasksRes] = await Promise.all([
-        projectsApi.getById(id, { signal }),
-        tasksApi.getByProject(id, {}, { signal }).catch((err) => {
-          if (err.name === 'AbortError') throw err;
-          return { items: [] };
-        }),
-      ]);
-
-      const projectData = projectRes?.data ?? projectRes;
-      
-      let tasksData = [];
-      if (Array.isArray(tasksRes?.items)) {
-        tasksData = tasksRes.items;
-      } else if (Array.isArray(tasksRes)) {
-        tasksData = tasksRes;
-      } else if (Array.isArray(tasksRes?.data)) {
-        tasksData = tasksRes.data;
-      } else if (Array.isArray(projectData?.tasks)) {
-        tasksData = projectData.tasks;
-      }
-
-      setProject(projectData);
-      setProjectTasks(tasksData);
+      setProject(await projectsApi.getById(id, { signal }));
     } catch (err) {
       if (err.name === 'AbortError') return;
       console.error('Failed to load project details:', err);
@@ -81,14 +67,57 @@ export default function ProjectDetailsPage() {
     };
   }, [fetchProjectDetails]);
 
+  // GET /projects/{id}/tasks is paginated; load one page at a time instead of treating page 1 as everything
+  useEffect(() => {
+    const controller = new AbortController();
+    setTasksLoading(true);
+    setTasksError(null);
+    tasksApi
+      .getByProject(id, { page: tasksPage }, { signal: controller.signal })
+      .then(setTasksData)
+      .catch((err) => {
+        if (err.name === 'AbortError') return;
+        setTasksError(err.data?.message || err.message || 'Failed to load project tasks.');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setTasksLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [id, tasksPage, tasksReloadKey]);
+
+  useEffect(() => {
+    if (activeTab !== 'activity') return;
+    const controller = new AbortController();
+    setActivitiesLoading(true);
+    setActivitiesError(null);
+    activitiesApi
+      .getByProject(id, { page: activitiesPage }, { signal: controller.signal })
+      .then(setActivitiesData)
+      .catch((err) => {
+        if (err.name === 'AbortError') return;
+        setActivitiesError(err.data?.message || err.message || 'Failed to load project activity.');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setActivitiesLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [id, activeTab, activitiesPage]);
+
+  const reloadProjectAndTasks = () => {
+    fetchProjectDetails();
+    setTasksReloadKey((k) => k + 1);
+  };
+
   const handleConfirmDelete = async () => {
     try {
       setDeleteLoading(true);
       await projectsApi.delete(id);
-      showToast?.('Project deleted successfully.', 'success');
+      showToast('Project deleted successfully.', 'success');
       navigate('/projects');
     } catch (err) {
-      showToast?.(err.data?.message || err.message || 'Failed to delete project.', 'error');
+      showToast(err.data?.message || err.message || 'Failed to delete project.', 'error');
     } finally {
       setDeleteLoading(false);
       setDeleteModalOpen(false);
@@ -100,14 +129,14 @@ export default function ProjectDetailsPage() {
       setArchiveLoading(true);
       const isArchived = project?.status === 'archived';
       await projectsApi.archive(id);
-      showToast?.(`Project ${isArchived ? 'unarchived' : 'archived'} successfully.`, 'success');
+      showToast(`Project ${isArchived ? 'unarchived' : 'archived'} successfully.`, 'success');
       setProject((prev) => ({
         ...prev,
         status: isArchived ? 'active' : 'archived',
       }));
       fetchProjectDetails();
     } catch (err) {
-      showToast?.(err.data?.message || err.message || 'Failed to update project archive status.', 'error');
+      showToast(err.data?.message || err.message || 'Failed to update project archive status.', 'error');
     } finally {
       setArchiveLoading(false);
       setArchiveModalOpen(false);
@@ -119,14 +148,14 @@ export default function ProjectDetailsPage() {
     try {
       setRemoveMemberLoading(true);
       await projectsApi.removeMember(project.id, memberToRemove.id);
-      showToast?.(`Member "${memberToRemove.name}" removed successfully.`, 'success');
+      showToast(`Member "${memberToRemove.name}" removed successfully.`, 'success');
       setProject((prev) => ({
         ...prev,
         members: (prev.members || []).filter((m) => m.id !== memberToRemove.id),
       }));
       setMemberToRemove(null);
     } catch (err) {
-      showToast?.(err.data?.message || err.message || 'Failed to remove member from project.', 'error');
+      showToast(err.data?.message || err.message || 'Failed to remove member from project.', 'error');
     } finally {
       setRemoveMemberLoading(false);
     }
@@ -206,19 +235,20 @@ export default function ProjectDetailsPage() {
     );
   }
 
-  const tasks = projectTasks;
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter((t) => t.status === 'completed' || t.status === 'done').length;
-  const inProgressTasks = tasks.filter((t) => t.status === 'in_progress').length;
-  const pendingTasks = tasks.filter((t) => t.status === 'todo' || t.status === 'pending' || !t.status).length;
+  const tasks = tasksData.items;
+  // Counts come from the server so they cover every task, not just the loaded page
+  const totalTasks = project.tasks_count ?? tasksData.total;
+  const completedTasks = project.completed_tasks_count ?? 0;
+  const inProgressTasks = project.in_progress_tasks_count ?? 0;
+  const pendingTasks = Math.max(totalTasks - completedTasks - inProgressTasks, 0);
   const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   const members = (project.members || []).filter((m) => m.id !== project.owner?.id);
   const allProjectUsers = project.owner ? [project.owner, ...members] : members;
   
-  const activities = project.activities || project.activity_logs || [];
-  const canManageMembers = can ? can('projects.manage_members') : false;
-  const canCreateTasks = can ? can('tasks.create') : false;
+  const activities = activitiesData.items;
+  const canManageMembers = can('projects.manage_members');
+  const canCreateTasks = can('tasks.create');
   const isArchived = project.status === 'archived';
 
   return (
@@ -244,17 +274,17 @@ export default function ProjectDetailsPage() {
         </div>
 
         <div className="header-actions">
-          {can && can('projects.update') && (
+          {can('projects.update') && (
             <button className="btn-edit" onClick={() => setEditModalOpen(true)}>
               Edit Project
             </button>
           )}
-          {can && can('projects.archive') && (
+          {can('projects.archive') && (
             <button className="btn-archive" onClick={() => setArchiveModalOpen(true)}>
               {isArchived ? 'Unarchive Project' : 'Archive Project'}
             </button>
           )}
-          {can && can('projects.delete') && (
+          {can('projects.delete') && (
             <button className="btn-danger-outline" onClick={() => setDeleteModalOpen(true)}>
               Delete Project
             </button>
@@ -349,7 +379,18 @@ export default function ProjectDetailsPage() {
                 )}
               </div>
 
-              {tasks.length === 0 ? (
+              {tasksLoading ? (
+                <div className="tab-empty-state">
+                  <p>Loading tasks...</p>
+                </div>
+              ) : tasksError ? (
+                <div className="tab-empty-state">
+                  <p>{tasksError}</p>
+                  <button className="btn-secondary btn-sm" onClick={() => setTasksReloadKey((k) => k + 1)}>
+                    Try Again
+                  </button>
+                </div>
+              ) : tasks.length === 0 ? (
                 <div className="tab-empty-state">
                   <span className="empty-icon">📝</span>
                   <p>No tasks created for this project yet.</p>
@@ -369,8 +410,6 @@ export default function ProjectDetailsPage() {
                     <tbody>
                       {tasks.map((task) => {
                         const assigneeName =
-                          task.assigned_to?.name ||
-                          task.assigned_user?.name ||
                           task.assignee?.name ||
                           'Unassigned';
 
@@ -398,6 +437,7 @@ export default function ProjectDetailsPage() {
                       })}
                     </tbody>
                   </table>
+                  <Pager page={tasksPage} lastPage={tasksData.lastPage} onChange={setTasksPage} />
                 </div>
               )}
             </div>
@@ -462,7 +502,15 @@ export default function ProjectDetailsPage() {
 
           {activeTab === 'activity' && (
             <div className="activity-tab-view">
-              {activities.length === 0 ? (
+              {activitiesLoading ? (
+                <div className="tab-empty-state">
+                  <p>Loading activity...</p>
+                </div>
+              ) : activitiesError ? (
+                <div className="tab-empty-state">
+                  <p>{activitiesError}</p>
+                </div>
+              ) : activities.length === 0 ? (
                 <div className="tab-empty-state">
                   <span className="empty-icon">⏱️</span>
                   <p>No recent activity recorded for this project.</p>
@@ -481,6 +529,7 @@ export default function ProjectDetailsPage() {
                       </div>
                     </div>
                   ))}
+                  <Pager page={activitiesPage} lastPage={activitiesData.lastPage} onChange={setActivitiesPage} />
                 </div>
               )}
             </div>
@@ -507,7 +556,7 @@ export default function ProjectDetailsPage() {
       <TaskFormModal
         isOpen={createTaskModalOpen}
         onClose={() => setCreateTaskModalOpen(false)}
-        onSuccess={() => fetchProjectDetails()}
+        onSuccess={reloadProjectAndTasks}
         projectId={project.id}
       />
 
@@ -543,6 +592,24 @@ export default function ProjectDetailsPage() {
         danger={false}
         loading={archiveLoading}
       />
+    </div>
+  );
+}
+
+function Pager({ page, lastPage, onChange }) {
+  if (lastPage <= 1) return null;
+
+  return (
+    <div className="tab-actions-bar" style={{ justifyContent: 'flex-end', gap: '8px', marginTop: '12px' }}>
+      <button className="btn-secondary btn-sm" disabled={page <= 1} onClick={() => onChange(page - 1)}>
+        Previous
+      </button>
+      <span>
+        Page {page} of {lastPage}
+      </span>
+      <button className="btn-secondary btn-sm" disabled={page >= lastPage} onClick={() => onChange(page + 1)}>
+        Next
+      </button>
     </div>
   );
 }

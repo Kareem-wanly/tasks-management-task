@@ -20,10 +20,8 @@ export default function AddMemberModal({ isOpen, onClose, onSuccess, projectId, 
   const fetchAvailableUsers = async () => {
     try {
       setLoadingUsers(true);
-      
-      const res = usersApi.options ? await usersApi.options() : await usersApi.getAll({ per_page: 150 });
-      const allUsers = Array.isArray(res) ? res : (res.items || res.data || []);
-      
+      const allUsers = await usersApi.options();
+
       const currentMemberIds = new Set([
         ...(existingMembers || []).map((m) => Number(m.id)),
         ownerId ? Number(ownerId) : null,

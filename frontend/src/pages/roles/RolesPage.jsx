@@ -7,8 +7,8 @@ import ConfirmModal from '../projects/ConfirmModal';
 import './RolesPage.css';
 
 export default function RolesPage() {
-  const { can } = useAuth() || {};
-  const { showToast } = useToast ? useToast() : { showToast: () => {} };
+  const { can } = useAuth();
+  const { showToast } = useToast();
 
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,19 +49,19 @@ export default function RolesPage() {
     try {
       setDeleteLoading(true);
       await rolesApi.delete(roleToDelete.id);
-      showToast?.(`Role "${roleToDelete.display_name || roleToDelete.name}" was deleted successfully.`, 'success');
+      showToast(`Role "${roleToDelete.display_name || roleToDelete.name}" was deleted successfully.`, 'success');
       setRoleToDelete(null);
       fetchRoles();
     } catch (err) {
-      showToast?.(err.data?.message || err.message || 'Failed to delete role.', 'error');
+      showToast(err.data?.message || err.message || 'Failed to delete role.', 'error');
     } finally {
       setDeleteLoading(false);
     }
   };
 
-  const canCreateRole = typeof can === 'function' ? (can('roles.create') || can('roles.manage')) : true;
-  const canEditRole = typeof can === 'function' ? (can('roles.update') || can('roles.manage')) : true;
-  const canDeleteRole = typeof can === 'function' ? (can('roles.delete') || can('roles.manage')) : true;
+  const canCreateRole = can('roles.create') || can('roles.manage');
+  const canEditRole = can('roles.update') || can('roles.manage');
+  const canDeleteRole = can('roles.delete') || can('roles.manage');
 
   const protectedRoleNames = ['administrator', 'admin', 'super-admin', 'project manager', 'member'];
   const isRoleProtected = (name) => {

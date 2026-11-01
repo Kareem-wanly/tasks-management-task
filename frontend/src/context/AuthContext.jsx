@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import authApi from '../api/authApi';
 import { getToken, setToken, clearToken } from '../api/tokenStorage';
+import { useToast } from './ToastContext';
 
 const AuthContext = createContext(null);
 
@@ -10,6 +11,13 @@ export function AuthProvider({ children }) {
   const [permissions, setPermissions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [startupError, setStartupError] = useState(null);
+  const { showToast } = useToast();
+
+  // Read inside the 401 listener without re-subscribing on every user change
+  const userRef = useRef(null);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   const extractUserMeta = useCallback((userData) => {
     let userRoles = [];
@@ -57,8 +65,10 @@ export function AuthProvider({ children }) {
       return;
     }
 
+    setIsLoading(true);
+    setStartupError(null);
+
     try {
-      setStartupError(null);
       const res = await authApi.getCurrentUser();
       const currentUser = res?.user || res?.data || res;
       const { userRoles, userPermissions } = extractUserMeta(currentUser);
@@ -84,6 +94,10 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const handleUnauthorized = () => {
+      // A failed login also returns 401; only announce an expired session if someone was signed in
+      if (userRef.current) {
+        showToast('Your session expired. Please sign in again.', 'info');
+      }
       resetSession();
     };
 
@@ -91,7 +105,7 @@ export function AuthProvider({ children }) {
     return () => {
       window.removeEventListener('auth:unauthorized', handleUnauthorized);
     };
-  }, [resetSession]);
+  }, [resetSession, showToast]);
 
   const login = async (credentials) => {
     const res = await authApi.login(credentials);

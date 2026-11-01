@@ -5,8 +5,8 @@ import './AppLayout.css';
 export default function AppLayout() {
   const { user, roles, logout, can } = useAuth();
 
-  const canViewUsers = can ? can('users.view') : false;
-  const canViewRoles = can ? can('roles.view') : false;
+  const canViewUsers = can('users.view');
+  const canViewRoles = can('roles.view');
   const showManagementSection = canViewUsers || canViewRoles;
 
   const getInitials = (name) => {
@@ -94,7 +94,7 @@ export default function AppLayout() {
               <div className="user-avatar">{getInitials(user?.name)}</div>
               <div className="user-info-text">
                 <span className="user-display-name">{user?.name || 'User'}</span>
-                <span className="user-role-title">{roles?.[0] || 'Member'}</span>
+                {roles.length > 0 && <span className="user-role-title">{roles.join(', ')}</span>}
               </div>
             </div>
 

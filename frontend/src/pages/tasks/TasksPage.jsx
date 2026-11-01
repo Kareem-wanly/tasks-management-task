@@ -23,7 +23,8 @@ const initialState = {
     priority: '',
     project_id: '',
     assigned_to: '',
-    due_date: '',
+    due_date_from: '',
+    due_date_to: '',
     overdue_only: '',
   },
   sorting: {
@@ -92,7 +93,8 @@ function tasksReducer(state, action) {
           priority: '',
           project_id: '',
           assigned_to: '',
-          due_date: '',
+          due_date_from: '',
+          due_date_to: '',
           overdue_only: '',
         },
         pagination: {
@@ -123,25 +125,6 @@ function tasksReducer(state, action) {
         },
       };
 
-    case 'SYNC_URL_PARAMS':
-      return {
-        ...state,
-        filters: {
-          search: action.payload.search ?? state.filters.search,
-          status: action.payload.status ?? state.filters.status,
-          priority: action.payload.priority ?? state.filters.priority,
-          project_id: action.payload.project_id ?? state.filters.project_id,
-          assigned_to: action.payload.assigned_to ?? state.filters.assigned_to,
-          due_date: action.payload.due_date ?? state.filters.due_date,
-          overdue_only: action.payload.overdue_only ?? state.filters.overdue_only,
-        },
-        sorting: action.payload.sorting ?? state.sorting,
-        pagination: {
-          ...state.pagination,
-          current_page: action.payload.page ?? state.pagination.current_page,
-        },
-      };
-
     case 'OPEN_CREATE_MODAL':
       return { ...state, modals: { ...state.modals, isCreateOpen: true } };
 
@@ -163,7 +146,7 @@ function tasksReducer(state, action) {
 }
 
 export default function TasksPage() {
-  const { can } = useAuth() || {};
+  const { can } = useAuth();
   const { showToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -175,7 +158,8 @@ export default function TasksPage() {
       priority: searchParams.get('priority') || '',
       project_id: searchParams.get('project_id') || '',
       assigned_to: searchParams.get('assigned_to') || '',
-      due_date: searchParams.get('due_date') || '',
+      due_date_from: searchParams.get('due_date_from') || '',
+      due_date_to: searchParams.get('due_date_to') || '',
       overdue_only: searchParams.get('overdue') || '',
     },
     sorting: {
@@ -191,29 +175,34 @@ export default function TasksPage() {
   const { tasks, projects, users, loading, error, actionLoading, filters, sorting, pagination, modals } = state;
 
   const debouncedSearch = useDebounce(filters.search, 400);
+  const canViewUsers = can('users.view');
 
   useEffect(() => {
-    let isMounted = true;
-    const fetchMetadata = async () => {
-      try {
-        const [projRes, userRes] = await Promise.all([
-          projectsApi.options ? projectsApi.options() : projectsApi.getAll({ per_page: 150 }),
-          usersApi.options ? usersApi.options() : usersApi.getAll({ per_page: 150 }),
-        ]);
+    const controller = new AbortController();
+    const { signal } = controller;
 
-        if (isMounted) {
-          const projList = Array.isArray(projRes) ? projRes : (projRes.items || projRes.data || []);
-          const userList = Array.isArray(userRes) ? userRes : (userRes.items || userRes.data || []);
-          dispatch({ type: 'SET_PROJECTS', payload: Array.isArray(projList) ? projList : [] });
-          dispatch({ type: 'SET_USERS', payload: Array.isArray(userList) ? userList : [] });
-        }
-      } catch (err) {
-        console.error('Failed to fetch filter metadata:', err);
+    // Loaded independently: /users/options needs users.view, and its 403 must not drop the project list
+    const fetchMetadata = async () => {
+      const [projRes, userRes] = await Promise.allSettled([
+        projectsApi.options({ include_archived: 1 }, { signal }),
+        canViewUsers ? usersApi.options({}, { signal }) : Promise.resolve([]),
+      ]);
+      if (signal.aborted) return;
+
+      if (projRes.status === 'fulfilled') {
+        dispatch({ type: 'SET_PROJECTS', payload: projRes.value });
+      } else {
+        console.error('Failed to load projects for filter:', projRes.reason);
+      }
+      if (userRes.status === 'fulfilled') {
+        dispatch({ type: 'SET_USERS', payload: userRes.value });
+      } else {
+        console.error('Failed to load users for filter:', userRes.reason);
       }
     };
     fetchMetadata();
-    return () => { isMounted = false; };
-  }, []);
+    return () => controller.abort();
+  }, [canViewUsers]);
 
   useEffect(() => {
     const params = {};
@@ -222,7 +211,8 @@ export default function TasksPage() {
     if (filters.priority) params.priority = filters.priority;
     if (filters.project_id) params.project_id = filters.project_id;
     if (filters.assigned_to) params.assigned_to = filters.assigned_to;
-    if (filters.due_date) params.due_date = filters.due_date;
+    if (filters.due_date_from) params.due_date_from = filters.due_date_from;
+    if (filters.due_date_to) params.due_date_to = filters.due_date_to;
     if (filters.overdue_only) params.overdue = 'true';
 
     if (sorting.sortBy !== 'created_at' || sorting.sortDir !== 'desc') {
@@ -239,7 +229,8 @@ export default function TasksPage() {
     filters.priority,
     filters.project_id,
     filters.assigned_to,
-    filters.due_date,
+    filters.due_date_from,
+    filters.due_date_to,
     filters.overdue_only,
     sorting,
     pagination.current_page,
@@ -261,7 +252,8 @@ export default function TasksPage() {
       if (filters.priority) params.priority = filters.priority;
       if (filters.project_id) params.project_id = filters.project_id;
       if (filters.assigned_to) params.assigned_to = filters.assigned_to;
-      if (filters.due_date) params.due_date = filters.due_date;
+      if (filters.due_date_from) params.due_date_from = filters.due_date_from;
+      if (filters.due_date_to) params.due_date_to = filters.due_date_to;
       if (filters.overdue_only) params.overdue = 'true';
 
       const pageData = await tasksApi.getAll(params, { signal });
@@ -295,7 +287,8 @@ export default function TasksPage() {
     filters.priority,
     filters.project_id,
     filters.assigned_to,
-    filters.due_date,
+    filters.due_date_from,
+    filters.due_date_to,
     filters.overdue_only,
   ]);
 
@@ -362,7 +355,8 @@ export default function TasksPage() {
     filters.priority ||
     filters.project_id ||
     filters.assigned_to ||
-    filters.due_date ||
+    filters.due_date_from ||
+    filters.due_date_to ||
     filters.overdue_only
   );
 
@@ -373,7 +367,7 @@ export default function TasksPage() {
           <h1>Tasks Management</h1>
           <p className="subtitle">Search, filter, and track all project tasks</p>
         </div>
-        {can && can('tasks.create') && (
+        {can('tasks.create') && (
           <button className="btn-primary" onClick={() => dispatch({ type: 'OPEN_CREATE_MODAL' })}>
             + Create Task
           </button>
@@ -411,22 +405,24 @@ export default function TasksPage() {
             </select>
           </div>
 
-          <div className="filter-item">
-            <select
-              id="task-assignee-filter"
-              name="assigned_to"
-              value={filters.assigned_to}
-              onChange={(e) => dispatch({ type: 'SET_FILTER', field: 'assigned_to', value: e.target.value })}
-              className="form-control"
-            >
-              <option value="">All Assignees</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {users.length > 0 && (
+            <div className="filter-item">
+              <select
+                id="task-assignee-filter"
+                name="assigned_to"
+                value={filters.assigned_to}
+                onChange={(e) => dispatch({ type: 'SET_FILTER', field: 'assigned_to', value: e.target.value })}
+                className="form-control"
+              >
+                <option value="">All Assignees</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="filter-item">
             <select
@@ -463,12 +459,28 @@ export default function TasksPage() {
           <div className="filter-item">
             <input
               type="date"
-              id="task-due-date-filter"
-              name="due_date"
-              value={filters.due_date}
-              onChange={(e) => dispatch({ type: 'SET_FILTER', field: 'due_date', value: e.target.value })}
+              id="task-due-from-filter"
+              name="due_date_from"
+              value={filters.due_date_from}
+              max={filters.due_date_to || undefined}
+              onChange={(e) => dispatch({ type: 'SET_FILTER', field: 'due_date_from', value: e.target.value })}
               className="form-control"
-              title="Filter by exact Due Date"
+              title="Due date from"
+              aria-label="Due date from"
+            />
+          </div>
+
+          <div className="filter-item">
+            <input
+              type="date"
+              id="task-due-to-filter"
+              name="due_date_to"
+              value={filters.due_date_to}
+              min={filters.due_date_from || undefined}
+              onChange={(e) => dispatch({ type: 'SET_FILTER', field: 'due_date_to', value: e.target.value })}
+              className="form-control"
+              title="Due date to"
+              aria-label="Due date to"
             />
           </div>
 
@@ -599,7 +611,7 @@ export default function TasksPage() {
                         )}
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        {can && can('tasks.delete') && (
+                        {can('tasks.delete') && (
                           <button
                             type="button"
                             className="btn-delete"
@@ -659,7 +671,7 @@ export default function TasksPage() {
           title="Delete Task"
           message={`Are you sure you want to delete task "${modals.taskToDelete.title}"?`}
           confirmText="Delete"
-          isDanger={true}
+          danger
           loading={actionLoading}
           onConfirm={handleDeleteTask}
           onClose={() => dispatch({ type: 'CLOSE_DELETE_MODAL' })}

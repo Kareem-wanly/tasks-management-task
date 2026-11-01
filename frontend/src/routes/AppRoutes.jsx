@@ -18,7 +18,6 @@ import RoleFormPage from '../pages/roles/RoleFormPage';
 export default function AppRoutes() {
   return (
     <Routes>
-      
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/403" element={<ForbiddenPage />} />
@@ -40,7 +39,11 @@ export default function AppRoutes() {
 
           <Route element={<ProtectedRoute permission="roles.view" />}>
             <Route path="roles" element={<RolesPage />} />
+          </Route>
+          <Route element={<ProtectedRoute permission="roles.create" />}>
             <Route path="roles/create" element={<RoleFormPage />} />
+          </Route>
+          <Route element={<ProtectedRoute permission="roles.update" />}>
             <Route path="roles/:id" element={<RoleFormPage />} />
           </Route>
         </Route>

@@ -5,21 +5,11 @@ import { useToast } from '../../context/ToastContext';
 import './UserModal.css';
 
 export default function UserModal({ isOpen, userToEdit, roles = [], onClose, onSuccess }) {
-  const { user, can } = useAuth() || {};
+  const { can } = useAuth() || {};
   const { showToast } = useToast(); 
   const isEditing = Boolean(userToEdit);
 
-  const checkPermission = (permission) => {
-    if (typeof can === 'function') return can(permission);
-    if (!user) return false;
-    if (user.role === 'admin' || user.is_admin || user.role?.name === 'admin' || user.role?.name === 'Administrator') return true;
-    if (Array.isArray(user.permissions)) {
-      return user.permissions.includes(permission) || user.permissions.some((p) => (p.name || p) === permission);
-    }
-    return false;
-  };
-
-  const canAssignRole = checkPermission('roles.assign') || checkPermission('users.update');
+  const canAssignRole = typeof can === 'function' ? can('roles.assign') : false;
 
   const [formData, setFormData] = useState({
     name: '',
@@ -27,7 +17,6 @@ export default function UserModal({ isOpen, userToEdit, roles = [], onClose, onS
     password: '',
     password_confirmation: '',
     role_id: '',
-    is_active: true,
   });
 
   const [saving, setSaving] = useState(false);
@@ -35,28 +24,16 @@ export default function UserModal({ isOpen, userToEdit, roles = [], onClose, onS
   const [validationErrors, setValidationErrors] = useState({});
 
   useEffect(() => {
-    if (userToEdit) {
-      setFormData({
-        name: userToEdit.name || '',
-        email: userToEdit.email || '',
-        password: '',
-        password_confirmation: '',
-        role_id: userToEdit.role_id || userToEdit.role?.id || '',
-        is_active: userToEdit.is_active ?? true,
-      });
-    } else {
-      setFormData({
-        name: '',
-        email: '',
-        password: '',
-        password_confirmation: '',
-        role_id: roles[0]?.id || '',
-        is_active: true,
-      });
-    }
+    setFormData({
+      name: userToEdit?.name || '',
+      email: userToEdit?.email || '',
+      password: '',
+      password_confirmation: '',
+      role_id: '',
+    });
     setError(null);
     setValidationErrors({});
-  }, [userToEdit, roles, isOpen]);
+  }, [userToEdit, isOpen]);
 
   if (!isOpen) return null;
 
@@ -66,21 +43,22 @@ export default function UserModal({ isOpen, userToEdit, roles = [], onClose, onS
     setError(null);
     setValidationErrors({});
 
+    // UserController::update only accepts name and email; roles go through AssignRoleModal
     const payload = {
       name: formData.name,
       email: formData.email,
-      is_active: formData.is_active,
     };
 
-    if (canAssignRole) {
-      payload.role_id = formData.role_id ? Number(formData.role_id) : null;
-    } else if (isEditing) {
-      payload.role_id = userToEdit.role_id || userToEdit.role?.id || null;
-    }
-
-    if (!isEditing || formData.password) {
+    if (!isEditing) {
+      if (formData.password !== formData.password_confirmation) {
+        setValidationErrors({ password: ['The password confirmation does not match.'] });
+        setSaving(false);
+        return;
+      }
       payload.password = formData.password;
-      payload.password_confirmation = formData.password_confirmation;
+      if (canAssignRole && formData.role_id) {
+        payload.role_id = Number(formData.role_id);
+      }
     }
 
     try {
@@ -151,77 +129,69 @@ export default function UserModal({ isOpen, userToEdit, roles = [], onClose, onS
             )}
           </div>
 
-          <div className="form-group">
-            <label>System Role <span className="req">*</span></label>
-            <select
-              value={formData.role_id}
-              onChange={(e) => setFormData({ ...formData, role_id: e.target.value })}
-              className={validationErrors.role_id ? 'input-error' : ''}
-              required
-              disabled={saving || !canAssignRole}
-            >
-              <option value="">Select a role...</option>
-              {roles.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.display_name || r.name}
-                </option>
-              ))}
-            </select>
-            {!canAssignRole && (
-              <small style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
-                🔒 Requires <code>roles.assign</code> permission to change roles.
-              </small>
-            )}
-            {validationErrors.role_id && (
-              <span className="error-text">{validationErrors.role_id[0]}</span>
-            )}
-          </div>
+          {!isEditing && (
+            <>
+              <div className="form-group">
+                <label>System Role</label>
+                <select
+                  value={formData.role_id}
+                  onChange={(e) => setFormData({ ...formData, role_id: e.target.value })}
+                  className={validationErrors.role_id ? 'input-error' : ''}
+                  disabled={saving || !canAssignRole}
+                >
+                  <option value="">Member (default)</option>
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.display_name || r.name}
+                    </option>
+                  ))}
+                </select>
+                {!canAssignRole && (
+                  <small style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                    🔒 Requires <code>roles.assign</code> permission to change roles.
+                  </small>
+                )}
+                {validationErrors.role_id && (
+                  <span className="error-text">{validationErrors.role_id[0]}</span>
+                )}
+              </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label>
-                {isEditing ? 'New Password (Optional)' : 'Password'} {!isEditing && <span className="req">*</span>}
-              </label>
-              <input
-                type="password"
-                placeholder={isEditing ? 'Leave blank to keep current' : 'Enter password'}
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className={validationErrors.password ? 'input-error' : ''}
-                required={!isEditing}
-                disabled={saving}
-              />
-              {validationErrors.password && (
-                <span className="error-text">{validationErrors.password[0]}</span>
-              )}
-            </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>
+                    Password <span className="req">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="At least 8 characters"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className={validationErrors.password ? 'input-error' : ''}
+                    required
+                    minLength={8}
+                    disabled={saving}
+                  />
+                  {validationErrors.password && (
+                    <span className="error-text">{validationErrors.password[0]}</span>
+                  )}
+                </div>
 
-            <div className="form-group">
-              <label>
-                Confirm Password {!isEditing && <span className="req">*</span>}
-              </label>
-              <input
-                type="password"
-                placeholder="Confirm password"
-                value={formData.password_confirmation}
-                onChange={(e) => setFormData({ ...formData, password_confirmation: e.target.value })}
-                required={!isEditing || Boolean(formData.password)}
-                disabled={saving}
-              />
-            </div>
-          </div>
-
-          <div className="form-group-checkbox">
-            <label>
-              <input
-                type="checkbox"
-                checked={formData.is_active}
-                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                disabled={saving}
-              />
-              <span>Account is Active</span>
-            </label>
-          </div>
+                <div className="form-group">
+                  <label>
+                    Confirm Password <span className="req">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Confirm password"
+                    value={formData.password_confirmation}
+                    onChange={(e) => setFormData({ ...formData, password_confirmation: e.target.value })}
+                    required
+                    disabled={saving}
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="modal-actions">
             <button

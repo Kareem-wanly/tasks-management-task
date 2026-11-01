@@ -70,7 +70,14 @@ class ProjectController extends Controller
     {
         $this->authorize('view', $project);
 
-        return new ProjectResource($project->load(['owner:id,name,email', 'members:id,name,email']));
+        $project->load(['owner:id,name,email', 'members:id,name,email'])
+            ->loadCount([
+                'tasks',
+                'tasks as completed_tasks_count' => fn ($q) => $q->where('status', 'completed'),
+                'tasks as in_progress_tasks_count' => fn ($q) => $q->where('status', 'in_progress'),
+            ]);
+
+        return new ProjectResource($project);
     }
 
     public function store(StoreProjectRequest $request): JsonResponse
@@ -293,8 +300,12 @@ class ProjectController extends Controller
 
         $query->accessibleBy($request->user());
 
-        $projects = $query->where('status', '!=', 'archived')
-            ->orderBy('title')
+        // Forms only offer active projects; list filters pass include_archived=1
+        if (! $request->boolean('include_archived')) {
+            $query->where('status', '!=', 'archived');
+        }
+
+        $projects = $query->orderBy('title')
             ->limit(1000)
             ->get(['id', 'title', 'status']);
 
