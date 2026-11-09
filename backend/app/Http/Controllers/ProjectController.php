@@ -59,8 +59,14 @@ class ProjectController extends Controller
         }
 
         $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
+        // Same counts as show(), so list rows and cards can draw the progress bar
         $projects = $query->with('owner:id,name,email')
-            ->withCount(['members', 'tasks'])
+            ->withCount([
+                'members',
+                'tasks',
+                'tasks as completed_tasks_count' => fn ($q) => $q->where('status', 'completed'),
+                'tasks as in_progress_tasks_count' => fn ($q) => $q->where('status', 'in_progress'),
+            ])
             ->paginate($perPage);
 
         return ProjectResource::collection($projects);

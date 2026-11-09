@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>الميزات المستقبلية</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f7f5; --surface: #ffffff; --text: #1f2328; --muted: #5f6670;
+  --border: #e3e3df; --accent: #4f46e5; --accent-soft: #eef0ff;
+  --code-bg: #f1f1ee; --quote-bg: #f5f6ff; --row-alt: #fafaf8;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111214; --surface: #18191c; --text: #e6e6e6; --muted: #9aa0a8;
+    --border: #2c2e33; --accent: #8b87ff; --accent-soft: #23234a;
+    --code-bg: #232428; --quote-bg: #1d1e2b; --row-alt: #1c1d20;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111214; --surface: #18191c; --text: #e6e6e6; --muted: #9aa0a8;
+  --border: #2c2e33; --accent: #8b87ff; --accent-soft: #23234a;
+  --code-bg: #232428; --quote-bg: #1d1e2b; --row-alt: #1c1d20;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: "IBM Plex Sans Arabic", system-ui, sans-serif;
+  font-size: 16px; line-height: 1.85;
+}
+.layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); max-width: 1280px; margin: 0 auto; gap: 32px; padding: 32px 24px; }
+nav.toc {
+  position: sticky; top: 24px; align-self: start; max-height: calc(100vh - 48px); overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 12px; font-size: 14px;
+}
+nav.toc .toc-title { font-weight: 700; color: var(--muted); font-size: 12px; letter-spacing: .04em; padding: 0 8px 8px; }
+nav.toc ul { list-style: none; margin: 0; padding: 0; }
+nav.toc ul ul { padding-inline-start: 12px; }
+nav.toc a { display: block; padding: 4px 8px; border-radius: 6px; color: var(--text); text-decoration: none; line-height: 1.6; }
+nav.toc a:hover { background: var(--accent-soft); color: var(--accent); }
+main { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 40px 48px; min-width: 0; }
+h1, h2, h3, h4 { line-height: 1.4; font-weight: 700; }
+h1 { font-size: 2rem; margin: 2.2rem 0 1rem; padding-bottom: .5rem; border-bottom: 2px solid var(--accent); }
+main > h1:first-child { margin-top: 0; }
+h2 { font-size: 1.45rem; margin: 2rem 0 .8rem; }
+h3 { font-size: 1.15rem; margin: 1.6rem 0 .6rem; color: var(--accent); }
+p, ul, ol { margin: .6rem 0; }
+ul, ol { padding-inline-start: 1.6rem; }
+li { margin: .25rem 0; }
+li.task { list-style: none; margin-inline-start: -1.4rem; }
+li.task input { margin-inline-end: .5rem; accent-color: var(--accent); transform: translateY(2px); }
+a { color: var(--accent); }
+strong { font-weight: 700; }
+hr { border: 0; border-top: 1px solid var(--border); margin: 2rem 0; }
+blockquote { margin: 1rem 0; padding: .8rem 1.1rem; background: var(--quote-bg); border-inline-start: 4px solid var(--accent); border-radius: 8px; }
+blockquote p { margin: .3rem 0; }
+code {
+  font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .86em;
+  background: var(--code-bg); padding: .1em .4em; border-radius: 5px;
+  direction: ltr; unicode-bidi: isolate;
+}
+pre { direction: ltr; text-align: left; background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; overflow-x: auto; line-height: 1.6; }
+pre code { background: none; padding: 0; font-size: .9em; }
+.table-wrap { overflow-x: auto; margin: 1rem 0; border: 1px solid var(--border); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: .95em; }
+th, td { padding: 10px 14px; text-align: right; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { background: var(--code-bg); font-weight: 700; white-space: nowrap; }
+tr:nth-child(even) td { background: var(--row-alt); }
+tr:last-child td { border-bottom: 0; }
+.theme-toggle {
+  position: fixed; bottom: 20px; left: 20px; width: 42px; height: 42px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; font-size: 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; padding: 16px; gap: 16px; }
+  nav.toc { position: static; max-height: 320px; }
+  main { padding: 24px 18px; }
+  h1 { font-size: 1.6rem; }
+}
+@media print {
+  nav.toc, .theme-toggle { display: none; }
+  .layout { display: block; padding: 0; }
+  main { border: 0; padding: 0; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc" aria-label="المحتويات">
+<div class="toc-title">المحتويات</div>
+
+<ul>
+<li><a href="#الميزات-المستقبلية">الميزات المستقبلية</a><ul>
+<li><a href="#ما-هو-موجود-حاليا">ما هو موجود حالياً</a></li>
+<li><a href="#0-قرار-معماري-قبل-أي-ميزة-multi-tenancy">0. قرار معماري قبل أي ميزة: Multi-tenancy</a></li>
+<li><a href="#1-أساسيات-ناقصة">1. أساسيات ناقصة</a></li>
+<li><a href="#2-طرق-العرض-views">2. طرق العرض (Views)</a></li>
+<li><a href="#3-الأتمتة-automations">3. الأتمتة (Automations)</a></li>
+<li><a href="#4-أفكار-من-notion">4. أفكار من Notion</a></li>
+<li><a href="#5-سرعة-الاستخدام-مثل-linear">5. سرعة الاستخدام (مثل Linear)</a></li>
+<li><a href="#6-الذكاء-الاصطناعي-ai">6. الذكاء الاصطناعي (AI)</a></li>
+<li><a href="#7-المساعد-الصوتي-ai-voice-assistant">7. المساعد الصوتي (AI Voice Assistant) ⭐</a><ul>
+<li><a href="#حالات-الاستخدام">حالات الاستخدام</a></li>
+<li><a href="#البنية-التقنية">البنية التقنية</a></li>
+<li><a href="#ترتيب-التنفيذ">ترتيب التنفيذ</a></li>
+<li><a href="#المخاطر">المخاطر</a></li>
+</ul>
+</li>
+<li><a href="#8-التعاون-مع-الخارج">8. التعاون مع الخارج</a></li>
+<li><a href="#9-التكاملات-غير-bitrix">9. التكاملات (غير Bitrix)</a></li>
+<li><a href="#10-البنية-التجارية-saas">10. البنية التجارية (SaaS)</a></li>
+<li><a href="#التميز-عن-المنافسين">التميّز عن المنافسين</a></li>
+<li><a href="#خارطة-الطريق">خارطة الطريق</a></li>
+<li><a href="#أسئلة-مفتوحة">أسئلة مفتوحة</a></li>
+</ul>
+</li>
+</ul>
+
+</nav>
+<main>
+<h1 id="الميزات-المستقبلية">الميزات المستقبلية</h1>
+<p>خطة الميزات التي تجعل النظام منتجاً قابلاً للبيع، مستوحاة من Notion وMonday وClickUp وLinear.</p>
+<blockquote>
+<p><strong>خارج هذا الملف:</strong> كل ما هو مذكور في <a href="BITRIX24_IMPLEMENTATION_STEPS.html">BITRIX24_IMPLEMENTATION_STEPS.md</a> سيُبنى هناك على الطرفين، ولا يتكرر هنا:
+المشاركون والمراقبون، المهام الفرعية، Checklists، تتبع الوقت والمؤقت، الملفات، نتائج المهمة، شات المهمة، سجل التغييرات، جدولا الحالة والأولوية القابلان للتعديل، وتسجيل الدخول عبر Bitrix (OAuth).</p>
+</blockquote>
+<hr />
+<h2 id="ما-هو-موجود-حاليا">ما هو موجود حالياً</h2>
+<p>Kanban، Calendar، Saved Views، Export، تعديل مباشر (inline)، تعليقات، Activity Log، أدوار وصلاحيات.</p>
+<hr />
+<h2 id="0-قرار-معماري-قبل-أي-ميزة-multi-tenancy">0. قرار معماري قبل أي ميزة: Multi-tenancy</h2>
+<p>النظام حالياً يخدم شركة واحدة. لبيعه كـ SaaS يجب أن يكون لكل شركة <strong>Workspace</strong> منفصل ببياناتها ومستخدميها وخطة اشتراكها.</p>
+<ul>
+<li>جدول <code>workspaces</code> وعمود <code>workspace_id</code> على كل الجداول الأساسية، مع Global Scope في Laravel يفلتر تلقائياً.</li>
+<li>مستخدم واحد يمكن أن ينتمي لأكثر من Workspace (مع تبديل سريع بينها).</li>
+<li>ربط Bitrix يصبح على مستوى الـ Workspace (كل شركة ببوابتها).</li>
+</ul>
+<p><strong>لماذا أولاً؟</strong> يمس كل الجداول، وكل تأجيل يجعله أصعب.</p>
+<hr />
+<h2 id="1-أساسيات-ناقصة">1. أساسيات ناقصة</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>الميزة</th>
+<th>التفاصيل</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Labels / Tags</td>
+<td>ملونة، على مستوى المشروع أو الـ Workspace، مع فلترة وتجميع</td>
+</tr>
+<tr>
+<td>@Mentions</td>
+<td>في الوصف والتعليقات، مع اقتراح تلقائي للأعضاء</td>
+</tr>
+<tr>
+<td>مركز الإشعارات</td>
+<td>داخل التطبيق (جرس + غير مقروء)، إيميل، ولاحقاً Push. مع تفضيلات لكل مستخدم</td>
+</tr>
+<tr>
+<td>Custom Fields</td>
+<td><strong>أهم ميزة في Monday:</strong> كل مشروع يضيف حقوله (رقم، تاريخ، dropdown، شخص، رابط، checkbox، عملة)</td>
+</tr>
+<tr>
+<td>أعمدة Kanban لكل مشروع</td>
+<td>فوق جدول الحالات العام: كل مشروع يختار ويرتّب الحالات التي يستخدمها</td>
+</tr>
+<tr>
+<td>مهام متكررة (Recurring)</td>
+<td>يومي / أسبوعي / شهري / مخصص، عبر Scheduler في Laravel</td>
+</tr>
+<tr>
+<td>Dependencies</td>
+<td>"هذه المهمة لا تبدأ قبل انتهاء تلك" (blocks / blocked by)، مع تحذير عند تغيير التواريخ</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="2-طرق-العرض-views">2. طرق العرض (Views)</h2>
+<p>الموجود: Board وCalendar. المطلوب:</p>
+<ul>
+<li><strong>Table / List:</strong> مثل Excel، تعديل الخلية مكانها، Group By، أعمدة الـ Custom Fields، تغيير عرض وترتيب الأعمدة.</li>
+<li><strong>Timeline / Gantt:</strong> يعرض الـ Dependencies، سحب لتغيير التواريخ والمدة.</li>
+<li><strong>Workload:</strong> من محمّل زيادة ومن متاح، حسب عدد المهام أو الساعات المقدرة.</li>
+<li><strong>Dashboard بـ Widgets:</strong> كل مستخدم يركّب لوحته (charts، أرقام، مهام متأخرة، تقدم المشاريع).</li>
+<li><strong>تقارير:</strong> Burndown، Cycle time، المهام المتأخرة، إنتاجية الفريق.</li>
+</ul>
+<hr />
+<h2 id="3-الأتمتة-automations">3. الأتمتة (Automations)</h2>
+<p>الميزة التي تبيع Monday. منشئ قواعد بدون كود:</p>
+<blockquote>
+<p><strong>عندما</strong> تصبح الحالة "In Review" ← <strong>عيّن</strong> المدير + <strong>أرسل</strong> إشعاراً
+<strong>عندما</strong> يتجاوز الموعد النهائي ← <strong>غيّر</strong> الأولوية إلى Urgent + <strong>أرسل</strong> إيميلاً
+<strong>عندما</strong> تُنشأ مهمة في مشروع X ← <strong>أضف</strong> Label "جديد"</p>
+</blockquote>
+<ul>
+<li><strong>Triggers:</strong> إنشاء مهمة، تغيير حالة/أولوية/مسؤول، اقتراب أو تجاوز الموعد، إضافة تعليق.</li>
+<li><strong>Conditions:</strong> المشروع، الأولوية، Label، قيمة Custom Field.</li>
+<li><strong>Actions:</strong> تغيير حقل، تعيين شخص، إشعار، إيميل، WhatsApp، Webhook، إنشاء مهمة.</li>
+<li><strong>التنفيذ:</strong> Laravel Events + Queues + جدول <code>automation_rules</code> + سجل تنفيذ لكل قاعدة.</li>
+<li>قوالب جاهزة للقواعد الشائعة.</li>
+</ul>
+<hr />
+<h2 id="4-أفكار-من-notion">4. أفكار من Notion</h2>
+<ul>
+<li><strong>Docs / Wiki لكل مشروع:</strong> محرر Blocks (TipTap أو BlockNote)، مع تضمين وربط المهام داخل الصفحة.</li>
+<li><strong>Rich text</strong> في وصف المهمة والتعليقات.</li>
+<li><strong>Templates:</strong> قوالب مشاريع ومهام جاهزة (إطلاق منتج، Onboarding موظف، Sprint) تُنسخ بضغطة، مع إمكانية حفظ مشروع كقالب.</li>
+</ul>
+<hr />
+<h2 id="5-سرعة-الاستخدام-مثل-linear">5. سرعة الاستخدام (مثل Linear)</h2>
+<ul>
+<li><strong>Command Palette (Ctrl+K):</strong> بحث شامل في المهام والمشاريع والأشخاص وتنفيذ الأوامر من مكان واحد.</li>
+<li><strong>اختصارات لوحة المفاتيح:</strong> <code>C</code> مهمة جديدة، <code>A</code> تعيين، <code>S</code> حالة، <code>/</code> بحث، <code>?</code> قائمة الاختصارات.</li>
+<li><strong>Quick Add بلغة طبيعية:</strong> <code>تصميم اللوغو بكرا 5م @أحمد !عاجل</code> تتحول لمهمة كاملة.</li>
+<li><strong>Real-time</strong> عبر WebSockets (Laravel Reverb): التعديلات تظهر فوراً للجميع، مع Presence ("أحمد يشاهد هذه المهمة").</li>
+<li>Optimistic UI، Dark Mode، PWA للموبايل.</li>
+</ul>
+<hr />
+<h2 id="6-الذكاء-الاصطناعي-ai">6. الذكاء الاصطناعي (AI)</h2>
+<ul>
+<li>تلخيص نقاش مهمة طويل في سطرين.</li>
+<li>توليد مهام فرعية من وصف المهمة.</li>
+<li><strong>تقرير أسبوعي تلقائي</strong> للمدير: ما أُنجز، ما تأخر، من تحت ضغط.</li>
+<li>بحث ذكي باللغة الطبيعية ("ما المهام المتأخرة عند فريق التصميم؟").</li>
+<li>كل ذلك <strong>بالعربي</strong>، وهنا نقطة ضعف Monday وNotion.</li>
+</ul>
+<hr />
+<h2 id="7-المساعد-الصوتي-ai-voice-assistant">7. المساعد الصوتي (AI Voice Assistant) ⭐</h2>
+<p>مساعد يفهم العربية باللهجات وينفّذ الأوامر على النظام.</p>
+<h3 id="حالات-الاستخدام">حالات الاستخدام</h3>
+<p><strong>أوامر سريعة:</strong></p>
+<ul>
+<li>"ضيف مهمة تصميم اللوغو لأحمد، بدي ياها بكرا الساعة 5، وخليها عاجلة"</li>
+<li>"حوّل مهمة الفاتورة لـ مكتملة"</li>
+<li>"شو عندي مهام اليوم؟" / "مين متأخر بمشروع الموقع؟"</li>
+</ul>
+<p><strong>ميزات تبيع وحدها:</strong></p>
+<ol>
+<li><strong>ملخص صباحي صوتي:</strong> "صباح الخير، عندك 4 مهام اليوم، 2 متأخرين، وسارة علّقت على مهمة التصميم".</li>
+<li><strong>الاجتماع إلى مهام:</strong> تسجيل الاجتماع، والمساعد يستخرج المهام ويعيّن المسؤولين والمواعيد تلقائياً.</li>
+<li><strong>فويس واتساب إلى مهمة:</strong> الموظف يرسل رسالة صوتية للبوت فتُنشأ المهمة. مناسب جداً لسوقنا.</li>
+<li><strong>تعليقات صوتية</strong> على المهام تُفرَّغ تلقائياً إلى نص.</li>
+</ol>
+<h3 id="البنية-التقنية">البنية التقنية</h3>
+<pre><code>🎤 صوت ← STT (تحويل لنص) ← LLM مع Tools ← Laravel API ← ✅ تنفيذ
+                                                         ↓
+                                  🔊 TTS (رد صوتي) ← تأكيد
+</code></pre>
+<ul>
+<li><strong>STT:</strong> أصعب نقطة هي اللهجات (الشامية، الخليجية). نجرب أكثر من مزود على تسجيلات حقيقية قبل الاختيار.</li>
+<li><strong>LLM مع Tool Use:</strong> الموديل لا يلمس قاعدة البيانات أبداً. يستدعي أدوات (<code>create_task</code>، <code>update_status</code>، <code>search_tasks</code>، <code>assign_task</code>...) تنادي الـ API الحالي <strong>بتوكن المستخدم نفسه</strong>، فتبقى الأدوار والصلاحيات محترمة تلقائياً.<ul>
+<li>موديل سريع (Claude Haiku 5.5) للأوامر اليومية، وموديل أقوى (Claude Sonnet 5.5) لتحليل الاجتماعات والتقارير.</li>
+</ul>
+</li>
+<li><strong>التأكيد قبل التنفيذ:</strong> أي حذف أو تعديل جماعي يعرض بطاقة تأكيد ("سأنشئ مهمة X لأحمد، موافق؟").</li>
+<li><strong>فهم السياق:</strong> "بكرا" و"الأسبوع الجاي" تُحسب حسب توقيت المستخدم، و"أحمد" تُربط بالمستخدم الصحيح من أعضاء المشروع (مع سؤال توضيحي عند وجود أكثر من أحمد).</li>
+</ul>
+<h3 id="ترتيب-التنفيذ">ترتيب التنفيذ</h3>
+<p>الصوت <strong>طبقة إدخال فقط</strong>، والذكاء الحقيقي في الـ Agent خلفه:</p>
+<ol>
+<li><strong>Command Bar نصي بالـ AI</strong> (داخل Ctrl+K، كتابة بالعربي): نبني فيه الأدوات والصلاحيات والتأكيد بدون تعقيد الصوت.</li>
+<li><strong>زر المايك</strong> (Push-to-talk) فوقه: يصبح سهلاً لأن كل ما تحته جاهز.</li>
+<li><strong>لاحقاً:</strong> الملخص الصباحي، تحليل الاجتماعات، بوت واتساب.</li>
+</ol>
+<h3 id="المخاطر">المخاطر</h3>
+<ul>
+<li><strong>التكلفة:</strong> كل أمر = STT + LLM + TTS. يكون في الخطط المدفوعة مع حد شهري.</li>
+<li><strong>السرعة:</strong> أكثر من 2-3 ثوانٍ يقتل التجربة. نستخدم streaming وموديلاً سريعاً.</li>
+<li><strong>الخصوصية:</strong> تسجيلات الاجتماعات حساسة؛ سياسة واضحة للتخزين والحذف، مع خيار عدم الحفظ.</li>
+</ul>
+<hr />
+<h2 id="8-التعاون-مع-الخارج">8. التعاون مع الخارج</h2>
+<ul>
+<li><strong>Guest / Client Portal:</strong> العميل يرى تقدم مشروعه فقط، بدون العمل الداخلي.</li>
+<li><strong>Forms:</strong> فورم عام يتحول لمهمة (طلبات دعم، طلبات تصميم)، مع ربط الحقول بـ Custom Fields.</li>
+<li><strong>Email-to-task:</strong> عنوان إيميل لكل مشروع، أي رسالة تُحوَّل تصبح مهمة.</li>
+</ul>
+<hr />
+<h2 id="9-التكاملات-غير-bitrix">9. التكاملات (غير Bitrix)</h2>
+<ul>
+<li><strong>WhatsApp:</strong> إشعارات + بوت لإنشاء المهام (نص وفويس).</li>
+<li>Google Calendar / Outlook (مزامنة المواعيد).</li>
+<li>Slack / Microsoft Teams (إشعارات وأوامر).</li>
+<li><strong>Public API + Webhooks:</strong> الشركات الكبيرة تطلبها قبل الشراء. توثيق كامل (OpenAPI) ومفاتيح API لكل Workspace.</li>
+</ul>
+<hr />
+<h2 id="10-البنية-التجارية-saas">10. البنية التجارية (SaaS)</h2>
+<ul>
+<li>خطط اشتراك + دفع (Stripe، أو بوابة محلية حسب السوق).</li>
+<li>حدود حسب الخطة: عدد المستخدمين، التخزين، عدد الأتمتات، دقائق المساعد الصوتي.</li>
+<li><strong>Onboarding:</strong> معالج أول دخول، بيانات تجريبية، جولة تعريفية.</li>
+<li>2FA، وتسجيل دخول Google / Microsoft للشركات التي لا تستخدم Bitrix.</li>
+<li>Audit Log موسّع على مستوى الـ Workspace.</li>
+<li>Export / Import كامل (CSV، ومن Trello وAsana).</li>
+</ul>
+<hr />
+<h2 id="التميز-عن-المنافسين">التميّز عن المنافسين</h2>
+<p>لن نغلب Monday بعدد الميزات، بل بالتخصص:</p>
+<ol>
+<li><strong>Arabic-first:</strong> RTL متقن، واجهة عربية طبيعية، تقويم هجري اختياري.</li>
+<li><strong>WhatsApp + Bitrix native:</strong> الأدوات التي تستخدمها شركات المنطقة فعلاً.</li>
+<li><strong>AI ومساعد صوتي بالعربي واللهجات.</strong></li>
+<li><strong>تسعير محلي</strong> بعملة المنطقة.</li>
+</ol>
+<hr />
+<h2 id="خارطة-الطريق">خارطة الطريق</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>المرحلة</th>
+<th>المحتوى</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. أساس البيع</strong></td>
+<td>Multi-tenancy، Custom Fields، أعمدة Kanban لكل مشروع، Labels، Mentions ومركز الإشعارات</td>
+</tr>
+<tr>
+<td><strong>2. الإبهار</strong></td>
+<td>Table وTimeline وWorkload Views، Automations، Real-time، Ctrl+K، Quick Add</td>
+</tr>
+<tr>
+<td><strong>3. التميّز</strong></td>
+<td>AI Command Bar ثم المساعد الصوتي، WhatsApp، Client Portal، Templates، Docs</td>
+</tr>
+<tr>
+<td><strong>4. التجاري</strong></td>
+<td>Billing وحدود الخطط، Onboarding، Public API وWebhooks، 2FA وSSO</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="أسئلة-مفتوحة">أسئلة مفتوحة</h2>
+<ul>
+<li>هل يدخل Multi-tenancy قبل تكامل Bitrix أم بعده؟ (يؤثر على مكان تخزين إعدادات البوابة والتوكنات)</li>
+<li>تصور المساعد الصوتي الأول: داخل الموقع، على واتساب، أم تسجيل اجتماعات؟</li>
+<li>السوق المستهدف أولاً (دولة/منطقة)، لتحديد بوابة الدفع واللهجة الأولى للـ STT.</li>
+</ul>
+</main>
+</div>
+<button class="theme-toggle" type="button" aria-label="تبديل الوضع الليلي" title="تبديل الوضع الليلي">◐</button>
+<script>
+(function () {
+  var root = document.documentElement, key = "doc-theme";
+  try { var saved = localStorage.getItem(key); if (saved) root.setAttribute("data-theme", saved); } catch (e) {}
+  document.querySelector(".theme-toggle").addEventListener("click", function () {
+    var cur = root.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    var next = cur === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem(key, next); } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>

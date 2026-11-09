@@ -66,5 +66,7 @@ class DatabaseSeeder extends Seeder
                 'metadata' => ['project_title' => $project->title],
             ]
         );
+
+        $this->call(DemoDataSeeder::class);
     }
 }
