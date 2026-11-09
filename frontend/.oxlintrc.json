@@ -1,8 +1,98 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "oxc"],
+  "plugins": [
+    "react",
+    "oxc",
+    "typescript"
+  ],
   "rules": {
     "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
+    "react/exhaustive-deps": "warn",
+    "react/only-export-components": [
+      "warn",
+      {
+        "allowConstantExport": true
+      }
+    ],
+    "react/no-danger": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/ban-ts-comment": "error",
+    "typescript/no-non-null-assertion": "error",
+    "eslint/no-alert": "error",
+    "eslint/max-lines": [
+      "error",
+      {
+        "max": 250,
+        "skipBlankLines": false,
+        "skipComments": false
+      }
+    ],
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "regex": "^@/features/[^/]+/.+",
+            "message": "Import another feature only through its public index: '@/features/<name>'."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "src/main.tsx"
+      ],
+      "rules": {
+        "typescript/no-non-null-assertion": "off"
+      }
+    },
+    {
+      "files": [
+        "src/features/**"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^@/features/[^/]+/.+",
+                "message": "Import another feature only through its public index: '@/features/<name>'."
+              },
+              {
+                "regex": "^\\.\\./\\.\\./",
+                "message": "Do not climb out of the feature with ../../ — use the @/ alias for shared code or the other feature's index."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/api/**",
+        "src/lib/**",
+        "src/components/**",
+        "src/hooks/**",
+        "src/utils/**",
+        "src/constants/**",
+        "src/types/**"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^@/(features|app)(/|$)",
+                "message": "Shared code (api, lib, components, hooks, utils, constants, types) must not import features or app."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

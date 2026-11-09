@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>دليل تنفيذ تكامل Bitrix24 خطوة بخطوة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f7f5; --surface: #ffffff; --text: #1f2328; --muted: #5f6670;
+  --border: #e3e3df; --accent: #4f46e5; --accent-soft: #eef0ff;
+  --code-bg: #f1f1ee; --quote-bg: #f5f6ff; --row-alt: #fafaf8;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111214; --surface: #18191c; --text: #e6e6e6; --muted: #9aa0a8;
+    --border: #2c2e33; --accent: #8b87ff; --accent-soft: #23234a;
+    --code-bg: #232428; --quote-bg: #1d1e2b; --row-alt: #1c1d20;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111214; --surface: #18191c; --text: #e6e6e6; --muted: #9aa0a8;
+  --border: #2c2e33; --accent: #8b87ff; --accent-soft: #23234a;
+  --code-bg: #232428; --quote-bg: #1d1e2b; --row-alt: #1c1d20;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: "IBM Plex Sans Arabic", system-ui, sans-serif;
+  font-size: 16px; line-height: 1.85;
+}
+.layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); max-width: 1280px; margin: 0 auto; gap: 32px; padding: 32px 24px; }
+nav.toc {
+  position: sticky; top: 24px; align-self: start; max-height: calc(100vh - 48px); overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 12px; font-size: 14px;
+}
+nav.toc .toc-title { font-weight: 700; color: var(--muted); font-size: 12px; letter-spacing: .04em; padding: 0 8px 8px; }
+nav.toc ul { list-style: none; margin: 0; padding: 0; }
+nav.toc ul ul { padding-inline-start: 12px; }
+nav.toc a { display: block; padding: 4px 8px; border-radius: 6px; color: var(--text); text-decoration: none; line-height: 1.6; }
+nav.toc a:hover { background: var(--accent-soft); color: var(--accent); }
+main { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 40px 48px; min-width: 0; }
+h1, h2, h3, h4 { line-height: 1.4; font-weight: 700; }
+h1 { font-size: 2rem; margin: 2.2rem 0 1rem; padding-bottom: .5rem; border-bottom: 2px solid var(--accent); }
+main > h1:first-child { margin-top: 0; }
+h2 { font-size: 1.45rem; margin: 2rem 0 .8rem; }
+h3 { font-size: 1.15rem; margin: 1.6rem 0 .6rem; color: var(--accent); }
+p, ul, ol { margin: .6rem 0; }
+ul, ol { padding-inline-start: 1.6rem; }
+li { margin: .25rem 0; }
+li.task { list-style: none; margin-inline-start: -1.4rem; }
+li.task input { margin-inline-end: .5rem; accent-color: var(--accent); transform: translateY(2px); }
+a { color: var(--accent); }
+strong { font-weight: 700; }
+hr { border: 0; border-top: 1px solid var(--border); margin: 2rem 0; }
+blockquote { margin: 1rem 0; padding: .8rem 1.1rem; background: var(--quote-bg); border-inline-start: 4px solid var(--accent); border-radius: 8px; }
+blockquote p { margin: .3rem 0; }
+code {
+  font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .86em;
+  background: var(--code-bg); padding: .1em .4em; border-radius: 5px;
+  direction: ltr; unicode-bidi: isolate;
+}
+pre { direction: ltr; text-align: left; background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; overflow-x: auto; line-height: 1.6; }
+pre code { background: none; padding: 0; font-size: .9em; }
+.table-wrap { overflow-x: auto; margin: 1rem 0; border: 1px solid var(--border); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: .95em; }
+th, td { padding: 10px 14px; text-align: right; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { background: var(--code-bg); font-weight: 700; white-space: nowrap; }
+tr:nth-child(even) td { background: var(--row-alt); }
+tr:last-child td { border-bottom: 0; }
+.theme-toggle {
+  position: fixed; bottom: 20px; left: 20px; width: 42px; height: 42px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; font-size: 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; padding: 16px; gap: 16px; }
+  nav.toc { position: static; max-height: 320px; }
+  main { padding: 24px 18px; }
+  h1 { font-size: 1.6rem; }
+}
+@media print {
+  nav.toc, .theme-toggle { display: none; }
+  .layout { display: block; padding: 0; }
+  main { border: 0; padding: 0; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc" aria-label="المحتويات">
+<div class="toc-title">المحتويات</div>
+
+<ul>
+<li><a href="#دليل-تنفيذ-تكامل-bitrix24-خطوة-بخطوة">دليل تنفيذ تكامل Bitrix24 خطوة بخطوة</a><ul>
+<li><a href="#كيف-تستخدم-هذا-الملف-اقرأ-هذا-أولا">كيف تستخدم هذا الملف (اقرأ هذا أولاً)</a></li>
+<li><a href="#الصورة-الكاملة-باختصار">الصورة الكاملة باختصار</a></li>
+</ul>
+</li>
+<li><a href="#المرحلة-1-الأساس">المرحلة 1: الأساس</a><ul>
+<li><a href="#الخطوة-11-تجهيز-البيئة-وتسجيل-التطبيق-في-bitrix">الخطوة 1.1: تجهيز البيئة وتسجيل التطبيق في Bitrix</a></li>
+<li><a href="#الخطوة-12-إعدادات-bitrix-في-المشروع">الخطوة 1.2: إعدادات Bitrix في المشروع</a></li>
+<li><a href="#الخطوة-13-طبقة-الاتصال-بـ-bitrix-bitrixclient-tokenmanager">الخطوة 1.3: طبقة الاتصال بـ Bitrix (BitrixClient + TokenManager)</a></li>
+<li><a href="#الخطوة-14-استقبال-التثبيت-وجلب-كل-بيانات-البوابة">الخطوة 1.4: استقبال التثبيت وجلب كل بيانات البوابة</a></li>
+<li><a href="#الخطوة-15-أعمدة-الربط-في-الجداول-الحالية">الخطوة 1.5: أعمدة الربط في الجداول الحالية</a></li>
+<li><a href="#الخطوة-16-تسجيل-الدخول-عبر-bitrix24-oauth">الخطوة 1.6: تسجيل الدخول عبر Bitrix24 (OAuth)</a></li>
+<li><a href="#الخطوة-17-جدولا-الحالة-والأولوية">الخطوة 1.7: جدولا الحالة والأولوية</a></li>
+</ul>
+</li>
+<li><a href="#المرحلة-2-الاستيراد-الأولي">المرحلة 2: الاستيراد الأولي</a><ul>
+<li><a href="#الخطوة-21-استيراد-الموظفين">الخطوة 2.1: استيراد الموظفين</a></li>
+<li><a href="#الخطوة-22-استيراد-المشاريع-وأعضائها">الخطوة 2.2: استيراد المشاريع وأعضائها</a></li>
+<li><a href="#الخطوة-23-استيراد-المهام">الخطوة 2.3: استيراد المهام</a></li>
+<li><a href="#الخطوة-24-أمر-الاستيراد-وشريط-التقدم">الخطوة 2.4: أمر الاستيراد وشريط التقدم</a></li>
+</ul>
+</li>
+<li><a href="#المرحلة-3-المزامنة-باتجاهين">المرحلة 3: المزامنة باتجاهين</a><ul>
+<li><a href="#الخطوة-31-من-نظامنا-إلى-bitrix-المهام">الخطوة 3.1: من نظامنا إلى Bitrix: المهام</a></li>
+<li><a href="#الخطوة-32-من-نظامنا-إلى-bitrix-المشاريع-والأعضاء">الخطوة 3.2: من نظامنا إلى Bitrix: المشاريع والأعضاء</a></li>
+<li><a href="#الخطوة-33-من-نظامنا-إلى-bitrix-الموظفون">الخطوة 3.3: من نظامنا إلى Bitrix: الموظفون</a></li>
+<li><a href="#الخطوة-34-من-bitrix-إلى-نظامنا-استقبال-الأحداث">الخطوة 3.4: من Bitrix إلى نظامنا: استقبال الأحداث</a></li>
+<li><a href="#الخطوة-35-منع-الحلقات-وقاعدة-التعارض">الخطوة 3.5: منع الحلقات وقاعدة التعارض</a></li>
+<li><a href="#الخطوة-36-المزامنة-الدورية-شبكة-الأمان">الخطوة 3.6: المزامنة الدورية (شبكة الأمان)</a></li>
+</ul>
+</li>
+<li><a href="#المرحلة-4-بطاقة-المهمة">المرحلة 4: بطاقة المهمة</a><ul>
+<li><a href="#الخطوة-41-المشاركون-والمراقبون">الخطوة 4.1: المشاركون والمراقبون</a></li>
+<li><a href="#الخطوة-42-المهام-الفرعية">الخطوة 4.2: المهام الفرعية</a></li>
+<li><a href="#الخطوة-43-checklists">الخطوة 4.3: Checklists</a></li>
+<li><a href="#الخطوة-44-تتبع-الوقت-والمؤقت">الخطوة 4.4: تتبع الوقت والمؤقت</a></li>
+<li><a href="#الخطوة-45-الملفات">الخطوة 4.5: الملفات</a></li>
+<li><a href="#الخطوة-46-نتائج-المهمة">الخطوة 4.6: نتائج المهمة</a></li>
+<li><a href="#الخطوة-47-شات-المهمة">الخطوة 4.7: شات المهمة</a></li>
+<li><a href="#الخطوة-48-سجل-التغييرات-history">الخطوة 4.8: سجل التغييرات (History)</a></li>
+</ul>
+</li>
+<li><a href="#المرحلة-5-التقوية-والإطلاق">المرحلة 5: التقوية والإطلاق</a><ul>
+<li><a href="#الخطوة-51-لوحة-حالة-المزامنة">الخطوة 5.1: لوحة حالة المزامنة</a></li>
+<li><a href="#الخطوة-52-الأخطاء-وإعادة-المحاولة-dead-letter">الخطوة 5.2: الأخطاء وإعادة المحاولة (Dead-letter)</a></li>
+<li><a href="#الخطوة-53-الاختبارات-والتجربة-والإطلاق">الخطوة 5.3: الاختبارات والتجربة والإطلاق</a></li>
+<li><a href="#أسئلة-مفتوحة-تحسم-قبل-الخطوة-المعنية">أسئلة مفتوحة (تُحسم قبل الخطوة المعنية)</a></li>
+<li><a href="#مراجع">مراجع</a></li>
+</ul>
+</li>
+</ul>
+
+</nav>
+<main>
+<h1 id="دليل-تنفيذ-تكامل-bitrix24-خطوة-بخطوة">دليل تنفيذ تكامل Bitrix24 خطوة بخطوة</h1>
+<blockquote>
+<p>هذا الملف هو خريطة العمل. Claude (أو أي زميل) يمشي فيه بالترتيب، خطوة خطوة، ولا ينتقل للخطوة التالية قبل أن تتحقق "النتيجة" المكتوبة في الخطوة الحالية.</p>
+<p>التفاصيل الأوسع (جداول التغطية، المخاطر، المراجع) موجودة في <a href="BITRIX24_INTEGRATION_PLAN.html">BITRIX24_INTEGRATION_PLAN.md</a>.</p>
+</blockquote>
+<hr />
+<h2 id="كيف-تستخدم-هذا-الملف-اقرأ-هذا-أولا">كيف تستخدم هذا الملف (اقرأ هذا أولاً)</h2>
+<ol>
+<li><strong>خطوة واحدة في كل مرة.</strong> نفّذ الخطوة، شغّل الاختبارات، تأكد من "النتيجة"، ثم ضع ✅ في مربع الخطوة وانتقل للتالية.</li>
+<li><strong>لا تبدأ أي خطوة بدون موافقة صاحب المشروع.</strong> قبل كل خطوة: اشرح ما ستفعله في سطرين وانتظر "تمام".</li>
+<li><strong>لا تعمل commit إلا إذا طُلب منك.</strong></li>
+<li><strong>التوثيق الرسمي هو المرجع.</strong> قبل استخدام أي method من Bitrix تحقق من اسمها وحقولها من توثيق Bitrix24 (أداة Bitrix MCP أو apidocs.bitrix24.com). لا تخمّن أسماء الحقول.</li>
+<li><strong>قواعد الكود:</strong><ul>
+<li>Backend: نفس أسلوب الكود الموجود (Form Requests، Policies، Resources، Observers). شغّل <code>php vendor/bin/pint</code> على الملفات التي عدّلتها فقط، و<code>php artisan test</code> قبل إعلان انتهاء أي خطوة.</li>
+<li>Frontend: اتبع skills المشروع <code>frontend-standards</code> و<code>frontend-structure</code> (TypeScript بدون <code>any</code>، TanStack Query، react-hook-form + zod، Tailwind + shadcn/ui، حد 250 سطر للملف).</li>
+</ul>
+</li>
+<li><strong>الأسرار لا تدخل git أبداً:</strong> <code>client_secret</code> والتوكنات مكانها <code>.env</code> وقاعدة البيانات (مشفرة).</li>
+<li><strong>إذا اصطدمت بشيء غير متوقع</strong> (method غير موجودة، صلاحية ناقصة، سلوك مختلف عن التوثيق): توقف واسأل، لا تلتف عليه.</li>
+</ol>
+<hr />
+<h2 id="الصورة-الكاملة-باختصار">الصورة الكاملة باختصار</h2>
+<p><strong>ماذا نبني؟</strong> نظامنا (Laravel + React) يصبح لوحة عمل مربوطة بـ Bitrix24 في ثلاثة أشياء: <strong>الموظفين، المشاريع، المهام</strong>. أي تعديل في نظامنا يذهب إلى Bitrix، وأي تعديل في Bitrix يصل إلينا.</p>
+<p><strong>القرارات التي لا نعيد النقاش فيها:</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>المحور</th>
+<th>القرار</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>اتجاه المزامنة</td>
+<td>باتجاهين. <strong>عند التعارض نسخة Bitrix تفوز</strong></td>
+</tr>
+<tr>
+<td>طريقة الاتصال</td>
+<td>Local Application + OAuth 2.0. كل موظف يدخل بحسابه في Bitrix، فتظهر تعديلاته هناك باسمه وبصلاحياته</td>
+</tr>
+<tr>
+<td>المزامنة الخلفية</td>
+<td>تعمل بتوكن "مستخدم خدمة" (أدمن) محفوظ من لحظة تثبيت التطبيق</td>
+</tr>
+<tr>
+<td>البوابة</td>
+<td>Bitrix24 Cloud. للتجربة: Laravel محلي + ngrok (لأن Bitrix لا يصل إلى localhost)</td>
+</tr>
+<tr>
+<td>الموظفون</td>
+<td>يُستوردون من Bitrix. الإضافة = دعوة (<code>user.add</code>). الحذف غير متاح عبر REST، فنوقف الحساب (<code>ACTIVE = N</code>). الأدوار المحلية تبقى للتحكم بما يظهر في الواجهة</td>
+</tr>
+<tr>
+<td>نطاق المهام</td>
+<td>بطاقة المهمة كاملة: المشاركون، المراقبون، المهام الفرعية، checklists، تتبع الوقت، الملفات، النتائج، الشات</td>
+</tr>
+<tr>
+<td>البيانات الأولية</td>
+<td>من Bitrix فقط. البيانات المحلية الحالية تجريبية</td>
+</tr>
+<tr>
+<td>الحالة والأولوية</td>
+<td>جدولان عندنا (<code>task_statuses</code>, <code>task_priorities</code>) تُستورد قيمهما من Bitrix، ويمكن إضافة قيم مخصصة (مثل <code>urgent</code>) تُرسل كأقرب قيمة في Bitrix</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>مقابلة الكيانات:</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>عندنا</th>
+<th>في Bitrix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>users</code></td>
+<td>User</td>
+</tr>
+<tr>
+<td><code>projects</code></td>
+<td>Workgroup / Project (<code>sonet_group</code>)</td>
+</tr>
+<tr>
+<td><code>project_user</code></td>
+<td>أعضاء المجموعة (<code>sonet_group.user.*</code>)</td>
+</tr>
+<tr>
+<td><code>tasks</code></td>
+<td>Task (<code>tasks.task.*</code>)</td>
+</tr>
+<tr>
+<td><code>comments</code></td>
+<td>شات المهمة (<code>tasks.task.chat.message.send</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h1 id="المرحلة-1-الأساس">المرحلة 1: الأساس</h1>
+<p><strong>هدف المرحلة:</strong> التطبيق مثبت على البوابة، نظامنا يقدر يكلم Bitrix بشكل موثوق، والموظف يدخل بحساب Bitrix.</p>
+<hr />
+<h3 id="الخطوة-11-تجهيز-البيئة-وتسجيل-التطبيق-في-bitrix">الخطوة 1.1: تجهيز البيئة وتسجيل التطبيق في Bitrix</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> أن يكون عندنا تطبيق مسجل في البوابة، ورابط عام يصل منه Bitrix إلى خادمنا.</p>
+<p><strong>ماذا نفعل؟</strong> هذه خطوة يدوية يقوم بها صاحب المشروع، وClaude يساعد بالشرح فقط.</p>
+<p><strong>كيف؟</strong></p>
+<ol>
+<li>نتأكد أن البوابة على <strong>خطة تجارية</strong> (الـ REST لا يعمل على المجانية، ويرجع <code>ACCESS_DENIED</code>).</li>
+<li>نشغّل Laravel ثم ngrok:
+   <code>bash
+    php artisan serve --port=8000
+    ngrok http 8000</code></li>
+<li>في Bitrix: <strong>Developer resources ← Other ← Local application</strong>، ونملأ:<ul>
+<li>النوع: Server، مع تفعيل <strong>Uses only API</strong>.</li>
+<li><strong>Initial installation path:</strong> <code>https://&lt;ngrok&gt;/api/bitrix/install</code></li>
+<li><strong>Handler path:</strong> <code>https://&lt;ngrok&gt;/auth/bitrix/callback</code></li>
+<li><strong>Permissions:</strong> <code>task</code>، <code>sonet_group</code>، <code>user</code>، <code>im</code>، <code>disk</code>، <code>department</code>.</li>
+</ul>
+</li>
+<li>نحفظ، ونأخذ <strong>Application ID</strong> (<code>client_id</code>) و<strong>Application key</strong> (<code>client_secret</code>).</li>
+</ol>
+<p><strong>النتيجة:</strong> التطبيق ظاهر في قائمة تطبيقات البوابة، ومعنا <code>client_id</code> و<code>client_secret</code>.</p>
+<blockquote>
+<p>تنبيه: رابط ngrok المجاني يتغير مع كل تشغيل. عند تغيّره نحدّث الرابطين في إعدادات التطبيق.</p>
+</blockquote>
+<hr />
+<h3 id="الخطوة-12-إعدادات-bitrix-في-المشروع">الخطوة 1.2: إعدادات Bitrix في المشروع</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> مكان واحد واضح لكل إعدادات Bitrix، بدون أسرار داخل الكود.</p>
+<p><strong>ماذا نبني؟</strong></p>
+<ul>
+<li>ملف <code>backend/config/bitrix.php</code> يقرأ من <code>.env</code>: <code>portal</code> (الدومين بدون https)، <code>client_id</code>، <code>client_secret</code>، <code>oauth_server</code> (<code>https://oauth.bitrix.info</code>)، <code>frontend_callback_url</code>، <code>timeout</code>.</li>
+<li>نضيف المتغيرات الفارغة إلى <code>backend/.env.example</code>:
+  <code>BITRIX24_PORTAL=
+  BITRIX24_CLIENT_ID=
+  BITRIX24_CLIENT_SECRET=</code></li>
+</ul>
+<p><strong>النتيجة:</strong> <code>config('bitrix.portal')</code> يرجع قيمة البوابة، و<code>.env.example</code> يوثق المتغيرات.</p>
+<hr />
+<h3 id="الخطوة-13-طبقة-الاتصال-بـ-bitrix-bitrixclient-tokenmanager">الخطوة 1.3: طبقة الاتصال بـ Bitrix (BitrixClient + TokenManager)</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> كل الكود في المشروع يكلم Bitrix من مكان واحد يعرف كيف يتعامل مع التوكنات والأخطاء وحدود الطلبات. لا أحد يكتب <code>Http::post</code> إلى Bitrix مباشرة.</p>
+<p><strong>ماذا نبني؟</strong> مجلد <code>backend/app/Integrations/Bitrix24/</code> فيه:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>الملف</th>
+<th>دوره</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BitrixException.php</code></td>
+<td>خطأ موحد يحمل كود Bitrix (<code>expired_token</code>، <code>QUERY_LIMIT_EXCEEDED</code>، <code>ACCESS_DENIED</code>...) مع دوال مساعدة مثل <code>isExpiredToken()</code> و<code>isRateLimited()</code></td>
+</tr>
+<tr>
+<td><code>TokenManager.php</code></td>
+<td>يستبدل <code>code</code> بتوكنات، ويجدد التوكن قبل انتهائه بدقيقة. التجديد داخل <code>Cache::lock</code> حتى لا تجدد عمليتان في نفس الوقت (Bitrix يلغي الـ refresh token القديم بمجرد استخدامه)</td>
+</tr>
+<tr>
+<td><code>BitrixClient.php</code></td>
+<td><code>callAsUser($user, $method, $params)</code>، <code>callAsService(...)</code>، <code>callWithToken(...)</code>، و<code>batch(...)</code> (حتى 50 أمراً في طلب واحد)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>كيف يتصرف BitrixClient؟</strong></p>
+<ul>
+<li>الطلب: <code>POST https://&lt;portal&gt;/rest/&lt;method&gt;.json</code> مع <code>auth = &lt;access_token&gt;</code>.</li>
+<li>إذا رجع <code>expired_token</code>: يجدد التوكن مرة واحدة ويعيد الطلب.</li>
+<li>إذا رجع <code>QUERY_LIMIT_EXCEEDED</code> أو <code>OVERLOAD_LIMIT</code>: يعيد المحاولة 3 مرات بتأخير متزايد (<code>Illuminate\Support\Sleep</code> حتى يمكن تزييفه في الاختبارات).</li>
+<li>أي خطأ آخر: <code>BitrixException</code>.</li>
+</ul>
+<p><strong>الاختبارات (Http::fake):</strong> تجديد التوكن المنتهي، إعادة المحاولة بعد <code>expired_token</code>، الاستسلام بعد 3 محاولات عند تجاوز الحد، رفض الاتصال إذا لم يكن هناك توكن.</p>
+<p><strong>النتيجة:</strong> اختبارات الطبقة كلها تنجح، ولا يوجد اتصال بـ Bitrix خارج هذا المجلد.</p>
+<hr />
+<h3 id="الخطوة-14-استقبال-التثبيت-وجلب-كل-بيانات-البوابة">الخطوة 1.4: استقبال التثبيت وجلب كل بيانات البوابة</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> لحظة تثبيت التطبيق نحفظ كل ما نحتاجه عن البوابة: التوكنات، الصلاحيات، من ثبّت التطبيق، الأقسام، ونشترك في الأحداث. هذا يعطينا "مستخدم الخدمة" الذي تعمل به المزامنة الخلفية.</p>
+<p><strong>ماذا نبني؟</strong></p>
+<ol>
+<li><strong>جدول</strong> <code>bitrix_portals</code><strong>:</strong> <code>member_id</code> (unique)، <code>domain</code>، <code>application_token</code>، <code>access_token</code> و<code>refresh_token</code> (مشفرة بـ <code>encrypted</code> cast)، <code>token_expires_at</code>، <code>scopes</code> (json)، <code>app_info</code> (json)، <code>installer</code> (json)، <code>installer_is_admin</code>، <code>departments</code> (json)، <code>language</code>، <code>installed_at</code>.</li>
+<li><strong>المسار:</strong> <code>POST /api/bitrix/install</code> بدون auth (Bitrix هو المتصل).</li>
+<li><code>BitrixInstallController@install</code><strong>:</strong><ul>
+<li>يتأكد أن <code>event = ONAPPINSTALL</code> وأن <code>auth[domain]</code> هو بوابتنا.</li>
+<li>يأخذ من الطلب: <code>access_token</code>، <code>refresh_token</code>، <code>expires_in</code>، <code>application_token</code>، <code>member_id</code>، <code>domain</code>، <code>scope</code>، و<code>data[LANGUAGE_ID]</code>.</li>
+<li>يجلب الباقي بطلب <code>batch</code> واحد: <code>app.info</code>، <code>scope</code>، <code>user.current</code>، <code>user.admin</code>، <code>department.get</code>.</li>
+<li>يحفظ كل شيء في <code>bitrix_portals</code> (<code>updateOrCreate</code> على <code>member_id</code>، حتى تعمل إعادة التثبيت).</li>
+<li>يقارن الصلاحيات الممنوحة بالمطلوبة، ويسجل تحذيراً بالناقص.</li>
+<li>يشترك في الأحداث عبر <code>event.bind</code> مع <code>handler = /api/bitrix/events</code>: <code>OnTaskAdd</code>، <code>OnTaskUpdate</code>، <code>OnTaskDelete</code>، <code>OnTaskCommentAdd</code>، <code>OnSonetGroupAdd</code>، <code>OnSonetGroupUpdate</code>، <code>OnSonetGroupDelete</code>.</li>
+<li>يربط "مستخدم الخدمة" بالمستخدم الذي ثبّت التطبيق إذا كان أدمن.</li>
+</ul>
+</li>
+</ol>
+<p><strong>لماذا</strong> <code>application_token</code> <strong>مهم؟</strong> Bitrix يرسله مع كل حدث لاحق. أي طلب يصل إلى <code>/api/bitrix/events</code> بدون نفس القيمة نرفضه، لأنه ليس من Bitrix.</p>
+<p><strong>النتيجة:</strong> بعد التثبيت يوجد صف كامل في <code>bitrix_portals</code>، والصلاحيات الست موجودة في <code>scopes</code>، و<code>event.get</code> يعرض الأحداث المشترك فيها.</p>
+<hr />
+<h3 id="الخطوة-15-أعمدة-الربط-في-الجداول-الحالية">الخطوة 1.5: أعمدة الربط في الجداول الحالية</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> كل سجل عندنا يعرف ما يقابله في Bitrix، حتى نحدّث السجل الصحيح ولا نكرره.</p>
+<p><strong>ماذا نبني؟</strong> migrations:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>الجدول</th>
+<th>الأعمدة</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>users</code></td>
+<td><code>bitrix_user_id</code> (unique)، <code>bitrix_access_token</code>، <code>bitrix_refresh_token</code> (مشفرة)، <code>bitrix_token_expires_at</code>، <code>avatar_url</code>، <code>position</code>، <code>is_active</code>، <code>bitrix_synced_at</code>. ونجعل <code>password</code> اختيارية (الموظف القادم من Bitrix لا يملك كلمة مرور محلية)</td>
+</tr>
+<tr>
+<td><code>projects</code></td>
+<td><code>bitrix_group_id</code> (unique)، <code>bitrix_synced_at</code></td>
+</tr>
+<tr>
+<td><code>tasks</code></td>
+<td><code>bitrix_task_id</code> (unique)، <code>bitrix_synced_at</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>النتيجة:</strong> <code>php artisan migrate</code> ثم <code>migrate:rollback</code> يعملان على MySQL وعلى SQLite (الاختبارات)، والاختبارات القديمة كلها تنجح.</p>
+<hr />
+<h3 id="الخطوة-16-تسجيل-الدخول-عبر-bitrix24-oauth">الخطوة 1.6: تسجيل الدخول عبر Bitrix24 (OAuth)</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> الموظف يضغط "الدخول عبر Bitrix24" ويدخل نظامنا بحسابه، بدون كلمة مرور جديدة.</p>
+<p><strong>كيف يعمل التدفق؟</strong></p>
+<ol>
+<li>الواجهة تفتح <code>GET /auth/bitrix/redirect</code> (route في <code>web.php</code> لأنه يحتاج session).</li>
+<li>الخادم يولّد <code>state</code> عشوائياً، يحفظه في الـ session، ويحوّل إلى <code>https://&lt;portal&gt;/oauth/authorize/?client_id=...&amp;state=...</code>.</li>
+<li>الموظف يوافق في Bitrix، فيرجع إلى <code>GET /auth/bitrix/callback?code=...&amp;state=...</code>.</li>
+<li>الخادم:<ul>
+<li>يتحقق من <code>state</code> (حماية من CSRF).</li>
+<li>يستبدل <code>code</code> بالتوكنات من <code>https://oauth.bitrix.info/oauth/token/</code>.</li>
+<li>يتأكد أن <code>domain</code> هو بوابتنا.</li>
+<li>يجلب <code>user.current</code>، ويجد المستخدم بـ <code>bitrix_user_id</code>، أو يربطه بحساب موجود بنفس البريد، أو ينشئه بدور Member.</li>
+<li>يحفظ التوكنات مشفرة، وينشئ توكن Sanctum.</li>
+<li>يحوّل إلى الواجهة: <code>&lt;frontend&gt;/auth/bitrix/callback#token=...</code> (التوكن في الـ fragment حتى لا يظهر في سجلات الخادم).</li>
+</ul>
+</li>
+<li><strong>الواجهة:</strong> زر في صفحة الدخول، وصفحة <code>/auth/bitrix/callback</code> تقرأ التوكن من الـ fragment، تحفظه بنفس طريقة الدخول الحالية، ثم تطلب <code>/api/me</code> وتنقل المستخدم للوحة.</li>
+</ol>
+<p><strong>الاختبارات:</strong> رفض <code>state</code> الخاطئ، رفض بوابة أخرى، ربط حساب موجود بالبريد، إنشاء موظف جديد بدور Member، التوكنات محفوظة مشفرة.</p>
+<p><strong>النتيجة:</strong> موظف حقيقي من البوابة يدخل نظامنا ويرى اسمه وصورته ومنصبه.</p>
+<hr />
+<h3 id="الخطوة-17-جدولا-الحالة-والأولوية">الخطوة 1.7: جدولا الحالة والأولوية</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> بدل قيم ثابتة في الكود (enum)، تصبح الحالات والأولويات بيانات في جداول، مأخوذة من Bitrix، ويقدر المدير يضيف قيماً خاصة بنا.</p>
+<p><strong>ماذا نبني؟</strong></p>
+<ul>
+<li><strong>جدولا</strong> <code>task_statuses</code> <strong>و</strong><code>task_priorities</code><strong>:</strong> <code>key</code> (unique)، <code>name</code>، <code>bitrix_id</code> (القيمة المقابلة في Bitrix)، <code>is_system</code> (قيمة من Bitrix، لا تُحذف)، <code>sort</code>، <code>color</code>. ولـ <code>task_statuses</code> أيضاً <code>is_final</code> (هل تعني أن المهمة أُغلقت).</li>
+<li><strong>القيم الافتراضية</strong> (تُزرع داخل الـ migration، ونحافظ على المفاتيح الحالية حتى لا تنكسر الواجهة):
+  | key | Bitrix |
+  | --- | --- |
+  | <code>todo</code> | 2 Pending |
+  | <code>in_progress</code> | 3 In progress |
+  | <code>review</code> | 4 Awaiting control |
+  | <code>completed</code> | 5 Completed (<code>is_final</code>) |
+  | <code>deferred</code> | 6 Deferred |
+  | <code>low</code> / <code>medium</code> / <code>high</code> | 0 / 1 / 2 |
+  | <code>urgent</code> | قيمة مخصصة تُرسل كـ 2 (High) |</li>
+<li><code>tasks.status</code> و<code>tasks.priority</code> تصبح string مع foreign key إلى <code>key</code>.</li>
+<li>كل مكان في الكود يقارن بـ <code>'completed'</code> يصبح "أي حالة <code>is_final</code>".</li>
+<li><strong>API:</strong> <code>GET/POST/PUT/DELETE /api/task-statuses</code> و<code>/api/task-priorities</code>. الإدارة تحتاج صلاحية جديدة <code>task_settings.manage</code>. لا يُحذف <code>is_system</code>، ولا تُحذف قيمة مستخدمة في مهام.</li>
+<li><strong>أمر:</strong> <code>php artisan bitrix:sync-task-lookups</code> يقرأ <code>tasks.task.getFields</code> ويحدّث الأسماء ويضيف أي قيمة جديدة من Bitrix.</li>
+<li><strong>الواجهة:</strong> القوائم المنسدلة والفلاتر والشارات تقرأ من الـ API بدل الثوابت.</li>
+</ul>
+<p><strong>النتيجة:</strong> الأمر يجلب الأسماء من البوابة، والمدير يضيف حالة مخصصة وتظهر في الواجهة، والاختبارات تنجح.</p>
+<hr />
+<h1 id="المرحلة-2-الاستيراد-الأولي">المرحلة 2: الاستيراد الأولي</h1>
+<p><strong>هدف المرحلة:</strong> كل الموظفين والمشاريع والمهام الموجودة في Bitrix تظهر عندنا، مطابقة 100%.</p>
+<p><strong>قاعدة عامة لكل الاستيراد:</strong></p>
+<ul>
+<li>يعمل كـ Job على queue اسمها <code>bitrix</code>، بتوكن مستخدم الخدمة.</li>
+<li>يستخدم الترقيم الذي يرجعه Bitrix (<code>start</code> و<code>next</code>)، ويستخدم <code>batch</code> لتقليل عدد الطلبات.</li>
+<li><strong>idempotent:</strong> تشغيله مرتين لا يكرر شيئاً (<code>updateOrCreate</code> على عمود <code>bitrix_*_id</code>).</li>
+<li>كل كيان له "Mapper" منفصل يحول بيانات Bitrix إلى حقول جداولنا. لا تحويل داخل الـ Job نفسها.</li>
+</ul>
+<hr />
+<h3 id="الخطوة-21-استيراد-الموظفين">الخطوة 2.1: استيراد الموظفين</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> كل موظفي البوابة موجودون عندنا قبل استيراد المشاريع والمهام (لأن المهمة تشير إلى مسؤول ومنشئ).</p>
+<p><strong>كيف؟</strong> <code>user.get</code> مع الترقيم، ونأخذ: <code>ID</code>، <code>NAME</code>، <code>LAST_NAME</code>، <code>EMAIL</code>، <code>PERSONAL_PHOTO</code>، <code>WORK_POSITION</code>، <code>ACTIVE</code>، <code>UF_DEPARTMENT</code>. الموظف غير النشط يُستورد مع <code>is_active = false</code> ولا يقدر يدخل.</p>
+<p><strong>النتيجة:</strong> عدد الموظفين عندنا = عددهم في البوابة، والموظف الموقوف في Bitrix موقوف عندنا.</p>
+<hr />
+<h3 id="الخطوة-22-استيراد-المشاريع-وأعضائها">الخطوة 2.2: استيراد المشاريع وأعضائها</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> كل مشروع/مجموعة عمل في Bitrix يقابله مشروع عندنا بنفس الأعضاء والأدوار.</p>
+<p><strong>كيف؟</strong></p>
+<ul>
+<li>القائمة عبر <code>socialnetwork.api.workgroup.list</code> (أو <code>sonet_group.get</code>)، والتفاصيل عبر <code>socialnetwork.api.workgroup.get</code>.</li>
+<li>الأعضاء عبر <code>sonet_group.user.get</code>، والأدوار: <code>A</code> مالك، <code>E</code> مشرف، <code>K</code> عضو، تُحفظ في <code>project_user</code>.</li>
+<li>المالك يصبح <code>owner_id</code>. التواريخ (<code>PROJECT_DATE_START</code>/<code>FINISH</code>) تذهب إلى <code>start_date</code>/<code>due_date</code>. المجموعة المؤرشفة (<code>CLOSED = Y</code>) تصبح مؤرشفة عندنا.</li>
+</ul>
+<p><strong>النتيجة:</strong> عدد المشاريع والأعضاء مطابق، وفتح أي مشروع يعرض نفس الأعضاء الموجودين في Bitrix.</p>
+<hr />
+<h3 id="الخطوة-23-استيراد-المهام">الخطوة 2.3: استيراد المهام</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> كل مهام البوابة عندنا بحالتها وأولويتها ومسؤولها ومواعيدها.</p>
+<p><strong>كيف؟</strong></p>
+<ul>
+<li><code>tasks.task.list</code> مع <code>select</code> للحقول التي نحتاجها فقط، وترقيم حتى النهاية. نبدأ بالمهام غير المغلقة ثم المغلقة.</li>
+<li>التحويل: <code>STATUS</code> إلى <code>key</code> عبر <code>TaskStatus::keyForBitrix()</code> (القيمة القديمة 1 "New" تعامل كـ Pending)، <code>PRIORITY</code> عبر <code>TaskPriority::keyForBitrix()</code>، <code>RESPONSIBLE_ID</code> و<code>CREATED_BY</code> إلى <code>users.id</code> عبر <code>bitrix_user_id</code>، <code>GROUP_ID</code> إلى <code>projects.id</code>، <code>DEADLINE</code> إلى <code>due_date</code>.</li>
+<li><strong>مهمة بدون مشروع</strong> (<code>GROUP_ID = 0</code>): تحتاج قرار. اسأل صاحب المشروع قبل التنفيذ (الاقتراح: مشروع افتراضي "مهام بدون مشروع"، لأن <code>tasks.project_id</code> إجباري حالياً).</li>
+</ul>
+<p><strong>النتيجة:</strong> عدد المهام مطابق، وعينة عشوائية من 20 مهمة مطابقة حقلاً بحقل.</p>
+<hr />
+<h3 id="الخطوة-24-أمر-الاستيراد-وشريط-التقدم">الخطوة 2.4: أمر الاستيراد وشريط التقدم</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> تشغيل الاستيراد الكامل بأمر واحد، ومعرفة أين وصل.</p>
+<p><strong>ماذا نبني؟</strong></p>
+<ul>
+<li><code>php artisan bitrix:import {--only=users,projects,tasks}</code> يشغّل الخطوات بالترتيب: الموظفون، ثم المشاريع، ثم المهام.</li>
+<li>جدول <code>bitrix_sync_cursors</code> (<code>entity</code>، <code>last_synced_at</code>، <code>status</code>، <code>processed</code>، <code>total</code>) لمتابعة التقدم، ونستخدمه لاحقاً في المزامنة الدورية.</li>
+</ul>
+<p><strong>النتيجة:</strong> الأمر يعمل من الصفر على بوابة حقيقية، وإعادة تشغيله لا تكرر أي سجل.</p>
+<hr />
+<h1 id="المرحلة-3-المزامنة-باتجاهين">المرحلة 3: المزامنة باتجاهين</h1>
+<p><strong>هدف المرحلة:</strong> أي تعديل في نظامنا يظهر في Bitrix خلال ثوانٍ، وأي تعديل في Bitrix يظهر عندنا خلال ثوانٍ.</p>
+<hr />
+<h3 id="الخطوة-31-من-نظامنا-إلى-bitrix-المهام">الخطوة 3.1: من نظامنا إلى Bitrix: المهام</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> عندما يعدّل الموظف مهمة من لوحتنا، يحدث نفس التعديل في Bitrix باسمه.</p>
+<p><strong>كيف؟</strong></p>
+<ul>
+<li>Service مثل <code>TaskSyncService</code> تستدعيه الـ Controllers الحالية، فلا تتغير الـ routes ولا الواجهة.</li>
+<li>الإنشاء: <code>tasks.task.add</code>، ونحفظ <code>bitrix_task_id</code> الراجع.</li>
+<li>التعديل: <code>tasks.task.update</code> بالحقول التي تغيرت فقط.</li>
+<li><strong>تغيير الحالة لا يتم بكتابة حقل</strong> <code>STATUS</code>، بل بالـ action المناسبة: <code>tasks.task.start</code>، <code>complete</code>، <code>defer</code>، <code>renew</code>، <code>pause</code>، <code>approve</code>/<code>disapprove</code>.</li>
+<li>الحذف: <code>tasks.task.delete</code>.</li>
+<li>الطلب يُنفذ بتوكن الموظف نفسه (<code>callAsUser</code>)، فتطبق Bitrix صلاحياته. إذا رفضت Bitrix (<code>ACCESS_DENIED</code>) لا نحفظ التعديل محلياً ونرجع رسالة واضحة.</li>
+</ul>
+<p><strong>النتيجة:</strong> إنشاء مهمة وتعديلها وتغيير حالتها وحذفها من لوحتنا يظهر في Bitrix، والتايملاين في Bitrix يعرض اسم الموظف الصحيح.</p>
+<hr />
+<h3 id="الخطوة-32-من-نظامنا-إلى-bitrix-المشاريع-والأعضاء">الخطوة 3.2: من نظامنا إلى Bitrix: المشاريع والأعضاء</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> إدارة المشاريع من لوحتنا تنعكس على مجموعات Bitrix.</p>
+<p><strong>كيف؟</strong> <code>sonet_group.create</code> (مع <code>PROJECT = Y</code>)، <code>sonet_group.update</code>، <code>sonet_group.delete</code>، <code>sonet_group.setowner</code>. الأعضاء: <code>sonet_group.user.add</code> (إضافة مباشرة بدون دعوة)، <code>sonet_group.user.update</code> (تغيير الدور)، <code>sonet_group.user.delete</code>.</p>
+<p><strong>النتيجة:</strong> مشروع جديد من لوحتنا يظهر في Bitrix بنفس الأعضاء والأدوار.</p>
+<hr />
+<h3 id="الخطوة-33-من-نظامنا-إلى-bitrix-الموظفون">الخطوة 3.3: من نظامنا إلى Bitrix: الموظفون</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> إضافة موظف وإيقافه من لوحتنا.</p>
+<p><strong>كيف؟</strong> الإضافة: <code>user.add</code> (ترسل دعوة بالبريد، وتحتاج صلاحية دعوة). الإيقاف: <code>user.update</code> مع <code>ACTIVE = N</code>. تعديل البيانات: <code>user.update</code>. <strong>لا يوجد حذف عبر REST</strong>، فزر الحذف في الواجهة يصبح "إيقاف".</p>
+<p><strong>النتيجة:</strong> الموظف المضاف تصله دعوة Bitrix، والموقوف لا يقدر يدخل أي من النظامين.</p>
+<hr />
+<h3 id="الخطوة-34-من-bitrix-إلى-نظامنا-استقبال-الأحداث">الخطوة 3.4: من Bitrix إلى نظامنا: استقبال الأحداث</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> عندما يعدّل أحد شيئاً داخل Bitrix، يصلنا فوراً.</p>
+<p><strong>كيف؟</strong></p>
+<ul>
+<li>مسار <code>POST /api/bitrix/events</code>، يتحقق أولاً من <code>auth[application_token]</code> (مقارنة بـ <code>hash_equals</code> مع القيمة المحفوظة في <code>bitrix_portals</code>).</li>
+<li><strong>الحدث يحمل الـ ID فقط</strong>، لذلك نضع Job على queue <code>bitrix</code> تجلب السجل كاملاً (<code>tasks.task.get</code> أو <code>socialnetwork.api.workgroup.get</code>) وتحدّث جدولنا عبر نفس الـ Mappers المستخدمة في الاستيراد.</li>
+<li>نجمع الأحداث المتكررة لنفس المهمة خلال 2 إلى 3 ثوانٍ في Job واحدة (debounce)، لأن Bitrix يرسل أحياناً عدة أحداث لتعديل واحد.</li>
+<li>الرد على Bitrix سريع دائماً (200) حتى قبل تنفيذ الـ Job.</li>
+</ul>
+<p><strong>النتيجة:</strong> تعديل مهمة داخل Bitrix يظهر في لوحتنا خلال ثوانٍ، وطلب مزيف بدون <code>application_token</code> صحيح يُرفض.</p>
+<hr />
+<h3 id="الخطوة-35-منع-الحلقات-وقاعدة-التعارض">الخطوة 3.5: منع الحلقات وقاعدة التعارض</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> تعديل نرسله نحن لا يرجع لنا كحدث ونعالجه كأنه جديد، وعند التعارض تفوز Bitrix.</p>
+<p><strong>كيف؟</strong></p>
+<ul>
+<li><strong>منع الحلقات:</strong> جدول <code>bitrix_outbound_ops</code> نسجل فيه كل عملية نرسلها (الكيان، الـ ID، hash للحقول، الوقت). عندما يصلنا حدث خلال نافذة قصيرة بنفس البصمة، نعتبره تأكيداً ونتجاهله.</li>
+<li><strong>قاعدة التعارض:</strong> إذا وصل من Bitrix تعديل على سجل عدّلناه محلياً ولم يُرسل بعد، نطبق نسخة Bitrix ونسجل ذلك في السجل.</li>
+</ul>
+<p><strong>النتيجة:</strong> لا توجد Jobs متكررة بلا نهاية، واختبار "تعديلان متزامنان" ينتهي بنسخة Bitrix.</p>
+<hr />
+<h3 id="الخطوة-36-المزامنة-الدورية-شبكة-الأمان">الخطوة 3.6: المزامنة الدورية (شبكة الأمان)</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> إذا ضاع حدث (الخادم متوقف، ngrok تغير)، لا تضيع البيانات.</p>
+<p><strong>كيف؟</strong></p>
+<ul>
+<li>كل 5 إلى 10 دقائق (Scheduler): <code>tasks.task.list</code> مع فلتر <code>&gt;CHANGED_DATE</code> = آخر مزامنة من <code>bitrix_sync_cursors</code>.</li>
+<li>كل ليلة: مطابقة كاملة للأشياء التي <strong>ليس لها أحداث</strong> في Bitrix: أعضاء المشاريع، checklists، سجلات الوقت، والموظفون.</li>
+</ul>
+<p><strong>النتيجة:</strong> إيقاف الخادم ساعة ثم تشغيله يعيد كل التعديلات التي حدثت أثناء التوقف.</p>
+<hr />
+<h1 id="المرحلة-4-بطاقة-المهمة">المرحلة 4: بطاقة المهمة</h1>
+<p><strong>هدف المرحلة:</strong> صفحة تفاصيل المهمة عندنا تعمل مثل بطاقة المهمة في Bitrix، قراءة وكتابة.</p>
+<p><strong>قاعدة عامة:</strong> الأشياء التي لا ترسل Bitrix عنها أحداثاً (checklists، الوقت، تعديل/حذف رسائل الشات) نجلبها <strong>عند فتح المهمة</strong>، إضافة إلى المزامنة الليلية.</p>
+<hr />
+<h3 id="الخطوة-41-المشاركون-والمراقبون">الخطوة 4.1: المشاركون والمراقبون</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> نعرف من يعمل على المهمة ومن يتابعها، ونقدر نعدّلهم.</p>
+<p><strong>كيف؟</strong> جدول <code>task_members</code> (<code>task_id</code>، <code>user_id</code>، <code>role</code>: <code>accomplice</code> أو <code>auditor</code>). الكتابة عبر <code>tasks.task.update</code> بحقلي <code>ACCOMPLICES</code> و<code>AUDITORS</code>. زر "راقب المهمة" للموظف الحالي عبر <code>tasks.task.startwatch</code>/<code>stopwatch</code>. تغيير المسؤول بالتفويض عبر <code>tasks.task.delegate</code>.</p>
+<p><strong>النتيجة:</strong> إضافة مراقب من لوحتنا تظهر في Bitrix، والعكس يصل عبر <code>OnTaskUpdate</code>.</p>
+<hr />
+<h3 id="الخطوة-42-المهام-الفرعية">الخطوة 4.2: المهام الفرعية</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> تقسيم المهمة الكبيرة إلى مهام أصغر.</p>
+<p><strong>كيف؟</strong> عمود <code>parent_id</code> في <code>tasks</code> (self FK). الكتابة عبر حقل <code>PARENT_ID</code>. القراءة بفلتر <code>PARENT_ID</code> في <code>tasks.task.list</code>. الواجهة تعرض شجرة المهام الفرعية داخل البطاقة.</p>
+<p><strong>النتيجة:</strong> مهمة فرعية تُنشأ من لوحتنا تظهر تحت المهمة الأم في Bitrix.</p>
+<hr />
+<h3 id="الخطوة-43-checklists">الخطوة 4.3: Checklists</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> قائمة بنود داخل المهمة يُشطب عليها.</p>
+<p><strong>كيف؟</strong> جدول <code>task_checklist_items</code> (<code>bitrix_item_id</code>، <code>task_id</code>، <code>parent_id</code>، <code>title</code>، <code>is_complete</code>، <code>sort_index</code>). الطرق: <code>task.checklistitem.add/update/delete/complete/renew/moveafteritem/getlist</code>. <strong>لا أحداث</strong>، فنجلبها عند فتح المهمة.</p>
+<p><strong>النتيجة:</strong> إضافة بند وشطبه وترتيبه من لوحتنا يظهر في Bitrix.</p>
+<hr />
+<h3 id="الخطوة-44-تتبع-الوقت-والمؤقت">الخطوة 4.4: تتبع الوقت والمؤقت</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> الموظف يسجل الوقت الذي صرفه على المهمة، يدوياً أو بمؤقت.</p>
+<p><strong>كيف؟</strong></p>
+<ul>
+<li>جدول <code>task_elapsed_items</code> (<code>bitrix_item_id</code>، <code>task_id</code>، <code>user_id</code>، <code>seconds</code>، <code>comment</code>، <code>created_date</code>).</li>
+<li>الطرق: <code>task.elapseditem.add</code> (<code>SECONDS</code>، <code>COMMENT_TEXT</code>، <code>USER_ID</code>)، <code>update</code>، <code>delete</code>، <code>getlist</code>.</li>
+<li><strong>شرط مسبق:</strong> المهمة يجب أن يكون فيها <code>ALLOW_TIME_TRACKING = Y</code>. نفعّله تلقائياً عند إنشاء المهمة من لوحتنا، ونعرض خيار تفعيله للمهام القديمة.</li>
+<li><strong>المؤقت:</strong> لا توجد method لمؤقت Bitrix، فنبنيه عندنا. جدول <code>running_timers</code> (<code>user_id</code>، <code>task_id</code>، <code>started_at</code>)، وعند الإيقاف نحسب المدة ونرسلها كسجل عبر <code>task.elapseditem.add</code>.</li>
+<li>الوقت المخطط: حقل <code>TIME_ESTIMATE</code> (ثوانٍ). المجموع: <code>TIME_SPENT_IN_LOGS</code> (قراءة فقط).</li>
+</ul>
+<p><strong>النتيجة:</strong> تشغيل المؤقت وإيقافه ينتج سجل وقت في Bitrix باسم الموظف، ومجموع الوقت متطابق في النظامين.</p>
+<hr />
+<h3 id="الخطوة-45-الملفات">الخطوة 4.5: الملفات</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> إرفاق ملفات بالمهمة.</p>
+<p><strong>كيف؟</strong> الرفع على مرحلتين: <code>disk.folder.uploadfile</code> (إلى Drive) ثم <code>tasks.task.files.attach</code> بالـ ID الراجع. جدول <code>task_files</code> (<code>task_id</code>، <code>bitrix_disk_file_id</code>، <code>attached_object_id</code>، <code>name</code>، <code>size</code>، <code>mime</code>).</p>
+<p><strong>النتيجة:</strong> ملف يُرفع من لوحتنا يظهر في بطاقة المهمة في Bitrix ويُفتح منها.</p>
+<hr />
+<h3 id="الخطوة-46-نتائج-المهمة">الخطوة 4.6: نتائج المهمة</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> توثيق ما أُنجز في المهمة كنتيجة رسمية.</p>
+<p><strong>كيف؟</strong> <code>tasks.task.result.add/update/list/delete</code>. جدول <code>task_results</code> (<code>bitrix_result_id</code>، <code>task_id</code>، <code>text</code>، <code>author_id</code>).</p>
+<p><strong>النتيجة:</strong> نتيجة تُضاف من لوحتنا تظهر في Bitrix.</p>
+<hr />
+<h3 id="الخطوة-47-شات-المهمة">الخطوة 4.7: شات المهمة</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> المحادثة حول المهمة في مكان واحد للنظامين. هذا يحل محل جدول <code>comments</code> الحالي.</p>
+<p><strong>كيف؟</strong></p>
+<ul>
+<li>الإرسال: <code>tasks.task.chat.message.send</code> (باسم الموظف).</li>
+<li>القراءة: <code>im.dialog.messages.get</code>. التعديل والحذف: <code>im.message.update</code>/<code>im.message.delete</code>.</li>
+<li>جدول <code>task_chat_messages</code> (<code>bitrix_message_id</code>، <code>chat_id</code>، <code>author_id</code>، <code>text</code>، <code>files</code> json، <code>bitrix_created_at</code>).</li>
+<li>رسائل جديدة من Bitrix تصل عبر <code>OnTaskCommentAdd</code>. <strong>تعديل وحذف الرسائل داخل Bitrix لا يرسل أحداثاً</strong>، فنجلب الشات عند فتح المهمة.</li>
+</ul>
+<p><strong>النتيجة:</strong> رسالة من لوحتنا تظهر في شات المهمة في Bitrix، والعكس.</p>
+<hr />
+<h3 id="الخطوة-48-سجل-التغييرات-history">الخطوة 4.8: سجل التغييرات (History)</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> عرض تايملاين المهمة كما هو في Bitrix.</p>
+<p><strong>كيف؟</strong> <code>tasks.task.history.list</code>، <strong>قراءة فقط</strong>. لا نكتب فيه، لأن Bitrix يسجل تلقائياً كل تعديل نرسله، وباسم الموظف الصحيح.</p>
+<p><strong>النتيجة:</strong> تبويب "السجل" في البطاقة يعرض نفس ما يعرضه Bitrix.</p>
+<hr />
+<h1 id="المرحلة-5-التقوية-والإطلاق">المرحلة 5: التقوية والإطلاق</h1>
+<p><strong>هدف المرحلة:</strong> نطلق التكامل ونحن واثقون أنه لا يضيع بيانات، وأن المشاكل تظهر لنا قبل أن يلاحظها الموظفون.</p>
+<hr />
+<h3 id="الخطوة-51-لوحة-حالة-المزامنة">الخطوة 5.1: لوحة حالة المزامنة</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> المدير يرى بعينه أن المزامنة سليمة.</p>
+<p><strong>ماذا نبني؟</strong> صفحة للأدمن: آخر مزامنة لكل كيان (من <code>bitrix_sync_cursors</code>)، عدد العمليات الفاشلة، زر "مزامنة الآن".</p>
+<p><strong>النتيجة:</strong> الصفحة تعرض حالة حقيقية، والزر يشغّل مزامنة فعلية.</p>
+<hr />
+<h3 id="الخطوة-52-الأخطاء-وإعادة-المحاولة-dead-letter">الخطوة 5.2: الأخطاء وإعادة المحاولة (Dead-letter)</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> أي عملية فشلت لا تضيع بصمت.</p>
+<p><strong>ماذا نبني؟</strong> جدول <code>bitrix_sync_failures</code> (العملية، البيانات، الخطأ، عدد المحاولات). العملية التي تفشل بعد كل المحاولات تُسجل هنا، وتظهر في لوحة الحالة مع زر "إعادة المحاولة".</p>
+<p><strong>النتيجة:</strong> إيقاف الإنترنت أثناء تعديل، ثم إعادته والضغط على "إعادة المحاولة"، يوصل التعديل إلى Bitrix.</p>
+<hr />
+<h3 id="الخطوة-53-الاختبارات-والتجربة-والإطلاق">الخطوة 5.3: الاختبارات والتجربة والإطلاق</h3>
+<ul>
+<li class="task"><input type="checkbox" disabled> تمت</li>
+</ul>
+<p><strong>الهدف:</strong> نطلق للجميع بعد تجربة حقيقية بدون فروقات.</p>
+<p><strong>كيف؟</strong></p>
+<ol>
+<li>اختبارات تكامل بـ <code>Http::fake</code> لكل Mapper وكل Service.</li>
+<li>تجربة على بوابة أو مجموعة اختبار حقيقية.</li>
+<li>أسبوع مع فريق صغير، مع مقارنة يومية بين الأعداد في النظامين.</li>
+<li>إطلاق تدريجي لبقية الموظفين.</li>
+<li>إيقاف <code>/register</code> وتسجيل الدخول بكلمة المرور بعد أن يدخل الجميع عبر Bitrix (بقرار من صاحب المشروع).</li>
+</ol>
+<p><strong>النتيجة:</strong> أسبوع تجربة كامل بدون أي فرق في المطابقة الليلية.</p>
+<hr />
+<h2 id="أسئلة-مفتوحة-تحسم-قبل-الخطوة-المعنية">أسئلة مفتوحة (تُحسم قبل الخطوة المعنية)</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>السؤال</th>
+<th>قبل الخطوة</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ماذا نفعل بالمهام التي ليس لها مشروع في Bitrix (<code>GROUP_ID = 0</code>)؟</td>
+<td>2.3</td>
+</tr>
+<tr>
+<td>من هو مستخدم الخدمة الدائم بعد مرحلة التجربة؟</td>
+<td>1.4</td>
+</tr>
+<tr>
+<td>متى نوقف التسجيل وتسجيل الدخول بكلمة المرور؟</td>
+<td>5.3</td>
+</tr>
+<tr>
+<td>هل نحتاج Scrum وFlows والقوالب لاحقاً؟</td>
+<td>بعد المرحلة 5</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="مراجع">مراجع</h2>
+<ul>
+<li>توثيق Bitrix24 REST: https://apidocs.bitrix24.com</li>
+<li>المهام: https://apidocs.bitrix24.com/api-reference/tasks/index.html</li>
+<li>تتبع الوقت: https://apidocs.bitrix24.com/api-reference/tasks/elapsed-item/index.html</li>
+<li>مجموعات العمل: https://apidocs.bitrix24.com/api-reference/sonet-group/index.html</li>
+<li>حدث التثبيت ONAPPINSTALL: https://apidocs.bitrix24.com/api-reference/chat-bots/events/on-app-install.html</li>
+</ul>
+</main>
+</div>
+<button class="theme-toggle" type="button" aria-label="تبديل الوضع الليلي" title="تبديل الوضع الليلي">◐</button>
+<script>
+(function () {
+  var root = document.documentElement, key = "doc-theme";
+  try { var saved = localStorage.getItem(key); if (saved) root.setAttribute("data-theme", saved); } catch (e) {}
+  document.querySelector(".theme-toggle").addEventListener("click", function () {
+    var cur = root.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    var next = cur === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem(key, next); } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>

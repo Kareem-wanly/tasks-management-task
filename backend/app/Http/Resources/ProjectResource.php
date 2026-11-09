@@ -20,6 +20,8 @@ class ProjectResource extends JsonResource
             'members' => UserResource::collection($this->whenLoaded('members')),
             'members_count' => $this->whenCounted('members'),
             'tasks_count' => $this->whenCounted('tasks'),
+            'completed_tasks_count' => $this->whenCounted('completed_tasks'),
+            'in_progress_tasks_count' => $this->whenCounted('in_progress_tasks'),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

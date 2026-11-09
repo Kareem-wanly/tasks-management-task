@@ -1,0 +1,112 @@
+/* Graphite & Signal: utilities, keyframes and the in-app reduced-motion switch. */
+
+/* The base unit of every card-like surface. */
+@utility surface {
+  background: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--elev-soft);
+}
+
+/* Small uppercase label shown above headings. */
+@utility eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+/* Skeleton shimmer. */
+@utility shimmer {
+  background-color: var(--muted);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklch, var(--card) 70%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: shimmer 1.6s var(--ease-luxe) infinite;
+}
+
+@theme {
+  --animate-soft-ping: soft-ping 2.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  --animate-shine: shine 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.2s 1 both;
+
+  @keyframes soft-ping {
+    0% {
+      transform: scale(1);
+      opacity: 0.6;
+    }
+    70%,
+    100% {
+      transform: scale(2.6);
+      opacity: 0;
+    }
+  }
+
+  @keyframes shimmer {
+    from {
+      background-position: 150% 0;
+    }
+    to {
+      background-position: -50% 0;
+    }
+  }
+
+  @keyframes shine {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(200%);
+    }
+  }
+}
+
+/* Theme toggle: the new theme grows as a circle from the button (see useTheme). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* In-app preference (saved in localStorage), independent of the OS setting. */
+html[data-motion='reduced'] *,
+html[data-motion='reduced'] *::before,
+html[data-motion='reduced'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+/*
+ * Hue tints for identity chips (user avatars, project marks). Pick the hue with
+ * data-tint="blue|violet|…" on the element (see constants/tints.ts); the utility does the rest.
+ */
+@utility tint-soft {
+  background-color: oklch(0.94 0.04 var(--tint-h, 255));
+  color: oklch(0.44 0.14 var(--tint-h, 255));
+
+  &:where(.dark *) {
+    background-color: oklch(0.31 0.07 var(--tint-h, 255));
+    color: oklch(0.86 0.09 var(--tint-h, 255));
+  }
+}
+
+@utility tint-solid {
+  background-color: oklch(0.6 0.15 var(--tint-h, 255));
+  color: oklch(0.99 0 0);
+}
+
+[data-tint='blue'] { --tint-h: 255; }
+[data-tint='violet'] { --tint-h: 295; }
+[data-tint='pink'] { --tint-h: 345; }
+[data-tint='red'] { --tint-h: 25; }
+[data-tint='orange'] { --tint-h: 50; }
+[data-tint='amber'] { --tint-h: 82; }
+[data-tint='green'] { --tint-h: 150; }
+[data-tint='teal'] { --tint-h: 190; }

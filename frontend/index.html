@@ -1,13 +1,37 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <meta name="theme-color" content="#F7F8FB" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111219" media="(prefers-color-scheme: dark)" />
+    <title>Task Manager</title>
+    <script>
+      // Apply language, theme and motion preference before first paint (no flash or layout flip).
+      (function () {
+        var root = document.documentElement;
+        var theme = null;
+        var motion = null;
+        var language = null;
+        try {
+          theme = localStorage.getItem('ui-theme');
+          motion = localStorage.getItem('ui-motion');
+          language = localStorage.getItem('ui-language');
+        } catch (e) {}
+        var dark = theme ? theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        root.classList.toggle('dark', dark);
+        root.style.colorScheme = dark ? 'dark' : 'light';
+        if (motion === 'reduced') root.dataset.motion = 'reduced';
+        if (language === 'ar') {
+          root.lang = 'ar';
+          root.dir = 'rtl';
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
