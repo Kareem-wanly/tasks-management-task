@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Integrations\Bitrix24\BitrixClient;
+use App\Integrations\Bitrix24\BitrixException;
+use App\Models\BitrixPortal;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -17,7 +20,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(
+            BitrixClient::SERVICE_ACCOUNT,
+            fn () => BitrixPortal::current() ?? throw BitrixException::missingToken()
+        );
     }
 
     /**

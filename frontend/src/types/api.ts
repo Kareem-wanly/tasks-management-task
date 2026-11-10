@@ -40,6 +40,9 @@ export interface User {
   id: number;
   name: string;
   email: string;
+  /** Profile photo and job title from Bitrix24; null for local-only users. */
+  avatar_url?: string | null;
+  position?: string | null;
   /** Role names; only present when roles were loaded. */
   roles?: string[];
   /** Only on /me, /login and /register. */

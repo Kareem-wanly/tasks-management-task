@@ -15,7 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Bitrix POSTs here when the app is opened; the token is verified
+        // with Bitrix instead of a CSRF token.
+        $middleware->validateCsrfTokens(except: ['auth/bitrix/callback']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
 

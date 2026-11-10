@@ -33,6 +33,7 @@ class Task extends Model
         return [
             'due_date' => 'datetime',
             'completed_at' => 'datetime',
+            'bitrix_synced_at' => 'datetime',
         ];
     }
 

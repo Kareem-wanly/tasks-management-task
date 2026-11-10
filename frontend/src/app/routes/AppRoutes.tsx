@@ -4,7 +4,7 @@ import ProtectedRoute from './ProtectedRoute';
 
 import AppShell from '../shell/AppShell';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { LoginPage, RegisterPage } from '@/features/auth';
+import { BitrixCallbackPage, LoginPage, RegisterPage } from '@/features/auth';
 import ForbiddenPage from '../pages/ForbiddenPage';
 import NotFoundPage from '../pages/NotFoundPage';
 
@@ -25,6 +25,7 @@ export default function AppRoutes() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/auth/bitrix/callback" element={<BitrixCallbackPage />} />
         <Route path="/403" element={<ForbiddenPage />} />
         <Route path="/unauthorized" element={<Navigate to="/403" replace />} />
 

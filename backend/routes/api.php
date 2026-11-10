@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BitrixInstallController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProjectController;
@@ -14,6 +15,9 @@ Route::middleware('throttle:5,1')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
 });
+
+// Bitrix24 calls this itself, so there is no user auth.
+Route::post('/bitrix/install', [BitrixInstallController::class, 'install']);
 
 Route::middleware('auth:sanctum')->group(function () {
 

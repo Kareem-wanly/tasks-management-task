@@ -1,4 +1,4 @@
-import apiClient from '@/lib/apiClient';
+import apiClient, { BASE_URL } from '@/lib/apiClient';
 import type { AuthResponse, User } from '@/types/api';
 
 export interface LoginCredentials {
@@ -47,6 +47,9 @@ const authApi = {
     const res = await apiClient.get<{ user: User }>('/me');
     return res.user;
   },
+
+  /** Full-page navigation target: the OAuth start lives in Laravel's web routes, outside /api. */
+  bitrixLoginUrl: (): string => `${BASE_URL.replace(/\/api\/?$/, '')}/auth/bitrix/redirect`,
 };
 
 export default authApi;
