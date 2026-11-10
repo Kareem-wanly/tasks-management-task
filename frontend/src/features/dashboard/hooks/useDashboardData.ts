@@ -7,7 +7,8 @@ import type { Project, Task } from '@/types/api';
 const LIST = { per_page: 100 };
 // One-row pages: only `total` is read, so the counts cover every task, not just a loaded page
 const OVERDUE = { overdue: 'true', per_page: 1 };
-const COMPLETED = { status: 'completed', per_page: 1 };
+// Every closing status (is_final), not only "completed"
+const COMPLETED = { finished: 'true', per_page: 1 };
 
 export interface DashboardData {
   projects: Project[];

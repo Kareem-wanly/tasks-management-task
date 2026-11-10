@@ -18,7 +18,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { TASK_PRIORITIES, TASK_PRIORITY_LABELS, TASK_STATUSES, TASK_STATUS_LABELS } from '@/constants/statuses';
+import { TASK_DONE_STATUS } from '@/constants/statuses';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { EASE } from '@/lib/motion';
 import type { Task } from '@/types/api';
@@ -34,6 +35,7 @@ const EXTEND_DAYS = [1, 3, 7, 14];
 /** Floating action bar for the selected tasks: status, priority, due date, assignee, delete. */
 export default function TasksBulkBar({ selected, onClear }: TasksBulkBarProps) {
   const { can, user } = useAuth();
+  const { statusOptions, priorityOptions } = useTaskLookups();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const bulk = useBulkTaskActions(() => {
     setConfirmDelete(false);
@@ -57,7 +59,7 @@ export default function TasksBulkBar({ selected, onClear }: TasksBulkBarProps) {
 
         {(can('tasks.change_status') || canEdit) && (
           <>
-            <Button size="sm" variant="ghost" disabled={bulk.isPending} onClick={() => run({ kind: 'status', status: 'completed' })}>
+            <Button size="sm" variant="ghost" disabled={bulk.isPending} onClick={() => run({ kind: 'status', status: TASK_DONE_STATUS })}>
               <CheckIcon />
               Complete
             </Button>
@@ -69,9 +71,9 @@ export default function TasksBulkBar({ selected, onClear }: TasksBulkBarProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" side="top">
-                {TASK_STATUSES.map((status) => (
-                  <DropdownMenuItem key={status} onSelect={() => run({ kind: 'status', status })}>
-                    {TASK_STATUS_LABELS[status]}
+                {statusOptions.map((s) => (
+                  <DropdownMenuItem key={s.value} onSelect={() => run({ kind: 'status', status: s.value })}>
+                    {s.label}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -89,9 +91,9 @@ export default function TasksBulkBar({ selected, onClear }: TasksBulkBarProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" side="top">
-                {TASK_PRIORITIES.map((priority) => (
-                  <DropdownMenuItem key={priority} onSelect={() => run({ kind: 'priority', priority })}>
-                    {TASK_PRIORITY_LABELS[priority]}
+                {priorityOptions.map((p) => (
+                  <DropdownMenuItem key={p.value} onSelect={() => run({ kind: 'priority', priority: p.value })}>
+                    {p.label}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>

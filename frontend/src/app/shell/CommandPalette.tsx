@@ -14,7 +14,8 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from '@/components/ui/command';
-import { PROJECT_STATUS_LABELS, TASK_STATUS_LABELS } from '@/constants/statuses';
+import { PROJECT_STATUS_LABELS } from '@/constants/statuses';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import { emitAppEvent } from '@/lib/appEvents';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { LANGUAGES, getLanguage, setLanguage, t } from '@/lib/i18n';
@@ -34,6 +35,7 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
   const navigate = useNavigate();
   const { can, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { statusLabel } = useTaskLookups();
   const [search, setSearch] = useState('');
   const { projects, tasks, searchingTasks } = useCommandSearch(search, open);
 
@@ -131,7 +133,7 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
                 >
                   <span className="w-10 shrink-0 font-mono text-[11px] text-muted-foreground">#{task.id}</span>
                   <span className="truncate">{task.title}</span>
-                  <CommandShortcut className="tracking-normal">{TASK_STATUS_LABELS[task.status]}</CommandShortcut>
+                  <CommandShortcut className="tracking-normal">{statusLabel(task.status)}</CommandShortcut>
                 </CommandItem>
               ))}
             </CommandGroup>

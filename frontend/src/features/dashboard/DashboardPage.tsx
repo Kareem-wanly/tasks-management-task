@@ -4,6 +4,7 @@ import PageHeader from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import ErrorState from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/skeleton';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { errorMessage } from '@/lib/apiClient';
 import { daysFromNow } from '@/utils/dates';
@@ -19,8 +20,9 @@ import { dueWithin, greeting, openTasksByDue, projectsByUrgency } from './utils'
 export default function DashboardPage() {
   const { user, can } = useAuth();
   const data = useDashboardData(user?.id);
+  const { isFinal } = useTaskLookups();
 
-  const myOpen = openTasksByDue(data.myTasks);
+  const myOpen = openTasksByDue(data.myTasks, isFinal);
   const myDueSoon = dueWithin(myOpen, 7);
   const activeProjects = data.projects.filter((p) => p.status === 'active' || p.status === 'in_progress').length;
   const completion = data.tasksTotal > 0 ? Math.round((data.completedTotal / data.tasksTotal) * 100) : 0;

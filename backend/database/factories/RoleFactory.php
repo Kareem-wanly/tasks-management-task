@@ -12,7 +12,11 @@ class RoleFactory extends Factory
 {
     public function definition(): array
     {
-        $title = fake()->unique()->jobTitle();
+        // unique() only knows Faker's own output, not the base roles already in the DB
+        // (jobTitle() can return "Project Manager"), so those names are skipped.
+        do {
+            $title = fake()->unique()->jobTitle();
+        } while (in_array($title, ['Administrator', 'Project Manager', 'Member'], true));
 
         return [
             'name' => $title,

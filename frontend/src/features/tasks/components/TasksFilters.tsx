@@ -2,12 +2,7 @@ import type { Dispatch } from 'react';
 import { RotateCcwIcon, SearchIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  TASK_PRIORITIES,
-  TASK_PRIORITY_LABELS,
-  TASK_STATUSES,
-  TASK_STATUS_LABELS,
-} from '@/constants/statuses';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import type { ProjectOption, UserOption } from '@/types/api';
 import { toSortDir, type Filters, type Sorting, type TasksAction } from '../tasksReducer';
 import FilterSelect, { type FilterOption } from './FilterSelect';
@@ -22,8 +17,6 @@ interface TasksFiltersProps {
   hideStatus?: boolean;
 }
 
-const STATUS_OPTIONS: FilterOption[] = TASK_STATUSES.map((s) => ({ value: s, label: TASK_STATUS_LABELS[s] }));
-const PRIORITY_OPTIONS: FilterOption[] = TASK_PRIORITIES.map((p) => ({ value: p, label: TASK_PRIORITY_LABELS[p] }));
 const DEADLINE_OPTIONS: FilterOption[] = [{ value: 'true', label: 'Overdue only' }];
 const SORT_OPTIONS: FilterOption[] = [
   { value: 'created_at-desc', label: 'Newest first' },
@@ -33,6 +26,7 @@ const SORT_OPTIONS: FilterOption[] = [
 ];
 
 export default function TasksFilters({ filters, sorting, projects, users, dispatch, hideStatus = false }: TasksFiltersProps) {
+  const { statusOptions, priorityOptions } = useTaskLookups();
   const setFilter = (field: keyof Filters, value: string) => dispatch({ type: 'SET_FILTER', field, value });
 
   const hasActiveFilters = Object.values(filters).some(Boolean);
@@ -43,7 +37,7 @@ export default function TasksFilters({ filters, sorting, projects, users, dispat
         <SearchIcon className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="search"
-            data-page-search
+          data-page-search
           id="task-search-input"
           name="search"
           placeholder="Search by title..."
@@ -78,7 +72,7 @@ export default function TasksFilters({ filters, sorting, projects, users, dispat
           allLabel="All statuses"
           value={filters.status}
           onChange={(v) => setFilter('status', v)}
-          options={STATUS_OPTIONS}
+          options={statusOptions}
         />
       )}
 
@@ -87,7 +81,7 @@ export default function TasksFilters({ filters, sorting, projects, users, dispat
         allLabel="All priorities"
         value={filters.priority}
         onChange={(v) => setFilter('priority', v)}
-        options={PRIORITY_OPTIONS}
+        options={priorityOptions}
       />
 
       <Input

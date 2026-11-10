@@ -5,11 +5,11 @@ import DataTable, { type DataTableColumn } from '@/components/data/DataTable';
 import DeadlineBadge from '@/components/data/DeadlineBadge';
 import Pagination from '@/components/data/Pagination';
 import ProjectMark from '@/components/data/ProjectMark';
-import StatusBadge from '@/components/data/StatusBadge';
+import TaskStatusBadge from '@/components/data/TaskStatusBadge';
 import UserAvatar from '@/components/data/UserAvatar';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { STATUS_TONES, TASK_STATUS_LABELS, isLiveStatus } from '@/constants/statuses';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { cn } from '@/lib/utils';
 import { formatDateOnly } from '@/utils/format';
@@ -57,6 +57,7 @@ export default function TasksTable({
 }: TasksTableProps) {
   const navigate = useNavigate();
   const { can } = useAuth();
+  const { isFinal } = useTaskLookups();
   const canChangeStatus = can('tasks.change_status') || can('tasks.update');
   const columns: DataTableColumn<Task>[] = [];
 
@@ -116,7 +117,7 @@ export default function TasksTable({
             {...stop}
             className={cn(
               'block truncate font-medium transition-colors duration-150 hover:text-brand',
-              task.status === 'completed' && 'text-muted-foreground line-through decoration-muted-foreground/50'
+              isFinal(task.status) && 'text-muted-foreground line-through decoration-muted-foreground/50'
             )}
           >
             {task.title}
@@ -164,11 +165,7 @@ export default function TasksTable({
     {
       key: 'status',
       header: 'Status',
-      cell: (task) => (
-        <StatusBadge tone={STATUS_TONES[task.status]} live={isLiveStatus(task.status)}>
-          {TASK_STATUS_LABELS[task.status]}
-        </StatusBadge>
-      ),
+      cell: (task) => <TaskStatusBadge status={task.status} />,
     },
     {
       key: 'due',
@@ -179,7 +176,7 @@ export default function TasksTable({
             <span className={cn('tabular-nums', task.is_overdue && 'font-medium text-danger')}>
               {formatDateOnly(task.due_date)}
             </span>
-            <DeadlineBadge dueDate={task.due_date} overdue={task.is_overdue} done={task.status === 'completed'} />
+            <DeadlineBadge dueDate={task.due_date} overdue={task.is_overdue} done={isFinal(task.status)} />
           </div>
         ) : (
           <span className="text-muted-foreground">No date</span>

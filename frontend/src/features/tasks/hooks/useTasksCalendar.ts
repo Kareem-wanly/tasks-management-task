@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import tasksApi from '@/api/tasksApi';
 import { queryKeys } from '@/api/queryKeys';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import type { QueryParams } from '@/lib/paginate';
 import type { Page, Task } from '@/types/api';
 import { daysFromNow, monthGridDays, startOfMonth, toDateOnly } from '@/utils/dates';
@@ -35,6 +36,7 @@ interface UseTasksCalendarOptions {
 export default function useTasksCalendar({ params, enabled }: UseTasksCalendarOptions): TasksCalendarData {
   const queryClient = useQueryClient();
   const quick = useTaskQuickUpdate();
+  const { isFinal } = useTaskLookups();
   const [month, setMonth] = useState(() => startOfMonth(daysFromNow(0)));
   const days = monthGridDays(month);
 
@@ -66,7 +68,7 @@ export default function useTasksCalendar({ params, enabled }: UseTasksCalendarOp
   const move = (task: Task, date: string) => {
     if (toDateOnly(task.due_date) === date) return;
     void queryClient.cancelQueries({ queryKey: key });
-    const overdue = task.status !== 'completed' && date < daysFromNow(0);
+    const overdue = !isFinal(task.status) && date < daysFromNow(0);
     queryClient.setQueryData<Page<Task>>(key, (page) =>
       page
         ? { ...page, items: page.items.map((t) => (t.id === task.id ? { ...t, due_date: date, is_overdue: overdue } : t)) }

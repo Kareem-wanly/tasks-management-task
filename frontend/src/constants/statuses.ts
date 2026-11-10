@@ -1,20 +1,7 @@
-import type { ProjectStatus, TaskPriority, TaskStatus } from '@/types/api';
+import type { ProjectStatus } from '@/types/api';
 
-// Must match the backend enums (StoreTaskRequest, StoreProjectRequest).
-
-export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
-  todo: 'To Do',
-  in_progress: 'In Progress',
-  review: 'Review',
-  completed: 'Completed',
-};
-
-export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  urgent: 'Urgent',
-};
+// Project statuses must match StoreProjectRequest. Task statuses and priorities are data
+// (GET /task-statuses, /task-priorities): read them with useTaskLookups, not from here.
 
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   active: 'Active',
@@ -24,9 +11,6 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   archived: 'Archived',
 };
 
-export const TASK_STATUSES: TaskStatus[] = ['todo', 'in_progress', 'review', 'completed'];
-export const TASK_PRIORITIES: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
-
 /** Statuses a form may set; `archived` only changes through the archive toggle. */
 export const EDITABLE_PROJECT_STATUSES: Exclude<ProjectStatus, 'archived'>[] = [
   'active',
@@ -35,27 +19,27 @@ export const EDITABLE_PROJECT_STATUSES: Exclude<ProjectStatus, 'archived'>[] = [
   'completed',
 ];
 
-/** Colour family of a badge: soft background + strong text in the same hue. */
-export type Tone = 'success' | 'warning' | 'danger' | 'info' | 'brand' | 'neutral';
+/** Built-in task keys some actions use directly ("Complete", "Reopen", the "Urgent" chip). */
+export const TASK_DONE_STATUS = 'completed';
+export const TASK_REOPEN_STATUS = 'todo';
+export const TASK_DEFAULT_PRIORITY = 'medium';
+export const URGENT_PRIORITY = 'urgent';
 
-export const STATUS_TONES: Record<ProjectStatus | TaskStatus, Tone> = {
+/** Colour family of a badge: soft background + strong text in the same hue. */
+export const TONES = ['success', 'warning', 'danger', 'info', 'brand', 'neutral'] as const;
+export type Tone = (typeof TONES)[number];
+
+export const isTone = (value: string | null): value is Tone => TONES.some((t) => t === value);
+
+export const PROJECT_STATUS_TONES: Record<ProjectStatus, Tone> = {
   active: 'success',
   in_progress: 'info',
-  review: 'brand',
   on_hold: 'warning',
-  todo: 'neutral',
   completed: 'success',
   archived: 'neutral',
 };
 
-export const PRIORITY_TONES: Record<TaskPriority, Tone> = {
-  low: 'neutral',
-  medium: 'info',
-  high: 'warning',
-  urgent: 'danger',
-};
-
 /** Statuses that are "live" and get a pinging dot. */
-export function isLiveStatus(status: ProjectStatus | TaskStatus): boolean {
+export function isLiveStatus(status: string): boolean {
   return status === 'in_progress';
 }

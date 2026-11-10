@@ -26,6 +26,7 @@ class Project extends Model
     protected $casts = [
         'start_date' => 'date',
         'due_date' => 'date',
+        'bitrix_synced_at' => 'datetime',
     ];
 
     public function owner(): BelongsTo

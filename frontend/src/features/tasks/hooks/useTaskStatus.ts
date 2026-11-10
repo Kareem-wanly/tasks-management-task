@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import tasksApi from '@/api/tasksApi';
 import { queryKeys } from '@/api/queryKeys';
-import { TASK_STATUS_LABELS } from '@/constants/statuses';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import useApiMutation from '@/hooks/useApiMutation';
 import { showToast, showUndoToast } from '@/lib/toast/ToastContext';
 import type { Task, TaskStatus } from '@/types/api';
@@ -26,6 +26,7 @@ export interface TaskStatusControl {
  */
 export default function useTaskStatus(): TaskStatusControl {
   const queryClient = useQueryClient();
+  const { statusLabel, isFinal } = useTaskLookups();
 
   const mutation = useApiMutation({
     mutationFn: async ({ task, to }: StatusChange) => {
@@ -35,7 +36,7 @@ export default function useTaskStatus(): TaskStatusControl {
         queryClient.setQueryData<Task>(key, {
           ...previous,
           status: to,
-          completed_at: to === 'completed' ? new Date().toISOString() : null,
+          completed_at: isFinal(to) ? new Date().toISOString() : null,
         });
       }
       try {
@@ -58,7 +59,7 @@ export default function useTaskStatus(): TaskStatusControl {
         return;
       }
       const message =
-        to === 'completed' ? `"${task.title}" marked as completed.` : `"${task.title}" moved to ${TASK_STATUS_LABELS[to]}.`;
+        isFinal(to) ? `"${task.title}" marked as ${statusLabel(to)}.` : `"${task.title}" moved to ${statusLabel(to)}.`;
       showUndoToast(message, () =>
         mutation.mutate({ task: { ...task, status: to }, to: task.status, isUndo: true })
       );

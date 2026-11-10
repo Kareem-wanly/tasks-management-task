@@ -123,8 +123,8 @@ These rules are hard requirements, not suggestions. Most are enforced by `npm ru
 
 ## 9. Data display
 
-- Status and priority values must match the backend enums exactly. Task statuses: `todo | in_progress | review | completed`. Priorities: `low | medium | high | urgent`. Project statuses: `active | in_progress | on_hold | completed | archived` (`archived` is set only through the archive toggle, never in a form). Don't invent values like `done` or `pending`.
-- Keep status and priority lists, labels and badge classes in `src/constants/statuses.ts`, not per file.
+- Task statuses and priorities are data, not constants: read them with `useTaskLookups()` (`src/hooks/queries/`), which gives the ordered lists, `statusOptions`/`priorityOptions` for selects, `statusLabel`/`statusTone` for badges, and `isFinal(status)`. A task is done when `isFinal(task.status)`, never `status === 'completed'`. Only actions that need a fixed value use the built-in keys in `src/constants/statuses.ts` (`TASK_DONE_STATUS`, `TASK_REOPEN_STATUS`, `URGENT_PRIORITY`).
+- Project statuses must match the backend exactly: `active | in_progress | on_hold | completed | archived` (`archived` is set only through the archive toggle, never in a form). Don't invent values like `done` or `pending`. Their labels and tones live in `src/constants/statuses.ts`, not per file.
 - Prefer server-computed flags (`task.is_overdue`, `*_count`) over recomputing them in the browser.
 - Format dates with `src/utils/format.ts`: `formatDateOnly` for calendar dates (`due_date`, `start_date`; no timezone shift), `formatTimestampDate` and `formatDateTime` for timestamps.
 

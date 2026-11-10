@@ -39,6 +39,7 @@ class RolesAndPermissionsSeeder extends Seeder
             ['name' => 'tasks.delete', 'description' => 'Allows user to delete tasks'],
             ['name' => 'tasks.assign', 'description' => 'Allows user to assign tasks'],
             ['name' => 'tasks.change_status', 'description' => 'Allows user to change task status'],
+            ['name' => 'task_settings.manage', 'description' => 'Can manage task statuses and priorities'],
 
             ['name' => 'comments.view', 'description' => 'Allows user to view comments'],
             ['name' => 'comments.create', 'description' => 'Allows user to create comments'],
