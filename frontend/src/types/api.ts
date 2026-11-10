@@ -1,7 +1,9 @@
 // Shapes returned by the Laravel API. Keep in sync with backend/app/Http/Resources and the controllers.
 
-export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'completed';
-export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+/** Key of a row in GET /task-statuses. Admins can add their own, so any string the API returns. */
+export type TaskStatus = string;
+/** Key of a row in GET /task-priorities. */
+export type TaskPriority = string;
 export type ProjectStatus = 'active' | 'in_progress' | 'on_hold' | 'completed' | 'archived';
 
 /** Normalized paginated list, built by `toPage` from either a Resource collection or a raw paginator. */
@@ -119,6 +121,25 @@ export interface Task {
   comments?: Comment[];
   created_at: string | null;
   updated_at: string | null;
+}
+
+/** A row of /task-priorities (and the shared part of /task-statuses). */
+export interface TaskPriorityOption {
+  id: number;
+  key: string;
+  name: string;
+  /** The Bitrix24 value this one is sent as. */
+  bitrix_id: number | null;
+  /** Comes from Bitrix24: can't be deleted. */
+  is_system: boolean;
+  sort: number;
+  /** A badge tone name (neutral, info, brand, success, warning, danger). */
+  color: string | null;
+}
+
+export interface TaskStatusOption extends TaskPriorityOption {
+  /** The task counts as done (completed_at set, never overdue). */
+  is_final: boolean;
 }
 
 export interface Permission {

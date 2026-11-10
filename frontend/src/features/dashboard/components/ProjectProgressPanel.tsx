@@ -7,7 +7,7 @@ import ProjectMark from '@/components/data/ProjectMark';
 import StatusBadge from '@/components/data/StatusBadge';
 import Panel from '@/components/layout/Panel';
 import { Button } from '@/components/ui/button';
-import { PROJECT_STATUS_LABELS, STATUS_TONES, isLiveStatus } from '@/constants/statuses';
+import { PROJECT_STATUS_LABELS, PROJECT_STATUS_TONES, isLiveStatus } from '@/constants/statuses';
 import { EASE } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { daysUntil } from '@/utils/dates';
@@ -69,7 +69,7 @@ export default function ProjectProgressPanel({ projects }: ProjectProgressPanelP
                       </Link>
                     </td>
                     <td className="px-2 py-2.5">
-                      <StatusBadge tone={STATUS_TONES[project.status]} live={isLiveStatus(project.status)} className="px-2 py-0.5">
+                      <StatusBadge tone={PROJECT_STATUS_TONES[project.status]} live={isLiveStatus(project.status)} className="px-2 py-0.5">
                         {PROJECT_STATUS_LABELS[project.status]}
                       </StatusBadge>
                     </td>

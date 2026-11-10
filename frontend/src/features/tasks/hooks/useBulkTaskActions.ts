@@ -1,6 +1,6 @@
 import tasksApi from '@/api/tasksApi';
 import { queryKeys } from '@/api/queryKeys';
-import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '@/constants/statuses';
+import useTaskLookups, { type TaskLookups } from '@/hooks/queries/useTaskLookups';
 import useApiMutation from '@/hooks/useApiMutation';
 import { errorMessage } from '@/lib/apiClient';
 import { showToast } from '@/lib/toast/ToastContext';
@@ -42,13 +42,13 @@ function request(task: Task, action: BulkAction): Promise<unknown> {
   }
 }
 
-function describe(action: BulkAction, count: number): string {
+function describe(action: BulkAction, count: number, lookups: TaskLookups): string {
   const tasks = `${count} task${count === 1 ? '' : 's'}`;
   switch (action.kind) {
     case 'status':
-      return `Moved ${tasks} to ${TASK_STATUS_LABELS[action.status]}.`;
+      return `Moved ${tasks} to ${lookups.statusLabel(action.status)}.`;
     case 'priority':
-      return `Set ${tasks} to ${TASK_PRIORITY_LABELS[action.priority]} priority.`;
+      return `Set ${tasks} to ${lookups.priorityLabel(action.priority)} priority.`;
     case 'extend':
       return `Pushed back ${tasks} by ${action.days} days.`;
     case 'assign':
@@ -60,6 +60,8 @@ function describe(action: BulkAction, count: number): string {
 
 /** Runs one action on many tasks and reports how many succeeded. */
 export default function useBulkTaskActions(onDone: () => void) {
+  const lookups = useTaskLookups();
+
   return useApiMutation({
     mutationFn: async ({ tasks, action }: BulkRequest): Promise<BulkResult> => {
       const results = await Promise.allSettled(tasks.map((task) => request(task, action)));
@@ -69,7 +71,7 @@ export default function useBulkTaskActions(onDone: () => void) {
     errorMessage: 'The bulk action failed.',
     invalidate: [queryKeys.tasks.all, queryKeys.projects.all],
     onSuccess: ({ done, failed, firstError }, { action }) => {
-      if (done > 0) showToast(describe(action, done), 'success');
+      if (done > 0) showToast(describe(action, done, lookups), 'success');
       if (failed > 0) {
         showToast(`${failed} task${failed === 1 ? '' : 's'} skipped: ${errorMessage(firstError, 'not allowed.')}`, 'error', 6000);
       }

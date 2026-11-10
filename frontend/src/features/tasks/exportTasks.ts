@@ -1,7 +1,7 @@
 import tasksApi from '@/api/tasksApi';
-import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '@/constants/statuses';
 import { downloadText } from '@/lib/download';
 import type { QueryParams } from '@/lib/paginate';
+import type { TaskLookups } from '@/hooks/queries/useTaskLookups';
 import type { Task } from '@/types/api';
 import { toCsv } from '@/utils/csv';
 import { daysFromNow, toDateOnly } from '@/utils/dates';
@@ -11,13 +11,13 @@ const MAX_PAGES = 20;
 
 const HEADER = ['ID', 'Title', 'Project', 'Status', 'Priority', 'Assignee', 'Due date', 'Overdue', 'Created', 'Completed'];
 
-function toRow(task: Task): (string | number)[] {
+function toRow(task: Task, lookups: TaskLookups): (string | number)[] {
   return [
     task.id,
     task.title,
     task.project?.title ?? '',
-    TASK_STATUS_LABELS[task.status],
-    TASK_PRIORITY_LABELS[task.priority],
+    lookups.statusLabel(task.status),
+    lookups.priorityLabel(task.priority),
     task.assignee?.name ?? '',
     toDateOnly(task.due_date) ?? '',
     task.is_overdue ? 'Yes' : 'No',
@@ -27,7 +27,7 @@ function toRow(task: Task): (string | number)[] {
 }
 
 /** Downloads every task matching `params` as CSV and returns how many were exported. */
-export async function exportTasksCsv(params: QueryParams): Promise<number> {
+export async function exportTasksCsv(params: QueryParams, lookups: TaskLookups): Promise<number> {
   const tasks: Task[] = [];
   let page = 1;
   let lastPage = 1;
@@ -38,6 +38,6 @@ export async function exportTasksCsv(params: QueryParams): Promise<number> {
     page += 1;
   } while (page <= lastPage && page <= MAX_PAGES);
 
-  downloadText(`tasks-${daysFromNow(0)}.csv`, toCsv([HEADER, ...tasks.map(toRow)]));
+  downloadText(`tasks-${daysFromNow(0)}.csv`, toCsv([HEADER, ...tasks.map((task) => toRow(task, lookups))]));
   return tasks.length;
 }

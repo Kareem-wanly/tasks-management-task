@@ -2,8 +2,7 @@ import { keepPreviousData, useQueries, useQueryClient } from '@tanstack/react-qu
 import tasksApi from '@/api/tasksApi';
 import { queryKeys } from '@/api/queryKeys';
 import type { QueryParams } from '@/lib/paginate';
-import { TASK_STATUSES } from '@/constants/statuses';
-import { TASK_PRIORITY_LABELS } from '@/constants/statuses';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import type { Page, Task, TaskPriority, TaskStatus, User } from '@/types/api';
 import useTaskQuickUpdate from './useTaskQuickUpdate';
 import useTaskStatus from './useTaskStatus';
@@ -50,9 +49,11 @@ export default function useTasksBoard({ params, enabled }: UseTasksBoardOptions)
   const queryClient = useQueryClient();
   const status = useTaskStatus();
   const quick = useTaskQuickUpdate();
+  const { statuses, priorityLabel, isFinal } = useTaskLookups();
+  const columnStatuses = statuses.map((s) => s.key);
 
   const results = useQueries({
-    queries: TASK_STATUSES.map((s) => {
+    queries: columnStatuses.map((s) => {
       const query = columnParams(params, s);
       return {
         queryKey: queryKeys.tasks.list(query),
@@ -63,7 +64,7 @@ export default function useTasksBoard({ params, enabled }: UseTasksBoardOptions)
     }),
   });
 
-  const columns: BoardColumnData[] = TASK_STATUSES.map((s, i) => ({
+  const columns: BoardColumnData[] = columnStatuses.map((s, i) => ({
     status: s,
     tasks: results[i]?.data?.items ?? [],
     total: results[i]?.data?.total ?? 0,
@@ -84,7 +85,7 @@ export default function useTasksBoard({ params, enabled }: UseTasksBoardOptions)
     const moved: Task = {
       ...task,
       status: to,
-      is_overdue: to === 'completed' ? false : task.is_overdue,
+      is_overdue: isFinal(to) ? false : task.is_overdue,
       ...(laneChange && 'priority' in laneChange ? { priority: laneChange.priority } : {}),
       ...(laneChange && 'assignee' in laneChange ? { assignee: laneChange.assignee } : {}),
     };
@@ -103,7 +104,7 @@ export default function useTasksBoard({ params, enabled }: UseTasksBoardOptions)
     }
 
     if (laneChange && 'priority' in laneChange) {
-      quick.update(task, { priority: laneChange.priority }, `Priority set to ${TASK_PRIORITY_LABELS[laneChange.priority]}.`);
+      quick.update(task, { priority: laneChange.priority }, `Priority set to ${priorityLabel(laneChange.priority)}.`);
     } else if (laneChange) {
       quick.assignTo(task, laneChange.assignee?.id ?? null, laneChange.assignee?.name);
     }

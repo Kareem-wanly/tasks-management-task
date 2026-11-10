@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import ErrorState from '@/components/ui/ErrorState';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TASK_STATUSES, TASK_STATUS_LABELS } from '@/constants/statuses';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import { TasksBoard, TasksBulkBar, TasksCalendar, TasksTable } from '@/features/tasks';
 import type { ProjectTasksList } from '../hooks/useProjectTasks';
 
@@ -25,6 +25,7 @@ const ALL = 'all';
 export default function ProjectTasksTab({ projectId, list, canCreateTasks, onCreateTask }: ProjectTasksTabProps) {
   const { view, setView, query, board, calendar, search, setSearch, status, setStatus, page, setPage } = list;
   const navigate = useNavigate();
+  const { statusOptions } = useTaskLookups();
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
   const tasks = query.data?.items ?? [];
   const selected = view === 'list' ? tasks.filter((t) => selectedIds.has(t.id)) : [];
@@ -71,9 +72,9 @@ export default function ProjectTasksTab({ projectId, list, canCreateTasks, onCre
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL}>All statuses</SelectItem>
-              {TASK_STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {TASK_STATUS_LABELS[s]}
+              {statusOptions.map((s) => (
+                <SelectItem key={s.value} value={s.value}>
+                  {s.label}
                 </SelectItem>
               ))}
             </SelectContent>

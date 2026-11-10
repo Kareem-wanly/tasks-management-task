@@ -7,6 +7,8 @@ use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TaskPriorityController;
+use App\Http\Controllers\TaskStatusController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserRoleController;
 use Illuminate\Support\Facades\Route;
@@ -71,6 +73,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/tasks/{task}', [TaskController::class, 'update']);
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy']);
     Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus']);
+
+    Route::get('/task-statuses', [TaskStatusController::class, 'index']);
+    Route::post('/task-statuses', [TaskStatusController::class, 'store']);
+    Route::put('/task-statuses/{taskStatus}', [TaskStatusController::class, 'update']);
+    Route::delete('/task-statuses/{taskStatus}', [TaskStatusController::class, 'destroy']);
+
+    Route::get('/task-priorities', [TaskPriorityController::class, 'index']);
+    Route::post('/task-priorities', [TaskPriorityController::class, 'store']);
+    Route::put('/task-priorities/{taskPriority}', [TaskPriorityController::class, 'update']);
+    Route::delete('/task-priorities/{taskPriority}', [TaskPriorityController::class, 'destroy']);
 
     // 6. Comments Management
     Route::get('/tasks/{task}/comments', [CommentController::class, 'index']);

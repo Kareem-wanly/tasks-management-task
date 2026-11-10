@@ -1,4 +1,4 @@
-import { TASK_PRIORITY_LABELS } from '@/constants/statuses';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import { cn } from '@/lib/utils';
 import type { TaskPriority } from '@/types/api';
 
@@ -7,14 +7,17 @@ interface PriorityIconProps {
   className?: string;
 }
 
-const LEVEL: Record<Exclude<TaskPriority, 'urgent'>, number> = { low: 1, medium: 2, high: 3 };
 const BAR_HEIGHTS = ['h-[7px]', 'h-[10px]', 'h-[13px]'];
 
-/** Compact priority glyph: signal bars for low → high, a filled alert square for urgent. */
+/**
+ * Compact priority glyph: signal bars for Bitrix's Low / Medium / High (bitrix_id 0-2),
+ * a filled alert square for a danger-toned priority such as Urgent.
+ */
 export default function PriorityIcon({ priority, className }: PriorityIconProps) {
-  const label = `${TASK_PRIORITY_LABELS[priority]} priority`;
+  const { priorityLabel, priorityTone, priorityOf } = useTaskLookups();
+  const label = `${priorityLabel(priority)} priority`;
 
-  if (priority === 'urgent') {
+  if (priorityTone(priority) === 'danger') {
     return (
       <span
         role="img"
@@ -27,7 +30,7 @@ export default function PriorityIcon({ priority, className }: PriorityIconProps)
     );
   }
 
-  const level = LEVEL[priority];
+  const level = (priorityOf(priority)?.bitrix_id ?? 1) + 1;
   return (
     <span role="img" aria-label={label} title={label} className={cn('inline-flex h-4 items-end gap-0.5', className)}>
       {BAR_HEIGHTS.map((height, index) => (

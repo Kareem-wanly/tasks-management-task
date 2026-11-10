@@ -5,7 +5,7 @@ import TextareaField from '@/components/form/TextareaField';
 import TextField from '@/components/form/TextField';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TASK_PRIORITIES, TASK_PRIORITY_LABELS, TASK_STATUSES, TASK_STATUS_LABELS } from '@/constants/statuses';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import type { ProjectOption, User } from '@/types/api';
 import type { TaskFormValues } from '../schemas';
 import DueDateField from './DueDateField';
@@ -27,9 +27,6 @@ interface TaskFormFieldsProps {
 // Select items can't use '' as a value
 const UNASSIGNED = 'none';
 
-const STATUS_OPTIONS = TASK_STATUSES.map((s) => ({ value: s, label: TASK_STATUS_LABELS[s] }));
-const PRIORITY_OPTIONS = TASK_PRIORITIES.map((p) => ({ value: p, label: TASK_PRIORITY_LABELS[p] }));
-
 export default function TaskFormFields({
   control,
   showProjectSelect,
@@ -41,6 +38,8 @@ export default function TaskFormFields({
   projectDueDate,
   disabled,
 }: TaskFormFieldsProps) {
+  const { statusOptions, priorityOptions } = useTaskLookups();
+
   return (
     <FieldGroup className="gap-4">
       {showProjectSelect && (
@@ -73,8 +72,8 @@ export default function TaskFormFields({
       />
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <SelectField control={control} name="status" label="Status" options={STATUS_OPTIONS} disabled={disabled} />
-        <SelectField control={control} name="priority" label="Priority" options={PRIORITY_OPTIONS} disabled={disabled} />
+        <SelectField control={control} name="status" label="Status" options={statusOptions} disabled={disabled} />
+        <SelectField control={control} name="priority" label="Priority" options={priorityOptions} disabled={disabled} />
       </div>
 
       <Controller

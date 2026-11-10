@@ -1,5 +1,6 @@
 import { DownloadIcon, Loader2Icon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import useApiMutation from '@/hooks/useApiMutation';
 import type { QueryParams } from '@/lib/paginate';
 import { exportTasksCsv } from '../exportTasks';
@@ -11,8 +12,9 @@ interface ExportTasksButtonProps {
 
 /** Downloads the tasks matching the current filters as a CSV file (opens in Excel). */
 export default function ExportTasksButton({ params }: ExportTasksButtonProps) {
+  const lookups = useTaskLookups();
   const exporter = useApiMutation({
-    mutationFn: (query: QueryParams) => exportTasksCsv(query),
+    mutationFn: (query: QueryParams) => exportTasksCsv(query, lookups),
     successMessage: (count) => (count === 0 ? 'No tasks match these filters.' : `Exported ${count} tasks.`),
     errorMessage: 'Failed to export tasks.',
   });
