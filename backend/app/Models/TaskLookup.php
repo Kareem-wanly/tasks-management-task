@@ -35,6 +35,18 @@ abstract class TaskLookup extends Model
         return $query->orderBy('sort')->orderBy('id');
     }
 
+    /**
+     * Our key for a Bitrix value. The Bitrix-imported row wins over a custom
+     * value that only sends that Bitrix value (e.g. urgent → high).
+     */
+    public static function keyForBitrix(int $bitrixId): ?string
+    {
+        return static::where('bitrix_id', $bitrixId)
+            ->orderByDesc('is_system')
+            ->ordered()
+            ->value('key');
+    }
+
     public function isUsed(): bool
     {
         return Task::withTrashed()->where(static::taskColumn(), $this->key)->exists();

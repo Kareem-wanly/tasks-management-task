@@ -167,7 +167,9 @@ class BitrixAuthTest extends TestCase
         $this->tokenFrom($this->oauthCallback());
 
         $this->assertDatabaseCount('users', 1);
-        $this->assertSame('old@portal.test', $user->fresh()->email);
+        // Bitrix wins: name and email follow the Bitrix profile.
+        $this->assertSame('sara@portal.test', $user->fresh()->email);
+        $this->assertSame('Sara Ali', $user->fresh()->name);
     }
 
     public function test_tokens_are_saved_encrypted(): void

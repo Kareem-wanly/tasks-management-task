@@ -16,7 +16,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable implements HasBitrixToken
 {
-    use HasApiTokens,HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
         'name',
@@ -44,6 +44,7 @@ class User extends Authenticatable implements HasBitrixToken
             'bitrix_refresh_token' => 'encrypted',
             'bitrix_token_expires_at' => 'immutable_datetime',
             'is_active' => 'boolean',
+            'bitrix_department_ids' => 'array', // Bitrix UF_DEPARTMENT; names live in bitrix_portals.departments.
             'bitrix_synced_at' => 'datetime',
         ];
     }

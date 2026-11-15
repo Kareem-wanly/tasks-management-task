@@ -9,9 +9,19 @@ class TaskStatus extends TaskLookup
     /** @var list<string>|null */
     private static ?array $finalKeys = null;
 
+    /** Bitrix status 1 ("New") is legacy; Bitrix itself shows it as Pending (2). */
+    private const BITRIX_NEW = 1;
+
+    private const BITRIX_PENDING = 2;
+
     public static function taskColumn(): string
     {
         return 'status';
+    }
+
+    public static function keyForBitrix(int $bitrixId): ?string
+    {
+        return parent::keyForBitrix($bitrixId === self::BITRIX_NEW ? self::BITRIX_PENDING : $bitrixId);
     }
 
     protected function casts(): array

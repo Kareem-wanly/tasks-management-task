@@ -14,6 +14,9 @@ class BitrixClient
 {
     public const MAX_BATCH_COMMANDS = 50;
 
+    /** List methods return fixed pages of 50 rows. */
+    public const PAGE_SIZE = 50;
+
     /**
      * Container key for the service account used by background sync,
      * bound to the installed portal in AppServiceProvider.
@@ -75,6 +78,56 @@ class BitrixClient
     public function batch(HasBitrixToken $holder, array $commands, bool $halt = false): array
     {
         return $this->callAsUser($holder, 'batch', $this->batchParams($commands, $halt))['result'];
+    }
+
+    /**
+     * Run a batch with the service account's token (background sync).
+     *
+     * @param  array<string, array{0: string, 1?: array}>  $commands
+     * @return array<string, mixed>
+     */
+    public function batchAsService(array $commands, bool $halt = false): array
+    {
+        return $this->batch($this->serviceAccount(), $commands, $halt);
+    }
+
+    /**
+     * Walk every page of a list method with the service account: one call
+     * for the first page and its total, then the rest batched 50 at a time.
+     *
+     * @param  callable(array, int): void  $onPage  Receives each page's `result` and the total Bitrix reported.
+     * @return int The total Bitrix reported.
+     */
+    public function eachPageAsService(string $method, array $params, callable $onPage): int
+    {
+        $first = $this->callAsService($method, [...$params, 'start' => 0]);
+        $total = (int) ($first['total'] ?? 0);
+        $onPage($first['result'] ?? [], $total);
+
+        $starts = [];
+        for ($start = self::PAGE_SIZE; $start < $total; $start += self::PAGE_SIZE) {
+            $starts[] = $start;
+        }
+
+        foreach (array_chunk($starts, self::MAX_BATCH_COMMANDS) as $chunk) {
+            $commands = [];
+            foreach ($chunk as $start) {
+                $commands["page_{$start}"] = [$method, [...$params, 'start' => $start]];
+            }
+
+            $batch = $this->batchAsService($commands);
+
+            // A failed page would leave rows missing; fail so the caller can re-run.
+            if (! empty($batch['result_error'])) {
+                throw BitrixException::fromResponse(reset($batch['result_error']), 200);
+            }
+
+            foreach ($chunk as $start) {
+                $onPage($batch['result']["page_{$start}"] ?? [], $total);
+            }
+        }
+
+        return $total;
     }
 
     private function serviceAccount(): HasBitrixToken

@@ -9,8 +9,11 @@ const taskStatus = z.string().min(1, 'Pick a status.');
 const taskPriority = z.string().min(1, 'Pick a priority.');
 
 export const taskFormSchema = z.object({
-  /** Project id as a string; fixed when the dialog is opened from a project or for an existing task. */
-  project_id: z.string().min(1, 'Please select a project for this task.'),
+  /**
+   * Project id as a string; fixed when the dialog is opened from a project or for an existing task.
+   * '' only for an existing task without a project (a Bitrix personal task); new tasks need one.
+   */
+  project_id: z.string(),
   title: z.string().trim().min(1, 'Task title is required.').max(255, 'Task title is too long.'),
   description: z.string(),
   status: taskStatus,
@@ -22,6 +25,11 @@ export const taskFormSchema = z.object({
 });
 
 export type TaskFormValues = z.infer<typeof taskFormSchema>;
+
+/** Creating a task: tasks are created inside a project. */
+export const newTaskFormSchema = taskFormSchema.extend({
+  project_id: z.string().min(1, 'Please select a project for this task.'),
+});
 
 /** Renaming a task in place on its page. */
 export const titleSchema = taskFormSchema.pick({ title: true });

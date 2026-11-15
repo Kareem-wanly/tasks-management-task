@@ -45,10 +45,7 @@ class TaskController extends Controller
         $user = $request->user();
 
         if (! $user->hasRole('Administrator')) {
-            $query->whereHas('project', function ($q) use ($user) {
-                $q->where('owner_id', $user->id)
-                    ->orWhereHas('members', fn ($m) => $m->where('users.id', $user->id));
-            });
+            $query->visibleTo($user);
         }
 
         if ($request->filled('assigned_to')) {

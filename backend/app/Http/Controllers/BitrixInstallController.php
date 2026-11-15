@@ -28,7 +28,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class BitrixInstallController extends Controller
 {
-    public const REQUIRED_SCOPES = ['task', 'sonet_group', 'user', 'im', 'disk', 'department'];
+    public const REQUIRED_SCOPES = ['task', 'sonet_group', 'socialnetwork', 'user', 'im', 'disk', 'department'];
 
     public const EVENTS = [
         'OnTaskAdd',

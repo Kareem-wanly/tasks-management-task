@@ -5,13 +5,11 @@ namespace App\Http\Controllers;
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixException;
 use App\Integrations\Bitrix24\BitrixToken;
+use App\Integrations\Bitrix24\BitrixUserSync;
 use App\Integrations\Bitrix24\TokenManager;
-use App\Models\Role;
-use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -32,6 +30,7 @@ class BitrixAuthController extends Controller
     public function __construct(
         private readonly TokenManager $tokens,
         private readonly BitrixClient $bitrix,
+        private readonly BitrixUserSync $users,
     ) {}
 
     public function redirect(Request $request): RedirectResponse
@@ -117,7 +116,7 @@ class BitrixAuthController extends Controller
             return $this->fail('bitrix_rejected');
         }
 
-        $user = $this->resolveUser($profile);
+        $user = $this->users->upsert($profile);
 
         if (! $user->is_active) {
             return $this->fail('inactive');
@@ -128,51 +127,6 @@ class BitrixAuthController extends Controller
         $sanctum = $user->createToken('bitrix_auth')->plainTextToken;
 
         return redirect()->away(config('bitrix.frontend_callback_url').'#token='.urlencode($sanctum));
-    }
-
-    /**
-     * Find by Bitrix ID, else link an existing account with the same email,
-     * else create a Member.
-     */
-    private function resolveUser(array $profile): User
-    {
-        $bitrixId = (int) $profile['ID'];
-        $email = Str::lower(trim((string) ($profile['EMAIL'] ?? '')));
-        $name = trim(($profile['NAME'] ?? '').' '.($profile['LAST_NAME'] ?? ''));
-
-        $attributes = [
-            'bitrix_user_id' => $bitrixId,
-            'avatar_url' => $profile['PERSONAL_PHOTO'] ?? null,
-            'position' => $profile['WORK_POSITION'] ?? null,
-            'bitrix_synced_at' => now(),
-        ];
-
-        return DB::transaction(function () use ($bitrixId, $email, $name, $attributes) {
-            $user = User::where('bitrix_user_id', $bitrixId)->first()
-                ?? ($email !== '' ? User::whereRaw('LOWER(email) = ?', [$email])->whereNull('bitrix_user_id')->first() : null);
-
-            if ($user) {
-                $user->forceFill($attributes)->save();
-
-                return $user;
-            }
-
-            $user = User::forceCreate([
-                ...$attributes,
-                'name' => $name !== '' ? $name : "Bitrix user {$bitrixId}",
-                // users.email is required; a Bitrix account may have none.
-                'email' => $email !== '' ? $email : "bitrix-{$bitrixId}@".config('bitrix.portal'),
-                'password' => null,
-                // Set explicitly: the DB default isn't on the model until a reload.
-                'is_active' => true,
-            ]);
-
-            if ($member = Role::where('name', 'Member')->first()) {
-                $user->roles()->attach($member->id);
-            }
-
-            return $user;
-        });
     }
 
     private function isOurPortal(mixed $domain): bool

@@ -8,11 +8,10 @@ use App\Models\User;
 
 class CommentPolicy
 {
+    /** Whoever can see the task can see its comments. */
     private function isProjectMember(User $user, ?Task $task): bool
     {
-        $project = $task?->project;
-
-        return $project ? $project->hasMember($user) : false;
+        return $task?->isVisibleTo($user) ?? false;
     }
 
     private function isOwner(User $user, Comment $comment): bool

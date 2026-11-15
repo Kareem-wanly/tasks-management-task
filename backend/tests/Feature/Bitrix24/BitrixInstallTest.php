@@ -38,7 +38,7 @@ class BitrixInstallTest extends TestCase
                 'access_token' => 'install-access',
                 'refresh_token' => 'install-refresh',
                 'expires_in' => '3600',
-                'scope' => 'task,sonet_group,user,im,disk,department',
+                'scope' => 'task,sonet_group,socialnetwork,user,im,disk,department',
                 'domain' => 'portal.test',
                 'server_endpoint' => 'https://oauth.bitrix.info/rest/',
                 'status' => 'L',
@@ -68,7 +68,7 @@ class BitrixInstallTest extends TestCase
             'REFRESH_ID' => 'page-refresh',
             'SERVER_ENDPOINT' => 'https://oauth.bitrix.info/rest/',
             'APPLICATION_TOKEN' => 'page-app-token',
-            'APPLICATION_SCOPE' => 'task,sonet_group,user,im,disk,department',
+            'APPLICATION_SCOPE' => 'task,sonet_group,socialnetwork,user,im,disk,department',
             'member_id' => 'member-1',
             'status' => 'L',
             'PLACEMENT' => 'DEFAULT',
@@ -87,7 +87,7 @@ class BitrixInstallTest extends TestCase
                 return Http::response(['result' => [
                     'result' => [
                         'app' => ['ID' => 40, 'STATUS' => 'L', 'INSTALLED' => true],
-                        'scope' => ['task', 'sonet_group', 'user', 'im', 'disk', 'department'],
+                        'scope' => ['task', 'sonet_group', 'socialnetwork', 'user', 'im', 'disk', 'department'],
                         'me' => ['ID' => '1', 'NAME' => 'Admin', 'LAST_NAME' => 'User', 'EMAIL' => 'admin@portal.test', 'PERSONAL_PHONE' => 'x'],
                         'admin' => $isAdmin,
                         'departments' => [['ID' => '1', 'NAME' => 'HQ', 'PARENT' => null, 'SORT' => '500', 'UF_HEAD' => '1']],

@@ -6,7 +6,7 @@ import TextField from '@/components/form/TextField';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import useTaskLookups from '@/hooks/queries/useTaskLookups';
-import type { ProjectOption, User } from '@/types/api';
+import type { ProjectOption, UserOption } from '@/types/api';
 import type { TaskFormValues } from '../schemas';
 import DueDateField from './DueDateField';
 
@@ -16,7 +16,7 @@ interface TaskFormFieldsProps {
   projects: ProjectOption[];
   loadingProjects: boolean;
   /** Owner and members of the selected project: the only valid assignees. */
-  members: User[];
+  members: UserOption[];
   canAssign: boolean;
   /** No project chosen yet, so there is nobody to assign. */
   assigneeDisabled: boolean;

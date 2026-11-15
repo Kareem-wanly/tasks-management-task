@@ -15,7 +15,7 @@ class AddProjectMemberRequest extends FormRequest
     {
         return [
             'user_id' => ['required', 'integer', 'exists:users,id'],
-            'role' => ['sometimes', 'string', 'in:member,lead,manager'],
+            'role' => ['sometimes', 'string', 'in:member,moderator'],
         ];
     }
 }
