@@ -4,6 +4,7 @@ namespace App\Integrations\Bitrix24;
 
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -61,13 +62,17 @@ class TokenManager
 
     private function requestToken(array $params): BitrixToken
     {
-        $response = Http::acceptJson()
-            ->timeout(config('bitrix.timeout'))
-            ->get(rtrim(config('bitrix.oauth_server'), '/').'/oauth/token/', [
-                'client_id' => config('bitrix.client_id'),
-                'client_secret' => config('bitrix.client_secret'),
-                ...$params,
-            ]);
+        try {
+            $response = Http::acceptJson()
+                ->timeout(config('bitrix.timeout'))
+                ->get(rtrim(config('bitrix.oauth_server'), '/').'/oauth/token/', [
+                    'client_id' => config('bitrix.client_id'),
+                    'client_secret' => config('bitrix.client_secret'),
+                    ...$params,
+                ]);
+        } catch (ConnectionException $e) {
+            throw BitrixException::unreachable($e->getMessage());
+        }
 
         $body = $response->json();
 

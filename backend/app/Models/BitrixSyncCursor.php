@@ -45,9 +45,13 @@ class BitrixSyncCursor extends Model
         $this->update(['processed' => $this->processed + $processed, 'total' => $total]);
     }
 
+    /**
+     * Synced as of when the run started: a change made in Bitrix while it
+     * ran may have been missed, so the next delta must still look at it.
+     */
     public function complete(): void
     {
-        $this->update(['status' => self::COMPLETED, 'last_synced_at' => now()]);
+        $this->update(['status' => self::COMPLETED, 'last_synced_at' => $this->started_at ?? now()]);
     }
 
     /** Saves even a row that doesn't exist yet: the job may fail before it started. */

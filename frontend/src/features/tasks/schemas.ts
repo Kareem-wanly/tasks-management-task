@@ -26,9 +26,12 @@ export const taskFormSchema = z.object({
 
 export type TaskFormValues = z.infer<typeof taskFormSchema>;
 
-/** Creating a task: tasks are created inside a project. */
+/** `project_id` value for "No project" in the create form (select values can't be ''). */
+export const NO_PROJECT = 'none';
+
+/** Creating a task: pick a project, or explicitly "No project". */
 export const newTaskFormSchema = taskFormSchema.extend({
-  project_id: z.string().min(1, 'Please select a project for this task.'),
+  project_id: z.string().min(1, 'Select a project, or "No project" for a personal task.'),
 });
 
 /** Renaming a task in place on its page. */

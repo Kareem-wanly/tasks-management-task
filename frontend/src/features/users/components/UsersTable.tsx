@@ -1,4 +1,4 @@
-import { PencilIcon, ShieldIcon, Trash2Icon } from 'lucide-react';
+import { PencilIcon, ShieldIcon, UserCheckIcon, UserXIcon } from 'lucide-react';
 import UserAvatar from '@/components/data/UserAvatar';
 import DataTable, { type DataTableColumn } from '@/components/data/DataTable';
 import StatusBadge from '@/components/data/StatusBadge';
@@ -11,11 +11,12 @@ interface UsersTableProps {
   isLoading: boolean;
   currentUserId: number | undefined;
   canEdit: boolean;
-  canDelete: boolean;
+  /** Deactivating replaces deleting (Bitrix24 can't delete users). */
+  canToggleActive: boolean;
   canAssignRoles: boolean;
   onEdit: (user: UserListItem) => void;
   onManageRoles: (user: UserListItem) => void;
-  onDelete: (user: UserListItem) => void;
+  onToggleActive: (user: UserListItem) => void;
 }
 
 export default function UsersTable({
@@ -23,11 +24,11 @@ export default function UsersTable({
   isLoading,
   currentUserId,
   canEdit,
-  canDelete,
+  canToggleActive,
   canAssignRoles,
   onEdit,
   onManageRoles,
-  onDelete,
+  onToggleActive,
 }: UsersTableProps) {
   const columns: DataTableColumn<UserListItem>[] = [
     {
@@ -40,6 +41,11 @@ export default function UsersTable({
             <div className="font-medium">
               {u.name}
               {u.id === currentUserId && <span className="ms-1.5 text-xs font-medium text-brand">(You)</span>}
+              {!u.is_active && (
+                <StatusBadge tone="danger" className="ms-1.5">
+                  Inactive
+                </StatusBadge>
+              )}
             </div>
             <div className="text-xs text-muted-foreground">{u.email}</div>
           </div>
@@ -70,13 +76,13 @@ export default function UsersTable({
     },
   ];
 
-  if (canEdit || canDelete || canAssignRoles) {
+  if (canEdit || canToggleActive || canAssignRoles) {
     columns.push({
       key: 'actions',
       header: <span className="sr-only">Actions</span>,
       className: 'w-32 text-end',
       cell: (u) => {
-        // Users can't delete themselves or change their own roles (backend R7)
+        // Users can't deactivate themselves or change their own roles (backend R7)
         const isSelf = u.id === currentUserId;
         return (
           <div className="flex justify-end gap-1">
@@ -90,9 +96,14 @@ export default function UsersTable({
                 <ShieldIcon />
               </Button>
             )}
-            {canDelete && !isSelf && (
-              <Button variant="ghost" size="icon-sm" onClick={() => onDelete(u)} aria-label={`Delete ${u.name}`}>
-                <Trash2Icon className="text-destructive" />
+            {canToggleActive && !isSelf && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => onToggleActive(u)}
+                aria-label={`${u.is_active ? 'Deactivate' : 'Activate'} ${u.name}`}
+              >
+                {u.is_active ? <UserXIcon className="text-destructive" /> : <UserCheckIcon className="text-success" />}
               </Button>
             )}
           </div>

@@ -198,14 +198,15 @@ class Round2ReviewTest extends TestCase
         $this->assertFalse($titles->contains('early'));
     }
 
-    public function test_r11_deleting_user_who_owns_project_returns_409(): void
+    public function test_r11_user_who_owns_a_project_is_deactivated_not_deleted(): void
     {
         $admin = User::where('email', 'admin@example.com')->first();
         $owner = $this->memberUser();
         $this->project($owner);
         Sanctum::actingAs($admin);
 
-        $this->deleteJson("/api/users/{$owner->id}")->assertStatus(409);
+        $this->patchJson("/api/users/{$owner->id}/active", ['active' => false])->assertOk();
+        $this->assertNotNull(User::find($owner->id));
     }
 
     public function test_r12_user_can_read_own_roles(): void

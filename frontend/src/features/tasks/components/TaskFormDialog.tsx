@@ -15,7 +15,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { applyServerErrors } from '@/lib/forms';
 import { showActionToast } from '@/lib/toast/ToastContext';
 import type { Task, UserOption } from '@/types/api';
-import { emptyTaskForm, newTaskFormSchema, taskFormSchema, taskFormValues, toTaskInput, type TaskFormValues } from '../schemas';
+import { emptyTaskForm, newTaskFormSchema, NO_PROJECT, taskFormSchema, taskFormValues, toTaskInput, type TaskFormValues } from '../schemas';
 import TaskFormFields from './TaskFormFields';
 
 interface TaskFormDialogProps {
@@ -53,13 +53,14 @@ export default function TaskFormDialog({ open, onOpenChange, projectId = null, t
   }, [open, form]);
 
   const selectedProjectId = useWatch({ control: form.control, name: 'project_id' });
-  const project = useProject(open ? selectedProjectId : null);
+  const noProject = withoutProject || selectedProjectId === NO_PROJECT;
+  const project = useProject(open && !noProject ? selectedProjectId : null);
   const projectOptions = useProjectOptions({ enabled: open && fixedProjectId === null && !withoutProject });
   // Without a project anyone can be the assignee
-  const userOptions = useUserOptions({ enabled: open && withoutProject && can('users.view') });
+  const userOptions = useUserOptions({ enabled: open && noProject && can('users.view') });
 
-  const candidates = withoutProject
-    ? [task.assignee, ...(userOptions.data ?? [])]
+  const candidates = noProject
+    ? [task?.assignee, ...(userOptions.data ?? [])]
     : [project.data?.owner, ...(project.data?.members ?? [])];
   const members: UserOption[] = [];
   for (const member of candidates) {
@@ -70,7 +71,7 @@ export default function TaskFormDialog({ open, onOpenChange, projectId = null, t
     mutationFn: (values: TaskFormValues) =>
       task
         ? tasksApi.update(task.id, toTaskInput(values, canAssign, true))
-        : tasksApi.create(values.project_id, toTaskInput(values, canAssign, false)),
+        : tasksApi.create(values.project_id === NO_PROJECT ? null : values.project_id, toTaskInput(values, canAssign, false)),
     // A new task gets an "Open" button instead of a plain toast
     successMessage: isEdit ? 'Task updated successfully.' : undefined,
     errorMessage: isEdit ? 'Failed to update task.' : 'Failed to create task.',

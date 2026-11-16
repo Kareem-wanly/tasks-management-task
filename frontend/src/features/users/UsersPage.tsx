@@ -26,18 +26,15 @@ export default function UsersPage() {
   // undefined = closed, null = creating, a user = editing
   const [formUser, setFormUser] = useState<UserListItem | null | undefined>(undefined);
   const [userForRoles, setUserForRoles] = useState<UserListItem | null>(null);
-  const [userToDelete, setUserToDelete] = useState<UserListItem | null>(null);
+  const [userToToggle, setUserToToggle] = useState<UserListItem | null>(null);
+  const deactivating = userToToggle?.is_active ?? false;
 
-  const remove = useApiMutation({
-    mutationFn: (user: UserListItem) => usersApi.delete(user.id),
-    successMessage: (_, user) => `User "${user.name}" was deleted successfully.`,
-    errorMessage: 'Failed to delete user.',
+  const toggleActive = useApiMutation({
+    mutationFn: (user: UserListItem) => usersApi.setActive(user.id, !user.is_active),
+    successMessage: (_, user) => `User "${user.name}" was ${user.is_active ? 'deactivated' : 'activated'}.`,
+    errorMessage: 'Failed to change the user.',
     invalidate: [queryKeys.users.all],
-    onSuccess: () => {
-      setUserToDelete(null);
-      // Deleting the last row of a page would leave an empty page
-      if (list.users.length === 1 && list.page > 1) list.setPage(list.page - 1);
-    },
+    onSuccess: () => setUserToToggle(null),
   });
 
   return (
@@ -75,11 +72,11 @@ export default function UsersPage() {
                 isLoading={list.query.isPending}
                 currentUserId={currentUser?.id}
                 canEdit={can('users.update')}
-                canDelete={can('users.delete')}
+                canToggleActive={can('users.delete')}
                 canAssignRoles={can('roles.assign')}
                 onEdit={setFormUser}
                 onManageRoles={setUserForRoles}
-                onDelete={setUserToDelete}
+                onToggleActive={setUserToToggle}
               />
             </Panel>
             <Pagination
@@ -105,14 +102,18 @@ export default function UsersPage() {
       <AssignRolesDialog user={userForRoles} onClose={() => setUserForRoles(null)} />
 
       <ConfirmModal
-        isOpen={userToDelete !== null}
-        title="Delete User"
-        message={`Are you sure you want to delete "${userToDelete?.name ?? ''}"? This action cannot be undone.`}
-        confirmText="Delete User"
-        danger
-        loading={remove.isPending}
-        onConfirm={() => userToDelete && remove.mutate(userToDelete)}
-        onClose={() => setUserToDelete(null)}
+        isOpen={userToToggle !== null}
+        title={deactivating ? 'Deactivate User' : 'Activate User'}
+        message={
+          deactivating
+            ? `Deactivate "${userToToggle?.name ?? ''}"? They will be signed out and can't sign in here or in Bitrix24 until activated again.`
+            : `Activate "${userToToggle?.name ?? ''}" again, here and in Bitrix24?`
+        }
+        confirmText={deactivating ? 'Deactivate' : 'Activate'}
+        danger={deactivating}
+        loading={toggleActive.isPending}
+        onConfirm={() => userToToggle && toggleActive.mutate(userToToggle)}
+        onClose={() => setUserToToggle(null)}
       />
     </div>
   );

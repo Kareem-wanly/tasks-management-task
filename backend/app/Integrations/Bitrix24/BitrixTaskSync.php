@@ -5,6 +5,8 @@ namespace App\Integrations\Bitrix24;
 use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\TaskPriority;
+use App\Models\TaskStatus;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
@@ -20,6 +22,39 @@ class BitrixTaskSync
      * @return Task|null Null when its creator or project isn't imported.
      */
     public function upsert(array $row): ?Task
+    {
+        $attributes = $this->resolve($row);
+        if ($attributes === null) {
+            return null;
+        }
+
+        $task = Task::withTrashed()->where('bitrix_task_id', $attributes['bitrix_task_id'])->first() ?? new Task;
+
+        if ($task->trashed()) {
+            $task->restore();
+        }
+
+        $task->forceFill($this->keepCustomLookups($task, $attributes));
+
+        // Save only real changes, so TaskObserver doesn't log an "updated"
+        // entry on every import.
+        if (! $task->exists || $task->isDirty()) {
+            $task->save();
+        }
+
+        // Bookkeeping, not a change: updated_at keeps the last real change.
+        Task::withoutTimestamps(fn () => $task->forceFill(['bitrix_synced_at' => now()])->saveQuietly());
+
+        return $task;
+    }
+
+    /**
+     * Our columns for a Bitrix task, people and project resolved to our IDs,
+     * without saving anything.
+     *
+     * @return array<string, mixed>|null Null when its creator or project isn't imported.
+     */
+    public function resolve(array $row): ?array
     {
         $attributes = $this->mapper->attributes($row);
         $context = ['bitrix_task_id' => $attributes['bitrix_task_id']];
@@ -45,28 +80,37 @@ class BitrixTaskSync
             Log::warning('Bitrix24 task imported without assignee: responsible user is not imported.', $context);
         }
 
-        $task = Task::withTrashed()->where('bitrix_task_id', $attributes['bitrix_task_id'])->first() ?? new Task;
-
-        if ($task->trashed()) {
-            $task->restore();
-        }
-
-        $task->forceFill([
+        return [
             ...$attributes,
             'project_id' => $projectId,
             'created_by' => $creatorId,
             'assigned_to' => $assigneeId,
-        ]);
+        ];
+    }
 
-        // Save only real changes, so TaskObserver doesn't log an "updated"
-        // entry on every import.
-        if (! $task->exists || $task->isDirty()) {
-            $task->save();
+    /**
+     * A custom status/priority of ours sends the nearest Bitrix value (urgent
+     * goes as "high"). While Bitrix still has that value, keep our key, or
+     * every sync would turn urgent back into high.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function keepCustomLookups(Task $task, array $attributes): array
+    {
+        if (! $task->exists) {
+            return $attributes;
         }
 
-        $task->forceFill(['bitrix_synced_at' => now()])->saveQuietly();
+        foreach (['status' => TaskStatus::class, 'priority' => TaskPriority::class] as $column => $lookup) {
+            $current = $task->getRawOriginal($column);
+            if ($current !== null && $current !== $attributes[$column]
+                && $lookup::where('key', $current)->value('bitrix_id') === $lookup::where('key', $attributes[$column])->value('bitrix_id')) {
+                $attributes[$column] = $current;
+            }
+        }
 
-        return $task;
+        return $attributes;
     }
 
     private function userId(int $bitrixId): ?int

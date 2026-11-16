@@ -23,8 +23,10 @@ const tasksApi = {
     return res.data;
   },
 
-  create: async (projectId: number | string, taskData: TaskInput) => {
-    const res = await apiClient.post<DataBody<Task>>(`/projects/${projectId}/tasks`, { ...taskData });
+  /** `projectId` null creates a task without a project (a Bitrix24 personal task). */
+  create: async (projectId: number | string | null, taskData: TaskInput) => {
+    const endpoint = projectId === null ? '/tasks' : `/projects/${projectId}/tasks`;
+    const res = await apiClient.post<DataBody<Task>>(endpoint, { ...taskData });
     return res.data;
   },
 

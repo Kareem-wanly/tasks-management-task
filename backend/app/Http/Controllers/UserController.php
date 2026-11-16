@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
-use App\Models\Project;
+use App\Integrations\Bitrix24\BitrixUserPusher;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -12,9 +12,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+/*
+ * Changes to employees go to Bitrix24 first (see BitrixUserPusher) and are
+ * saved here only when Bitrix accepts them.
+ */
 class UserController extends Controller
 {
     use AuthorizesRequests;
+
+    public function __construct(private readonly BitrixUserPusher $bitrix) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -55,12 +61,16 @@ class UserController extends Controller
     {
         $validated = $request->validated();
 
-        $user = DB::transaction(function () use ($validated) {
-            $user = User::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'password' => $validated['password'],
-            ]);
+        $user = new User([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+        ]);
+        // Bitrix emails them an invitation.
+        $this->bitrix->invite($request->user(), $user);
+
+        $user = DB::transaction(function () use ($validated, $user) {
+            $user->save();
 
             if (! empty($validated['role_id'])) {
                 $user->roles()->attach($validated['role_id']);
@@ -92,7 +102,9 @@ class UserController extends Controller
 
     public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
-        $user->update($request->validated());
+        $user->fill($request->validated());
+        $this->bitrix->update($request->user(), $user);
+        $user->save();
 
         return response()->json([
             'message' => 'User details updated successfully',
@@ -100,27 +112,34 @@ class UserController extends Controller
         ]);
     }
 
-    public function destroy(Request $request, User $user): JsonResponse
+    /**
+     * Replaces deleting: Bitrix24 has no user delete over REST, so employees
+     * are deactivated (and can be activated again). A deactivated employee
+     * can't sign in, and their open sessions end.
+     */
+    public function setActive(Request $request, User $user): JsonResponse
     {
         $this->authorize('delete', $user);
+        $active = (bool) $request->validate(['active' => ['required', 'boolean']])['active'];
 
-        abort_if($user->is($request->user()), 403, 'You cannot delete your own account.');
+        abort_if($user->is($request->user()), 403, 'You cannot deactivate your own account.');
         abort_if(
             $user->hasRole('Administrator') && ! $request->user()->hasRole('Administrator'),
             403,
-            'Only an Administrator can delete another Administrator.'
+            'Only an Administrator can change another Administrator.'
         );
 
-        if (Project::withTrashed()->where('owner_id', $user->id)->exists()) {
-            return response()->json([
-                'message' => "Transfer or delete this user's projects before deleting the user.",
-            ], 409);
+        $this->bitrix->setActive($request->user(), $user, $active);
+        $user->is_active = $active;
+        $user->save();
+
+        if (! $active) {
+            $user->tokens()->delete();
         }
 
-        $user->delete();
-
         return response()->json([
-            'message' => 'User deleted successfully',
+            'message' => $active ? 'User activated' : 'User deactivated',
+            'data' => $user->load('roles:id,name,display_name'),
         ]);
     }
 
@@ -128,7 +147,9 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
-        $users = User::orderBy('name')
+        // Dropdowns (assignees, members) offer only active employees.
+        $users = User::where('is_active', true)
+            ->orderBy('name')
             ->limit(1000)
             ->get(['id', 'name', 'email']);
 

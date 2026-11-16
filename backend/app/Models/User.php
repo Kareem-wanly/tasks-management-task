@@ -71,6 +71,12 @@ class User extends Authenticatable implements HasBitrixToken
         ])->save();
     }
 
+    /** Signed in with Bitrix24 at least once, so we can act in Bitrix as them. */
+    public function isLinkedToBitrix(): bool
+    {
+        return $this->bitrix_user_id !== null && $this->bitrixToken() !== null;
+    }
+
     public function bitrixTokenLockKey(): string
     {
         return "bitrix-token:user:{$this->id}";

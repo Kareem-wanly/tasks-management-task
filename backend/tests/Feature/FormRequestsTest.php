@@ -2,12 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Integrations\Bitrix24\BitrixToken;
+use App\Models\BitrixPortal;
 use App\Models\Permission;
 use App\Models\Project;
 use App\Models\Role;
 use App\Models\Task;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -121,6 +125,15 @@ class FormRequestsTest extends TestCase
 
         Sanctum::actingAs($this->admin());
         $this->postJson('/api/users', ['name' => 'X', 'email' => 'x@example.com'])->assertStatus(422);
+
+        // A valid request invites the employee in Bitrix24, as a linked admin.
+        config(['bitrix.portal' => 'portal.test']);
+        BitrixPortal::forceCreate(['member_id' => 'm', 'domain' => 'portal.test', 'application_token' => 't', 'departments' => [['ID' => '1']]]);
+        $admin = $this->admin();
+        $admin->forceFill(['bitrix_user_id' => 1])->save();
+        $admin->storeBitrixToken(new BitrixToken('a', 'r', CarbonImmutable::now()->addHour()));
+        Sanctum::actingAs($admin);
+        Http::fake(['*' => Http::response(['result' => 77])]);
 
         $id = $this->postJson('/api/users', [
             'name' => 'X', 'email' => 'x@example.com', 'password' => 'Secret123!',

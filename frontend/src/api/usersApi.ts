@@ -41,8 +41,10 @@ const usersApi = {
     return res.data;
   },
 
-  delete: async (id: number) => {
-    return await apiClient.delete(`/users/${id}`);
+  /** Replaces deleting: Bitrix24 can't delete users, so they are deactivated (or activated again). */
+  setActive: async (id: number, active: boolean) => {
+    const res = await apiClient.patch<DataBody<UserListItem>>(`/users/${id}/active`, { active });
+    return res.data;
   },
 
   getUserRoles: async (id: number, options: RequestOptions = {}) => {

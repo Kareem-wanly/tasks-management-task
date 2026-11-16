@@ -6,6 +6,7 @@ use App\Http\Requests\StoreTaskRequest;
 use App\Http\Requests\UpdateTaskRequest;
 use App\Http\Requests\UpdateTaskStatusRequest;
 use App\Http\Resources\TaskResource;
+use App\Integrations\Bitrix24\BitrixTaskPusher;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskPriority;
@@ -17,6 +18,8 @@ use Illuminate\Http\Request;
 class TaskController extends Controller
 {
     use AuthorizesRequests;
+
+    public function __construct(private readonly BitrixTaskPusher $bitrix) {}
 
     public function index(Request $request)
     {
@@ -129,17 +132,38 @@ class TaskController extends Controller
 
     public function storeByProject(StoreTaskRequest $request, Project $project): TaskResource
     {
+        return $this->createTask($request, $project);
+    }
+
+    /**
+     * A task without a project. It is a Bitrix personal task, so it always
+     * goes to Bitrix (GROUP_ID = 0).
+     */
+    public function store(StoreTaskRequest $request): TaskResource
+    {
+        return $this->createTask($request, null);
+    }
+
+    /*
+     * Bitrix-synced writes go to Bitrix first (with the employee's token) and
+     * are saved here only when Bitrix accepts them; a refusal throws a
+     * BitrixException, rendered in bootstrap/app.php.
+     */
+
+    private function createTask(StoreTaskRequest $request, ?Project $project): TaskResource
+    {
         $this->authorize('create', [Task::class, $project]);
 
         if ($request->filled('assigned_to')) {
-            $this->authorize('assign', [new Task(['project_id' => $project->id]), $project]);
+            $this->authorize('assign', [new Task(['project_id' => $project?->id]), $project]);
         }
 
-        $validated = $request->validated();
-        $validated['project_id'] = $project->id;
-        $validated['created_by'] = $request->user()->id;
+        $task = new Task($request->validated());
+        $task->project_id = $project?->id;
+        $task->created_by = $request->user()->id;
 
-        $task = Task::create($validated);
+        $this->bitrix->create($request->user(), $task);
+        $task->save();
 
         return new TaskResource($task->load(['project:id,title', 'assignee:id,name,email']));
     }
@@ -152,24 +176,27 @@ class TaskController extends Controller
             $this->authorize('assign', $task);
         }
 
-        $task->update($request->validated());
+        $task->fill($request->validated());
+        $this->bitrix->update($request->user(), $task);
+        $task->save();
 
         return new TaskResource($task->fresh(['project:id,title', 'assignee:id,name,email']));
     }
 
     public function updateStatus(UpdateTaskStatusRequest $request, Task $task): TaskResource
     {
-        $task->update([
-            'status' => $request->validated('status'),
-        ]);
+        $task->status = $request->validated('status');
+        $this->bitrix->update($request->user(), $task);
+        $task->save();
 
         return new TaskResource($task->fresh(['project:id,title', 'assignee:id,name,email']));
     }
 
-    public function destroy(Task $task): JsonResponse
+    public function destroy(Request $request, Task $task): JsonResponse
     {
         $this->authorize('delete', $task);
 
+        $this->bitrix->delete($request->user(), $task);
         $task->delete();
 
         return response()->json([

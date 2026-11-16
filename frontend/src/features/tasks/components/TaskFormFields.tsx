@@ -7,7 +7,7 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/c
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import type { ProjectOption, UserOption } from '@/types/api';
-import type { TaskFormValues } from '../schemas';
+import { NO_PROJECT, type TaskFormValues } from '../schemas';
 import DueDateField from './DueDateField';
 
 interface TaskFormFieldsProps {
@@ -47,7 +47,10 @@ export default function TaskFormFields({
           control={control}
           name="project_id"
           label="Project *"
-          options={projects.map((p) => ({ value: String(p.id), label: p.title }))}
+          options={[
+            { value: NO_PROJECT, label: 'No project (personal task)' },
+            ...projects.map((p) => ({ value: String(p.id), label: p.title })),
+          ]}
           placeholder={loadingProjects ? 'Loading projects...' : 'Select a project'}
           disabled={disabled || loadingProjects}
         />

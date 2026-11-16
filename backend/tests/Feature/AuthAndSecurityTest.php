@@ -103,7 +103,7 @@ class AuthAndSecurityTest extends TestCase
             ->assertJsonValidationErrors(['assigned_to']);
     }
 
-    public function test_deleting_project_owner_returns_409(): void
+    public function test_project_owner_can_be_deactivated(): void
     {
         $admin = User::where('email', 'admin@example.com')->first();
         $owner = User::factory()->create();
@@ -114,10 +114,13 @@ class AuthAndSecurityTest extends TestCase
             'status' => 'active',
         ]);
 
-        $response = $this->actingAs($admin)
-            ->deleteJson("/api/users/{$owner->id}");
+        // Deactivating (which replaced deleting) keeps their projects intact.
+        $this->actingAs($admin)
+            ->patchJson("/api/users/{$owner->id}/active", ['active' => false])
+            ->assertOk();
 
-        $response->assertStatus(409);
+        $this->assertFalse($owner->fresh()->is_active);
+        $this->assertSame(1, Project::where('owner_id', $owner->id)->count());
     }
 
     public function test_options_endpoints_return_data_array(): void
