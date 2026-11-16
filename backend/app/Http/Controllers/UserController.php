@@ -2,159 +2,58 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ListUsersRequest;
+use App\Http\Requests\SetUserActiveRequest;
+use App\Http\Requests\ShowUserRequest;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
-use App\Integrations\Bitrix24\BitrixUserPusher;
-use App\Models\Role;
+use App\Http\Requests\UserOptionsRequest;
 use App\Models\User;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Services\UserService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
-/*
- * Changes to employees go to Bitrix24 first (see BitrixUserPusher) and are
- * saved here only when Bitrix accepts them.
- */
 class UserController extends Controller
 {
-    use AuthorizesRequests;
+    public function __construct(private readonly UserService $users) {}
 
-    public function __construct(private readonly BitrixUserPusher $bitrix) {}
-
-    public function index(Request $request): JsonResponse
+    public function index(ListUsersRequest $request): JsonResponse
     {
-        $this->authorize('viewAny', User::class);
-
-        $query = User::with('roles:id,name,display_name');
-
-        if ($request->filled('search')) {
-            $search = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $request->query('search'));
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->filled('role')) {
-            $role = $request->query('role');
-            $query->whereHas('roles', function ($q) use ($role) {
-                $q->where('name', $role)
-                    ->orWhere('id', $role);
-            });
-        }
-
-        if ($request->has('per_page') && ! is_numeric($request->query('per_page'))) {
-            return response()->json([
-                'message' => 'The per_page parameter must be an integer.',
-            ], 422);
-        }
-
-        $perPage = min(max((int) $request->query('per_page', 10), 1), 100);
-
-        $users = $query->orderBy('id', 'desc')->paginate($perPage);
-
-        return response()->json($users);
+        return response()->json($this->users->list($request->filters(), $request->perPage(10)));
     }
 
     public function store(StoreUserRequest $request): JsonResponse
     {
-        $validated = $request->validated();
-
-        $user = new User([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => $validated['password'],
-        ]);
-        // Bitrix emails them an invitation.
-        $this->bitrix->invite($request->user(), $user);
-
-        $user = DB::transaction(function () use ($validated, $user) {
-            $user->save();
-
-            if (! empty($validated['role_id'])) {
-                $user->roles()->attach($validated['role_id']);
-            } else {
-                $memberRole = Role::firstOrCreate(['name' => 'Member'], [
-                    'display_name' => 'Member',
-                    'description' => 'Standard team member with basic access',
-                ]);
-                $user->roles()->attach($memberRole->id);
-            }
-
-            return $user;
-        });
-
         return response()->json([
             'message' => 'User created successfully',
-            'data' => $user->load('roles:id,name,display_name'),
+            'data' => $this->users->invite($request->user(), $request->validated()),
         ], 201);
     }
 
-    public function show(User $user): JsonResponse
+    public function show(ShowUserRequest $request, User $user): JsonResponse
     {
-        $this->authorize('view', $user);
-
-        return response()->json([
-            'data' => $user->load('roles:id,name,display_name'),
-        ]);
+        return response()->json(['data' => $this->users->show($user)]);
     }
 
     public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
-        $user->fill($request->validated());
-        $this->bitrix->update($request->user(), $user);
-        $user->save();
-
         return response()->json([
             'message' => 'User details updated successfully',
-            'data' => $user,
+            'data' => $this->users->update($request->user(), $user, $request->validated()),
         ]);
     }
 
-    /**
-     * Replaces deleting: Bitrix24 has no user delete over REST, so employees
-     * are deactivated (and can be activated again). A deactivated employee
-     * can't sign in, and their open sessions end.
-     */
-    public function setActive(Request $request, User $user): JsonResponse
+    public function setActive(SetUserActiveRequest $request, User $user): JsonResponse
     {
-        $this->authorize('delete', $user);
-        $active = (bool) $request->validate(['active' => ['required', 'boolean']])['active'];
-
-        abort_if($user->is($request->user()), 403, 'You cannot deactivate your own account.');
-        abort_if(
-            $user->hasRole('Administrator') && ! $request->user()->hasRole('Administrator'),
-            403,
-            'Only an Administrator can change another Administrator.'
-        );
-
-        $this->bitrix->setActive($request->user(), $user, $active);
-        $user->is_active = $active;
-        $user->save();
-
-        if (! $active) {
-            $user->tokens()->delete();
-        }
+        $active = $request->boolean('active');
 
         return response()->json([
             'message' => $active ? 'User activated' : 'User deactivated',
-            'data' => $user->load('roles:id,name,display_name'),
+            'data' => $this->users->setActive($request->user(), $user, $active),
         ]);
     }
 
-    public function options(): JsonResponse
+    public function options(UserOptionsRequest $request): JsonResponse
     {
-        $this->authorize('viewAny', User::class);
-
-        // Dropdowns (assignees, members) offer only active employees.
-        $users = User::where('is_active', true)
-            ->orderBy('name')
-            ->limit(1000)
-            ->get(['id', 'name', 'email']);
-
-        return response()->json([
-            'data' => $users,
-        ]);
+        return response()->json(['data' => $this->users->options()]);
     }
 }

@@ -2,23 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Permission;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Http\Requests\ListPermissionsRequest;
+use App\Services\PermissionService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class PermissionController extends Controller
 {
-    use AuthorizesRequests;
+    public function __construct(private readonly PermissionService $permissions) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(ListPermissionsRequest $request): JsonResponse
     {
-        $this->authorize('viewAny', Permission::class);
-
-        $permissions = Permission::all(['id', 'name', 'display_name', 'description']);
-
-        return response()->json([
-            'data' => $permissions,
-        ]);
+        return response()->json(['data' => $this->permissions->list()]);
     }
 }

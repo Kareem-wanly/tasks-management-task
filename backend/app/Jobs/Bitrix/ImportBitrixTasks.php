@@ -57,7 +57,8 @@ class ImportBitrixTasks implements ShouldQueue
                 if ($this->changedSince) {
                     $people = [];
                     foreach ($rows as $row) {
-                        array_push($people, $mapper->creatorBitrixId($row), $mapper->responsibleBitrixId($row));
+                        $members = $mapper->members($row);
+                        array_push($people, $mapper->creatorBitrixId($row), $mapper->responsibleBitrixId($row), ...$members['accomplice'] ?? [], ...$members['auditor'] ?? []);
                     }
                     $fetch->importMissingUsers($people);
                 }

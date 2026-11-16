@@ -2,125 +2,69 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\Auth\UpdatePasswordRequest;
+use App\Http\Requests\Auth\UpdateProfileRequest;
+use App\Http\Requests\AuthenticatedRequest;
 use App\Http\Resources\UserResource;
-use App\Models\Role;
 use App\Models\User;
+use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
+    public function __construct(private readonly AuthService $auth) {}
+
     public function register(RegisterRequest $request): JsonResponse
     {
-        $validated = $request->validated();
+        [$user, $token] = $this->auth->register($request->validated());
 
-        $user = DB::transaction(function () use ($validated) {
-            $user = User::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'password' => $validated['password'],
-            ]);
-
-            $memberRole = Role::where('name', 'Member')->first();
-            if ($memberRole) {
-                $user->roles()->attach($memberRole->id);
-            }
-
-            return $user;
-        });
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'message' => 'User registered successfully',
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => new UserResource($user->load('roles')),
-        ], 201);
+        return $this->signedIn('User registered successfully', $user, $token, 201);
     }
 
-    public function login(Request $request): JsonResponse
+    public function login(LoginRequest $request): JsonResponse
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'string'],
-        ]);
+        [$user, $token] = $this->auth->login($request->validated('email'), $request->validated('password'));
 
-        $user = User::where('email', $request->email)->first();
-
-        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
-            return response()->json([
-                'message' => 'Invalid login credentials',
-            ], 401);
-        }
-
-        if (! $user->is_active) {
-            return response()->json([
-                'message' => 'This account is deactivated',
-            ], 403);
-        }
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'message' => 'Logged in successfully',
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => new UserResource($user->load('roles')),
-        ]);
+        return $this->signedIn('Logged in successfully', $user, $token);
     }
 
-    public function me(Request $request): JsonResponse
+    public function me(AuthenticatedRequest $request): JsonResponse
     {
-        return response()->json([
-            'user' => new UserResource($request->user()->load('roles')),
-        ]);
+        return response()->json(['user' => new UserResource($this->auth->profile($request->user()))]);
     }
 
-    public function logout(Request $request): JsonResponse
+    public function logout(AuthenticatedRequest $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        $this->auth->logout($request->user());
 
-        return response()->json([
-            'message' => 'Logged out successfully',
-        ]);
+        return response()->json(['message' => 'Logged out successfully']);
     }
 
-    public function updateProfile(Request $request): JsonResponse
+    public function updateProfile(UpdateProfileRequest $request): JsonResponse
     {
-        $user = $request->user();
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,'.$user->id],
-        ]);
-
-        $user->update($validated);
-
         return response()->json([
             'success' => true,
             'message' => 'Profile updated successfully',
-            'data' => $user,
+            'data' => $this->auth->updateProfile($request->user(), $request->validated()),
         ]);
     }
 
-    public function updatePassword(Request $request): JsonResponse
+    public function updatePassword(UpdatePasswordRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'current_password' => ['required', 'string', 'current_password'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-        ]);
+        $this->auth->updatePassword($request->user(), $request->validated('password'));
 
-        $request->user()->update([
-            'password' => $validated['password'],
-        ]);
+        return response()->json(['success' => true, 'message' => 'Password updated successfully']);
+    }
 
+    private function signedIn(string $message, User $user, string $token, int $status = 200): JsonResponse
+    {
         return response()->json([
-            'success' => true,
-            'message' => 'Password updated successfully',
-        ]);
+            'message' => $message,
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'user' => new UserResource($user),
+        ], $status);
     }
 }

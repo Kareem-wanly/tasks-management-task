@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -38,15 +39,20 @@ class BitrixOutboundOp extends Model
         ]);
     }
 
-    /** Our latest unanswered change to this record, if it is recent. */
-    public static function pending(string $entity, int $bitrixId): ?self
+    /**
+     * Our recent unanswered changes to this record, newest first. Quick
+     * successive changes can all be waiting when the first event arrives.
+     *
+     * @return Collection<int, self>
+     */
+    public static function pending(string $entity, int $bitrixId): Collection
     {
         return static::where('entity', $entity)
             ->where('bitrix_id', $bitrixId)
             ->where('status', self::SENT)
             ->where('created_at', '>=', now()->subSeconds(self::WINDOW_SECONDS))
             ->latest('id')
-            ->first();
+            ->get();
     }
 
     public function isDelete(): bool
@@ -54,13 +60,25 @@ class BitrixOutboundOp extends Model
         return $this->action === 'delete';
     }
 
+    /** Also answers our earlier changes to the record: Bitrix has moved past them. */
     public function confirm(): void
     {
-        $this->update(['status' => self::CONFIRMED]);
+        $this->settleUpToHere(self::CONFIRMED);
     }
 
+    /** Bitrix's version replaces this change and any earlier one still waiting. */
     public function markConflict(): void
     {
-        $this->update(['status' => self::CONFLICT]);
+        $this->settleUpToHere(self::CONFLICT);
+    }
+
+    private function settleUpToHere(string $status): void
+    {
+        static::where('entity', $this->entity)
+            ->where('bitrix_id', $this->bitrix_id)
+            ->where('status', self::SENT)
+            ->where('id', '<=', $this->id)
+            ->update(['status' => $status, 'updated_at' => now()]);
+        $this->status = $status;
     }
 }

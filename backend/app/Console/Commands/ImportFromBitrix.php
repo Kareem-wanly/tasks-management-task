@@ -2,8 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\Bitrix\ImportBitrixChecklists;
 use App\Jobs\Bitrix\ImportBitrixProjects;
 use App\Jobs\Bitrix\ImportBitrixTasks;
+use App\Jobs\Bitrix\ImportBitrixTime;
 use App\Jobs\Bitrix\ImportBitrixUsers;
 use App\Models\BitrixSyncCursor;
 use Illuminate\Console\Command;
@@ -18,17 +20,19 @@ use Throwable;
 class ImportFromBitrix extends Command
 {
     protected $signature = 'bitrix:import
-        {--only= : Comma-separated subset of users,projects,tasks}
+        {--only= : Comma-separated subset of users,projects,tasks,checklists,time}
         {--sync : Run now in this process, with a progress bar, instead of queueing}
         {--status : Show the progress of the last import and exit}';
 
-    protected $description = 'Import users, projects and tasks from Bitrix24';
+    protected $description = 'Import users, projects, tasks, checklists and time logs from Bitrix24';
 
     /** In the order they must run. */
     private const JOBS = [
         ImportBitrixUsers::ENTITY => ImportBitrixUsers::class,
         ImportBitrixProjects::ENTITY => ImportBitrixProjects::class,
         ImportBitrixTasks::ENTITY => ImportBitrixTasks::class,
+        ImportBitrixChecklists::ENTITY => ImportBitrixChecklists::class,
+        ImportBitrixTime::ENTITY => ImportBitrixTime::class,
     ];
 
     private ?ProgressBar $bar = null;

@@ -15,9 +15,13 @@ use App\Models\User;
  */
 class BitrixFingerprint
 {
-    public static function task(Task $task): string
+    /**
+     * @param  array{accomplice: list<int>, auditor: list<int>}|null  $members  Sorted Bitrix user IDs; null reads the task's own.
+     */
+    public static function task(Task $task, ?array $members = null): string
     {
         $status = (int) TaskStatus::where('key', $task->status)->value('bitrix_id');
+        $members ??= self::members($task);
 
         return self::hash([
             $task->title,
@@ -28,7 +32,31 @@ class BitrixFingerprint
             $task->due_date?->utc()->format('Y-m-d H:i'),
             $task->assigned_to ? (int) User::whereKey($task->assigned_to)->value('bitrix_user_id') : 0,
             $task->project_id ? (int) Project::withTrashed()->whereKey($task->project_id)->value('bitrix_group_id') : 0,
+            $task->parent_id ? (int) Task::withTrashed()->whereKey($task->parent_id)->value('bitrix_task_id') : 0,
+            (bool) $task->allow_time_tracking,
+            (int) $task->time_estimate,
+            $members['accomplice'],
+            $members['auditor'],
         ]);
+    }
+
+    /**
+     * The task's accomplices and auditors as sorted Bitrix user IDs.
+     *
+     * @return array{accomplice: list<int>, auditor: list<int>}
+     */
+    public static function members(Task $task): array
+    {
+        $members = ['accomplice' => [], 'auditor' => []];
+        if (! $task->exists) {
+            return $members;
+        }
+
+        foreach (['accomplice' => $task->accomplices(), 'auditor' => $task->auditors()] as $role => $relation) {
+            $members[$role] = $relation->whereNotNull('bitrix_user_id')->orderBy('bitrix_user_id')->pluck('bitrix_user_id')->map(fn ($id) => (int) $id)->all();
+        }
+
+        return $members;
     }
 
     public static function project(Project $project): string

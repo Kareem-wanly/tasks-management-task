@@ -42,6 +42,10 @@ class BitrixTaskSync
             $task->save();
         }
 
+        if (($members = $this->mapper->members($row)) !== null) {
+            $this->syncMembers($task, $members);
+        }
+
         // Bookkeeping, not a change: updated_at keeps the last real change.
         Task::withoutTimestamps(fn () => $task->forceFill(['bitrix_synced_at' => now()])->saveQuietly());
 
@@ -83,6 +87,7 @@ class BitrixTaskSync
         return [
             ...$attributes,
             'project_id' => $projectId,
+            'parent_id' => $this->parentId($row, $context),
             'created_by' => $creatorId,
             'assigned_to' => $assigneeId,
         ];
@@ -111,6 +116,44 @@ class BitrixTaskSync
         }
 
         return $attributes;
+    }
+
+    /**
+     * Step 4.1: our accomplices and auditors become Bitrix's. People not
+     * imported yet are left out (the event job imports them first).
+     *
+     * @param  array{accomplice: list<int>, auditor: list<int>}  $members  Bitrix user IDs
+     */
+    private function syncMembers(Task $task, array $members): void
+    {
+        foreach ([Task::ACCOMPLICE => $task->accomplices(), Task::AUDITOR => $task->auditors()] as $role => $relation) {
+            $userIds = User::whereIn('bitrix_user_id', $members[$role])->pluck('id')->all();
+
+            if (count($userIds) < count($members[$role])) {
+                Log::warning("Bitrix24 task {$role}s skipped: not imported.", ['bitrix_task_id' => $task->bitrix_task_id]);
+            }
+
+            $relation->sync($userIds);
+        }
+    }
+
+    /**
+     * Step 4.2. A parent we don't have yet (imported later in the same run)
+     * is left empty; the next sync of this task links it.
+     */
+    private function parentId(array $row, array $context): ?int
+    {
+        $bitrixId = $this->mapper->parentBitrixId($row);
+        if ($bitrixId === 0) {
+            return null;
+        }
+
+        $parentId = Task::where('bitrix_task_id', $bitrixId)->value('id');
+        if ($parentId === null) {
+            Log::warning('Bitrix24 subtask imported without its parent: the parent is not imported yet.', $context + ['bitrix_parent_id' => $bitrixId]);
+        }
+
+        return $parentId;
     }
 
     private function userId(int $bitrixId): ?int

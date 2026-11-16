@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Task;
+use App\Rules\ParentTask;
 use App\Rules\ProjectMember;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
@@ -10,9 +12,20 @@ use Illuminate\Validation\Validator;
 
 class StoreTaskRequest extends FormRequest
 {
+    /**
+     * Shared by POST /projects/{project}/tasks and POST /tasks (no project).
+     * Choosing an assignee needs the assign permission.
+     */
     public function authorize(): bool
     {
-        return true;
+        $project = $this->route('project');
+
+        if (! $this->user()->can('create', [Task::class, $project])) {
+            return false;
+        }
+
+        return ! $this->filled('assigned_to')
+            || $this->user()->can('assign', [new Task(['project_id' => $project?->id]), $project]);
     }
 
     public function rules(): array
@@ -24,6 +37,10 @@ class StoreTaskRequest extends FormRequest
             'priority' => ['sometimes', 'string', Rule::exists('task_priorities', 'key')],
             'due_date' => ['nullable', 'date'],
             'assigned_to' => ['nullable', 'integer', 'exists:users,id', new ProjectMember($this->route('project'))],
+            'parent_id' => ['nullable', 'integer', new ParentTask($this->user())],
+            'allow_time_tracking' => ['sometimes', 'boolean'],
+            // Planned time in seconds (Bitrix TIME_ESTIMATE).
+            'time_estimate' => ['sometimes', 'integer', 'min:0', 'max:3153600000'],
         ];
     }
 

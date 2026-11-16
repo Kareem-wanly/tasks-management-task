@@ -2,205 +2,64 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\DeleteTaskRequest;
+use App\Http\Requests\ListProjectTasksRequest;
+use App\Http\Requests\ListTasksRequest;
+use App\Http\Requests\ShowTaskRequest;
 use App\Http\Requests\StoreTaskRequest;
 use App\Http\Requests\UpdateTaskRequest;
 use App\Http\Requests\UpdateTaskStatusRequest;
 use App\Http\Resources\TaskResource;
-use App\Integrations\Bitrix24\BitrixTaskPusher;
 use App\Models\Project;
 use App\Models\Task;
-use App\Models\TaskPriority;
-use App\Models\TaskStatus;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Services\TaskService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class TaskController extends Controller
 {
-    use AuthorizesRequests;
+    public function __construct(private readonly TaskService $tasks) {}
 
-    public function __construct(private readonly BitrixTaskPusher $bitrix) {}
-
-    public function index(Request $request)
+    public function index(ListTasksRequest $request): AnonymousResourceCollection
     {
-        $this->authorize('viewAny', Task::class);
-
-        $query = Task::with(['project:id,title', 'assignee:id,name,email']);
-
-        if ($request->filled('search')) {
-            $search = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $request->query('search'));
-            $query->where('title', 'like', "%{$search}%");
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->query('status'));
-        }
-
-        // finished=true: any closing status (is_final), not only "completed"
-        if ($request->filled('finished')) {
-            $request->boolean('finished') ? $query->finished() : $query->unfinished();
-        }
-
-        if ($request->filled('priority')) {
-            $query->where('priority', $request->query('priority'));
-        }
-
-        $user = $request->user();
-
-        if (! $user->hasRole('Administrator')) {
-            $query->visibleTo($user);
-        }
-
-        if ($request->filled('assigned_to')) {
-            $query->where('assigned_to', $request->query('assigned_to'));
-        }
-
-        if ($request->filled('project_id')) {
-            $query->where('project_id', $request->query('project_id'));
-        }
-
-        if ($request->filled('due_date_from')) {
-            $query->whereDate('due_date', '>=', $request->query('due_date_from'));
-        }
-
-        if ($request->filled('due_date_to')) {
-            $query->whereDate('due_date', '<=', $request->query('due_date_to'));
-        }
-
-        if ($request->boolean('overdue') || $request->query('overdue') === 'true') {
-            $query->unfinished()
-                ->whereNotNull('due_date')
-                ->whereDate('due_date', '<', now()->toDateString());
-        }
-
-        if ($request->has('per_page') && ! is_numeric($request->query('per_page'))) {
-            return response()->json([
-                'message' => 'The per_page parameter must be an integer.',
-            ], 422);
-        }
-
-        $sortBy = $request->query('sort_by', 'created_at');
-        $sortOrder = strtolower($request->query('sort_order', 'desc'));
-
-        $allowedSorts = ['created_at', 'due_date', 'priority', 'title', 'status'];
-        $sortBy = in_array($sortBy, $allowedSorts) ? $sortBy : 'created_at';
-        $sortOrder = in_array($sortOrder, ['asc', 'desc']) ? $sortOrder : 'desc';
-
-        // status/priority are keys now, so order them by their lookup's `sort`, not alphabetically
-        match ($sortBy) {
-            'status' => $query->orderBy(
-                TaskStatus::select('sort')->whereColumn('task_statuses.key', 'tasks.status'), $sortOrder
-            ),
-            'priority' => $query->orderBy(
-                TaskPriority::select('sort')->whereColumn('task_priorities.key', 'tasks.priority'), $sortOrder
-            ),
-            default => $query->orderBy($sortBy, $sortOrder),
-        };
-
-        $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
-        $tasks = $query->paginate($perPage);
-
-        return TaskResource::collection($tasks);
+        return TaskResource::collection($this->tasks->list($request->user(), $request->filters(), $request->perPage()));
     }
 
-    public function indexByProject(Request $request, Project $project): JsonResponse
+    public function indexByProject(ListProjectTasksRequest $request, Project $project): JsonResponse
     {
-        $this->authorize('view', $project);
-
-        $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
-
-        $tasks = $project->tasks()
-            ->with('assignee:id,name,email')
-            ->latest()
-            ->paginate($perPage);
-
-        return response()->json($tasks);
+        return response()->json($this->tasks->listForProject($project, $request->perPage()));
     }
 
-    public function show(Request $request, Task $task): TaskResource
+    public function show(ShowTaskRequest $request, Task $task): TaskResource
     {
-        $this->authorize('view', $task);
-
-        $relations = ['project:id,title', 'assignee:id,name,email'];
-
-        if ($request->user()->hasPermission('comments.view')) {
-            $relations[] = 'comments.user:id,name,email';
-        }
-
-        return new TaskResource($task->load($relations));
+        return new TaskResource($this->tasks->show($request->user(), $task));
     }
 
     public function storeByProject(StoreTaskRequest $request, Project $project): TaskResource
     {
-        return $this->createTask($request, $project);
+        return new TaskResource($this->tasks->create($request->user(), $project, $request->validated()));
     }
 
-    /**
-     * A task without a project. It is a Bitrix personal task, so it always
-     * goes to Bitrix (GROUP_ID = 0).
-     */
+    /** A task without a project: a Bitrix personal task. */
     public function store(StoreTaskRequest $request): TaskResource
     {
-        return $this->createTask($request, null);
-    }
-
-    /*
-     * Bitrix-synced writes go to Bitrix first (with the employee's token) and
-     * are saved here only when Bitrix accepts them; a refusal throws a
-     * BitrixException, rendered in bootstrap/app.php.
-     */
-
-    private function createTask(StoreTaskRequest $request, ?Project $project): TaskResource
-    {
-        $this->authorize('create', [Task::class, $project]);
-
-        if ($request->filled('assigned_to')) {
-            $this->authorize('assign', [new Task(['project_id' => $project?->id]), $project]);
-        }
-
-        $task = new Task($request->validated());
-        $task->project_id = $project?->id;
-        $task->created_by = $request->user()->id;
-
-        $this->bitrix->create($request->user(), $task);
-        $task->save();
-
-        return new TaskResource($task->load(['project:id,title', 'assignee:id,name,email']));
+        return new TaskResource($this->tasks->create($request->user(), null, $request->validated()));
     }
 
     public function update(UpdateTaskRequest $request, Task $task): TaskResource
     {
-        $this->authorize('update', $task);
-
-        if ($request->has('assigned_to') && $request->validated('assigned_to') !== $task->assigned_to) {
-            $this->authorize('assign', $task);
-        }
-
-        $task->fill($request->validated());
-        $this->bitrix->update($request->user(), $task);
-        $task->save();
-
-        return new TaskResource($task->fresh(['project:id,title', 'assignee:id,name,email']));
+        return new TaskResource($this->tasks->update($request->user(), $task, $request->validated()));
     }
 
     public function updateStatus(UpdateTaskStatusRequest $request, Task $task): TaskResource
     {
-        $task->status = $request->validated('status');
-        $this->bitrix->update($request->user(), $task);
-        $task->save();
-
-        return new TaskResource($task->fresh(['project:id,title', 'assignee:id,name,email']));
+        return new TaskResource($this->tasks->changeStatus($request->user(), $task, $request->validated('status')));
     }
 
-    public function destroy(Request $request, Task $task): JsonResponse
+    public function destroy(DeleteTaskRequest $request, Task $task): JsonResponse
     {
-        $this->authorize('delete', $task);
+        $this->tasks->delete($request->user(), $task);
 
-        $this->bitrix->delete($request->user(), $task);
-        $task->delete();
-
-        return response()->json([
-            'message' => 'Task deleted successfully',
-        ]);
+        return response()->json(['message' => 'Task deleted successfully']);
     }
 }

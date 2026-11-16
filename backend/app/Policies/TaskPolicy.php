@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\TaskElapsedItem;
 use App\Models\User;
 
 class TaskPolicy
@@ -72,6 +73,34 @@ class TaskPolicy
         return $task->project?->owner_id === $user->id
             || $task->created_by === $user->id
             || $user->hasPermission('tasks.delete');
+    }
+
+    /**
+     * Step 4.3: whoever may edit the task, plus the people working on it
+     * (responsible person and accomplices). Bitrix has the last word.
+     */
+    public function updateChecklist(User $user, Task $task): bool
+    {
+        return $this->update($user, $task)
+            || ($this->canSee($user, $task) && ($this->isAssignee($user, $task) || $task->accomplices()->whereKey($user->id)->exists()));
+    }
+
+    /** Step 4.4: the same people as for the checklist log time on a task. */
+    public function logTime(User $user, Task $task): bool
+    {
+        return $this->updateChecklist($user, $task);
+    }
+
+    /** Step 4.4: everyone changes only their own entries (administrators pass every policy). */
+    public function manageTimeEntry(User $user, Task $task, TaskElapsedItem $entry): bool
+    {
+        return $this->canSee($user, $task) && $entry->user_id === $user->id;
+    }
+
+    /** Step 4.1: as in Bitrix, only the responsible person delegates. */
+    public function delegate(User $user, Task $task): bool
+    {
+        return $this->canSee($user, $task) && $this->isAssignee($user, $task);
     }
 
     public function assign(User $user, Task $task, ?Project $project = null): bool

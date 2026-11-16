@@ -41,6 +41,9 @@ class BitrixTaskPusher
         'priority' => 'PRIORITY',
         'due_date' => 'DEADLINE',
         'assigned_to' => 'RESPONSIBLE_ID',
+        'parent_id' => 'PARENT_ID',
+        'allow_time_tracking' => 'ALLOW_TIME_TRACKING',
+        'time_estimate' => 'TIME_ESTIMATE',
     ];
 
     public function __construct(private readonly BitrixClient $bitrix) {}
@@ -207,10 +210,24 @@ class BitrixTaskPusher
                 // An empty value clears the deadline.
                 'due_date' => $task->due_date?->toIso8601String() ?? '',
                 'assigned_to' => $this->responsibleId($task->assigned_to),
+                // 0 detaches it from its parent.
+                'parent_id' => $this->parentBitrixId($task->parent_id),
+                'allow_time_tracking' => $task->allow_time_tracking ? 'Y' : 'N',
+                'time_estimate' => (int) $task->time_estimate,
             };
         }
 
         return $fields;
+    }
+
+    private function parentBitrixId(?int $parentId): int
+    {
+        if ($parentId === null) {
+            return 0;
+        }
+
+        return Task::whereKey($parentId)->value('bitrix_task_id')
+            ?? throw BitrixException::cannotSync('The parent task is not in Bitrix24, so this task cannot be its subtask there.');
     }
 
     private function responsibleId(?int $userId): int

@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\BitrixOutboundOp;
 use App\Models\Project;
 use App\Models\Task;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -19,18 +20,21 @@ class BitrixEchoGuard
 {
     /**
      * @param  array<string, mixed>|null  $attributes  Our columns for the fetched task; null when it is gone from Bitrix.
+     * @param  array{accomplice: list<int>, auditor: list<int>}|null  $members  Its accomplices and auditors (Bitrix IDs).
      * @return bool True when the event is the echo of our change: nothing to apply.
      */
-    public function isTaskEcho(int $bitrixTaskId, ?array $attributes): bool
+    public function isTaskEcho(int $bitrixTaskId, ?array $attributes, ?array $members = null): bool
     {
-        $op = BitrixOutboundOp::pending(BitrixOutboundOp::TASK, $bitrixTaskId);
-        if (! $op) {
+        $ops = BitrixOutboundOp::pending(BitrixOutboundOp::TASK, $bitrixTaskId);
+        if ($ops->isEmpty()) {
             return false;
         }
 
-        $fingerprint = $attributes === null ? null : BitrixFingerprint::task((new Task)->forceFill($attributes));
+        $fingerprint = $attributes === null
+            ? null
+            : BitrixFingerprint::task((new Task)->forceFill($attributes), $members ?? ['accomplice' => [], 'auditor' => []]);
 
-        return $this->settle($op, $fingerprint, Task::withTrashed()->where('bitrix_task_id', $bitrixTaskId)->first());
+        return $this->settle($ops, $fingerprint, Task::withTrashed()->where('bitrix_task_id', $bitrixTaskId)->first());
     }
 
     /**
@@ -38,36 +42,44 @@ class BitrixEchoGuard
      */
     public function isProjectEcho(int $bitrixGroupId, ?array $attributes, bool $closed): bool
     {
-        $op = BitrixOutboundOp::pending(BitrixOutboundOp::PROJECT, $bitrixGroupId);
-        if (! $op) {
+        $ops = BitrixOutboundOp::pending(BitrixOutboundOp::PROJECT, $bitrixGroupId);
+        if ($ops->isEmpty()) {
             return false;
-        }
-
-        // Deleting here archives the group, so a closed group answers our delete.
-        if ($op->isDelete() && $closed) {
-            $op->confirm();
-
-            return true;
         }
 
         $fingerprint = $attributes === null
             ? null
             : BitrixFingerprint::project((new Project)->forceFill([...$attributes, 'status' => $closed ? 'archived' : 'active']));
 
-        return $this->settle($op, $fingerprint, Project::withTrashed()->where('bitrix_group_id', $bitrixGroupId)->first());
+        // Deleting here archives the group, so a closed group answers our delete.
+        $answers = fn (BitrixOutboundOp $op) => $op->isDelete() && $closed;
+
+        return $this->settle($ops, $fingerprint, Project::withTrashed()->where('bitrix_group_id', $bitrixGroupId)->first(), $answers);
     }
 
-    private function settle(BitrixOutboundOp $op, ?string $fingerprint, Task|Project|null $record): bool
+    /**
+     * The record as Bitrix has it is our echo when it matches one of our
+     * waiting changes (it and the earlier ones are then confirmed); when it
+     * matches none, someone changed it in Bitrix: a conflict.
+     *
+     * @param  Collection<int, BitrixOutboundOp>  $ops  Newest first.
+     * @param  (callable(BitrixOutboundOp): bool)|null  $alsoAnswers  Another way a record can answer an op.
+     */
+    private function settle(Collection $ops, ?string $fingerprint, Task|Project|null $record, ?callable $alsoAnswers = null): bool
     {
         // A delete is confirmed by the record being gone; anything else by an identical record.
-        if ($op->isDelete() ? $fingerprint === null : $fingerprint === $op->fingerprint) {
-            $op->confirm();
+        $answered = $ops->first(fn (BitrixOutboundOp $op) => ($op->isDelete() ? $fingerprint === null : $fingerprint === $op->fingerprint)
+            || ($alsoAnswers && $alsoAnswers($op)));
+
+        if ($answered) {
+            $answered->confirm();
 
             return true;
         }
 
-        $op->markConflict();
-        $this->logConflict($op, $record);
+        $newest = $ops->first();
+        $newest->markConflict();
+        $this->logConflict($newest, $record);
 
         return false;
     }

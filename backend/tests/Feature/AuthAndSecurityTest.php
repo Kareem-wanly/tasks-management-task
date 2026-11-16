@@ -85,6 +85,8 @@ class AuthAndSecurityTest extends TestCase
     {
         /** @var User $owner */
         $owner = User::factory()->create();
+        // May create and assign tasks, so the request reaches validation.
+        $owner->roles()->attach(Role::where('name', 'Project Manager')->first());
         $outsider = User::factory()->create();
 
         $project = Project::create([

@@ -7,12 +7,20 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class Task extends Model
 {
     use HasFactory, SoftDeletes;
+
+    /** task_members.role: works on the task besides the responsible person. */
+    public const ACCOMPLICE = 'accomplice';
+
+    /** task_members.role: follows the task. */
+    public const AUDITOR = 'auditor';
 
     protected $fillable = [
         'title',
@@ -20,8 +28,11 @@ class Task extends Model
         'status',
         'priority',
         'due_date',
+        'allow_time_tracking',
+        'time_estimate',
         'completed_at',
         'project_id',
+        'parent_id',
         'assigned_to',
         'created_by',
     ];
@@ -34,6 +45,9 @@ class Task extends Model
             'due_date' => 'datetime',
             'completed_at' => 'datetime',
             'bitrix_synced_at' => 'datetime',
+            'allow_time_tracking' => 'boolean',
+            'time_estimate' => 'integer',
+            'time_spent' => 'integer',
         ];
     }
 
@@ -62,6 +76,16 @@ class Task extends Model
         return $this->belongsTo(Project::class);
     }
 
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function subtasks(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_id');
+    }
+
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
@@ -70,6 +94,39 @@ class Task extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function accomplices(): BelongsToMany
+    {
+        return $this->members(self::ACCOMPLICE);
+    }
+
+    public function auditors(): BelongsToMany
+    {
+        return $this->members(self::AUDITOR);
+    }
+
+    /** People in one task_members role; sync() on it leaves the other role alone. */
+    private function members(string $role): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'task_members')
+            ->withPivotValue('role', $role)
+            ->withTimestamps();
+    }
+
+    public function hasMember(User $user): bool
+    {
+        return $this->exists && DB::table('task_members')->where('task_id', $this->id)->where('user_id', $user->id)->exists();
+    }
+
+    public function checklistItems(): HasMany
+    {
+        return $this->hasMany(TaskChecklistItem::class);
+    }
+
+    public function elapsedItems(): HasMany
+    {
+        return $this->hasMany(TaskElapsedItem::class);
     }
 
     public function comments(): HasMany
@@ -99,17 +156,17 @@ class Task extends Model
     }
 
     /**
-     * Project members see a project's tasks. A task without a project (a
-     * Bitrix personal task) is seen by its creator and responsible person.
-     * Administrators pass every policy before this is asked.
+     * Project members see a project's tasks. As in Bitrix, the people on a
+     * task always see it, in a project or not: its creator, responsible
+     * person, accomplices and auditors. Administrators pass every policy
+     * before this is asked.
      */
     public function isVisibleTo(User $user): bool
     {
-        if ($this->project_id === null) {
-            return (int) $this->created_by === $user->id || (int) $this->assigned_to === $user->id;
-        }
-
-        return $this->project ? $this->project->hasMember($user) : false;
+        return (int) $this->created_by === $user->id
+            || (int) $this->assigned_to === $user->id
+            || ($this->project_id !== null && $this->project && $this->project->hasMember($user))
+            || $this->hasMember($user);
     }
 
     /**
@@ -119,8 +176,9 @@ class Task extends Model
     {
         return $query->where(function (Builder $q) use ($user) {
             $q->whereHas('project', fn (Builder $p) => $p->accessibleBy($user))
-                ->orWhere(fn (Builder $own) => $own->whereNull('project_id')
-                    ->where(fn (Builder $w) => $w->where('created_by', $user->id)->orWhere('assigned_to', $user->id)));
+                ->orWhere('created_by', $user->id)
+                ->orWhere('assigned_to', $user->id)
+                ->orWhereIn('id', DB::table('task_members')->select('task_id')->where('user_id', $user->id));
         });
     }
 

@@ -1,0 +1,19 @@
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+/** Stops the caller's timer; its time is logged with the optional comment. */
+class StopTimerRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()->can('view', $this->route('task'));
+    }
+
+    public function rules(): array
+    {
+        return ['comment' => ['nullable', 'string', 'max:2000']];
+    }
+}

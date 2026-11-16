@@ -5,8 +5,10 @@ namespace Tests\Feature\Bitrix24;
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
+use App\Jobs\Bitrix\ImportBitrixChecklists;
 use App\Jobs\Bitrix\ImportBitrixProjects;
 use App\Jobs\Bitrix\ImportBitrixTasks;
+use App\Jobs\Bitrix\ImportBitrixTime;
 use App\Jobs\Bitrix\ImportBitrixUsers;
 use App\Models\BitrixSyncCursor;
 use App\Models\Project;
@@ -120,7 +122,7 @@ class ImportFromBitrixCommandTest extends TestCase
 
         $this->artisan('bitrix:import')->assertSuccessful();
 
-        Bus::assertChained([ImportBitrixUsers::class, ImportBitrixProjects::class, ImportBitrixTasks::class]);
+        Bus::assertChained([ImportBitrixUsers::class, ImportBitrixProjects::class, ImportBitrixTasks::class, ImportBitrixChecklists::class, ImportBitrixTime::class]);
         Bus::assertDispatched(ImportBitrixUsers::class, fn (ImportBitrixUsers $job) => $job->queue === 'bitrix');
     }
 
@@ -152,6 +154,8 @@ class ImportFromBitrixCommandTest extends TestCase
                 ['users', 'never run', 0, 0, '-', ''],
                 ['projects', 'never run', 0, 0, '-', ''],
                 ['tasks', 'never run', 0, 0, '-', ''],
+                ['checklists', 'never run', 0, 0, '-', ''],
+                ['time', 'never run', 0, 0, '-', ''],
             ])
             ->assertSuccessful();
     }

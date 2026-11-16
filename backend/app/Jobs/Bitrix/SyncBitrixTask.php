@@ -54,7 +54,11 @@ class SyncBitrixTask implements ShouldBeUniqueUntilProcessing, ShouldQueue
         }
 
         // The task may point at people or a group we haven't seen yet.
-        $fetch->importMissingUsers([$mapper->creatorBitrixId($row), $mapper->responsibleBitrixId($row)]);
+        $members = $mapper->members($row);
+        $fetch->importMissingUsers([
+            $mapper->creatorBitrixId($row), $mapper->responsibleBitrixId($row),
+            ...$members['accomplice'] ?? [], ...$members['auditor'] ?? [],
+        ]);
 
         $groupId = $mapper->groupBitrixId($row);
         if ($groupId !== 0 && ! Project::where('bitrix_group_id', $groupId)->exists()) {
@@ -63,7 +67,7 @@ class SyncBitrixTask implements ShouldBeUniqueUntilProcessing, ShouldQueue
 
         // Our own change coming back: already saved here.
         $attributes = $tasks->resolve($row);
-        if ($attributes !== null && $echo->isTaskEcho($this->bitrixTaskId, $attributes)) {
+        if ($attributes !== null && $echo->isTaskEcho($this->bitrixTaskId, $attributes, $members)) {
             return;
         }
 

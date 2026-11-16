@@ -2,36 +2,37 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\TaskLookup;
+use App\Http\Requests\DeleteTaskLookupRequest;
+use App\Http\Requests\ListTaskLookupsRequest;
+use App\Http\Requests\StoreTaskStatusLookupRequest;
+use App\Http\Requests\UpdateTaskStatusLookupRequest;
 use App\Models\TaskStatus;
+use App\Services\TaskLookupService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
-class TaskStatusController extends TaskLookupController
+class TaskStatusController extends Controller
 {
-    protected function model(): string
+    public function __construct(private readonly TaskLookupService $lookups) {}
+
+    public function index(ListTaskLookupsRequest $request): JsonResponse
     {
-        return TaskStatus::class;
+        return response()->json(['data' => $this->lookups->list(TaskStatus::class)]);
     }
 
-    protected function extraRules(?TaskLookup $lookup): array
+    public function store(StoreTaskStatusLookupRequest $request): JsonResponse
     {
-        // Bitrix decides which of its statuses close a task
-        return $lookup?->is_system ? [] : ['is_final' => ['boolean']];
+        return response()->json(['data' => $this->lookups->create(TaskStatus::class, $request->validated())], 201);
     }
 
-    public function store(Request $request): JsonResponse
+    public function update(UpdateTaskStatusLookupRequest $request, TaskStatus $taskStatus): JsonResponse
     {
-        return $this->storeLookup($request);
+        return response()->json(['data' => $this->lookups->update($taskStatus, $request->validated())]);
     }
 
-    public function update(Request $request, TaskStatus $taskStatus): JsonResponse
+    public function destroy(DeleteTaskLookupRequest $request, TaskStatus $taskStatus): JsonResponse
     {
-        return $this->updateLookup($request, $taskStatus);
-    }
+        $this->lookups->delete($taskStatus);
 
-    public function destroy(TaskStatus $taskStatus): JsonResponse
-    {
-        return $this->destroyLookup($taskStatus);
+        return response()->json(['message' => 'Deleted successfully']);
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Task;
+use App\Rules\ParentTask;
 use App\Rules\ProjectMember;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
@@ -10,9 +12,27 @@ use Illuminate\Validation\Validator;
 
 class UpdateTaskRequest extends FormRequest
 {
+    /** Changing the assignee also needs the assign permission. */
     public function authorize(): bool
     {
-        return true;
+        $task = $this->route('task');
+
+        if (! $this->user()->can('update', $task)) {
+            return false;
+        }
+
+        return ! $this->changesAssignee($task) || $this->user()->can('assign', $task);
+    }
+
+    private function changesAssignee(Task $task): bool
+    {
+        if (! $this->has('assigned_to')) {
+            return false;
+        }
+
+        $assignee = $this->input('assigned_to');
+
+        return $assignee === null ? $task->assigned_to !== null : (int) $assignee !== $task->assigned_to;
     }
 
     public function rules(): array
@@ -24,6 +44,10 @@ class UpdateTaskRequest extends FormRequest
             'priority' => ['sometimes', 'string', Rule::exists('task_priorities', 'key')],
             'due_date' => ['nullable', 'date'],
             'assigned_to' => ['nullable', 'integer', 'exists:users,id', new ProjectMember($this->route('task')?->project)],
+            'parent_id' => ['nullable', 'integer', new ParentTask($this->user(), $this->route('task'))],
+            'allow_time_tracking' => ['sometimes', 'boolean'],
+            // Planned time in seconds (Bitrix TIME_ESTIMATE).
+            'time_estimate' => ['sometimes', 'integer', 'min:0', 'max:3153600000'],
         ];
     }
 
