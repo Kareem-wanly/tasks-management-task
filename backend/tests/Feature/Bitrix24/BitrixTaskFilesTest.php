@@ -18,9 +18,11 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 use Throwable;
@@ -187,6 +189,20 @@ class BitrixTaskFilesTest extends TestCase
 
         Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'tasks.task.update.json') && $r['fields'] === ['UF_TASK_WEBDAV_FILES' => [25]]);
         Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'disk.file.delete'));
+    }
+
+    /** Review C6: the list is read and written whole, so two changes to a task's files take turns. */
+    public function test_a_removal_waits_for_another_change_to_the_files_and_then_gives_up(): void
+    {
+        Sleep::fake(syncWithCarbon: true);
+        $this->attach(24, 197, 'a.pdf', 5);
+        $this->getJson("/api/tasks/{$this->task->id}/files");
+        Cache::lock("bitrix-task-files:{$this->task->id}", 60)->get();
+
+        $this->deleteJson('/api/task-files/'.TaskFile::sole()->id)->assertUnprocessable();
+
+        Http::assertNotSent(fn (Request $r) => str_ends_with($r->url(), 'tasks.task.update.json'));
+        $this->assertSame(1, TaskFile::count());
     }
 
     /** Review C5: the link is asked for with the service account, after our own visibility check. */

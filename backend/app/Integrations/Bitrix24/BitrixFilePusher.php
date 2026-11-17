@@ -5,7 +5,9 @@ namespace App\Integrations\Bitrix24;
 use App\Models\Task;
 use App\Models\TaskFile;
 use App\Models\User;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Psr\Http\Message\StreamInterface;
 
 /**
@@ -22,6 +24,9 @@ class BitrixFilePusher
 
     /** Seconds allowed for sending a file (base64 in the request body). */
     private const UPLOAD_TIMEOUT = 120;
+
+    /** How long a change to a task's attachments may hold (and wait for) the lock. */
+    private const FILES_LOCK_SECONDS = 15;
 
     public function __construct(
         private readonly BitrixClient $bitrix,
@@ -131,7 +136,7 @@ class BitrixFilePusher
 
         $diskFileId = (int) ($file['ID'] ?? 0) ?: throw BitrixException::cannotSync('Bitrix24 did not store the file.');
 
-        $this->bitrix->callAsUser($actor, 'tasks.task.files.attach', ['taskId' => $task->bitrix_task_id, 'fileId' => $diskFileId]);
+        $this->whileChangingFiles($task, fn () => $this->bitrix->callAsUser($actor, 'tasks.task.files.attach', ['taskId' => $task->bitrix_task_id, 'fileId' => $diskFileId]));
         $this->refresh($task);
     }
 
@@ -141,12 +146,25 @@ class BitrixFilePusher
         $this->ensureLinked($actor);
         $task = $file->task;
 
-        $this->bitrix->callAsUser($actor, 'tasks.task.update', [
+        // Bitrix only takes the whole list (the detach method is undocumented), so
+        // reading and writing it happen under a lock: two changes made here can't
+        // overwrite each other's file.
+        $this->whileChangingFiles($task, fn () => $this->bitrix->callAsUser($actor, 'tasks.task.update', [
             'taskId' => $task->bitrix_task_id,
             // The whole list: what is left after removing this one (empty clears it).
             'fields' => ['UF_TASK_WEBDAV_FILES' => array_values(array_diff($this->attachedIds($task), [$file->attached_object_id]))],
-        ]);
+        ]));
         $this->refresh($task);
+    }
+
+    /** One change to a task's attachments at a time. */
+    private function whileChangingFiles(Task $task, callable $change): void
+    {
+        try {
+            Cache::lock("bitrix-task-files:{$task->id}", self::FILES_LOCK_SECONDS)->block(self::FILES_LOCK_SECONDS, $change);
+        } catch (LockTimeoutException) {
+            throw BitrixException::cannotSync('Another change to the files of this task is in progress. Try again in a moment.');
+        }
     }
 
     /**
