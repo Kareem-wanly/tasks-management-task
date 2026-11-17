@@ -148,15 +148,21 @@ class BitrixAuthTest extends TestCase
             ->assertJsonPath('user.avatar_url', 'https://portal.test/photo.jpg');
     }
 
-    public function test_existing_account_with_same_email_is_linked(): void
+    /**
+     * Review A3: an employee who puts the administrator's email on their Bitrix
+     * profile must not get the administrator's account.
+     */
+    public function test_sign_in_never_takes_over_an_account_by_email(): void
     {
-        $existing = User::factory()->create(['email' => 'sara@portal.test']);
+        $admin = User::factory()->create(['email' => 'sara@portal.test']);
+        $admin->roles()->attach(Role::create(['name' => 'Administrator', 'display_name' => 'Admin', 'description' => 'x']));
         $this->fakeBitrix();
 
-        $this->tokenFrom($this->oauthCallback());
+        $this->oauthCallback()->assertRedirect(self::FRONTEND.'#error=account_not_linked');
 
         $this->assertDatabaseCount('users', 1);
-        $this->assertSame(42, $existing->fresh()->bitrix_user_id);
+        $this->assertNull($admin->fresh()->bitrix_user_id);
+        $this->assertSame(0, $admin->tokens()->count());
     }
 
     public function test_returning_employee_is_found_by_bitrix_id(): void

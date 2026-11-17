@@ -11,6 +11,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   exchange_failed: 'Bitrix24 did not confirm the sign-in. Please try again.',
   bitrix_rejected: 'Bitrix24 did not accept the sign-in. Please try again.',
   inactive: 'Your account is deactivated. Contact your administrator.',
+  account_not_linked:
+    'An account with your email already exists here but is not linked to Bitrix24. Ask your administrator to link it, or sign in with your password.',
 };
 
 const DEFAULT_ERROR = 'Sign-in with Bitrix24 failed. Please try again.';

@@ -116,7 +116,12 @@ class BitrixAuthController extends Controller
             return $this->fail('bitrix_rejected');
         }
 
+        // Never links by email here: anyone can put any email on their Bitrix profile.
         $user = $this->users->upsert($profile);
+
+        if ($user === null) {
+            return $this->fail('account_not_linked');
+        }
 
         if (! $user->is_active) {
             return $this->fail('inactive');
