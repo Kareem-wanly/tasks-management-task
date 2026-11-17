@@ -3,15 +3,19 @@
 namespace App\Services;
 
 use App\Data\TimeLog;
+use App\Exceptions\BusinessRuleException;
 use App\Integrations\Bitrix24\BitrixException;
 use App\Integrations\Bitrix24\BitrixTimePusher;
+use App\Models\RunningTimer;
 use App\Models\Task;
 use App\Models\TaskElapsedItem;
 use App\Models\User;
 use App\Repositories\Contracts\TaskRepositoryInterface;
 use App\Repositories\Contracts\TimeEntryRepositoryInterface;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * Step 4.4: a task's time log and the employee's timer. Bitrix sends no
@@ -92,44 +96,64 @@ class TaskTimeService
         $stopped = null;
 
         if ($running?->task_id !== $task->id) {
-            $stopped = $running ? $this->stopRunning($actor, null) : null;
-            $this->entries->startTimer($actor, $task);
+            $stopped = $running ? $this->stopRunning($actor, $running, null) : null;
+
+            try {
+                $this->entries->startTimer($actor, $task);
+            } catch (UniqueConstraintViolationException) {
+                // Another request (a second click or tab) started a timer at the same moment.
+                throw new BusinessRuleException('Your timer was just started from another tab. Refresh to see it.', 409);
+            }
         }
 
         return $this->current($actor, $task, stoppedTask: $stopped);
     }
 
+    /** Stops the actor's timer on this task; a second stop (double click, other tab) changes nothing. */
     public function stopTimer(User $actor, Task $task, ?string $comment): TimeLog
     {
-        $this->stopRunning($actor, $comment);
+        $timer = $this->entries->runningTimer($actor);
 
-        $this->tasks->reload($task);
+        if ($timer && $timer->task_id !== $task->id) {
+            throw new BusinessRuleException('Your timer is running on another task. Stop it there.');
+        }
+
+        if ($timer) {
+            $this->stopRunning($actor, $timer, $comment);
+            $this->tasks->reload($task);
+        }
 
         return $this->current($actor, $task);
     }
 
     /**
-     * Logs the running timer's time and removes it. When Bitrix refuses, the
-     * timer keeps running, so no time is lost and the employee can try again.
+     * Logs the timer's time and removes it. The timer row is claimed first, so
+     * two requests stopping it at once can't log its time twice. When Bitrix
+     * refuses, the timer is put back, so no time is lost and the employee can
+     * try again.
      *
      * @return Task|null The task the time went to.
      */
-    private function stopRunning(User $actor, ?string $comment): ?Task
+    private function stopRunning(User $actor, RunningTimer $timer, ?string $comment): ?Task
     {
-        $timer = $this->entries->runningTimer($actor);
-        if (! $timer) {
+        $seconds = $timer->seconds();
+
+        if (! $this->entries->claimTimer($timer)) {
             return null;
         }
 
         $task = $this->tasks->find($timer->task_id);
-        $seconds = $timer->seconds();
 
         // A task deleted meanwhile has nowhere to log to.
         if ($task && $seconds > 0) {
-            $this->logTime($actor, $task, $seconds, $comment);
-        }
+            try {
+                $this->logTime($actor, $task, $seconds, $comment);
+            } catch (Throwable $e) {
+                $this->entries->restoreTimer($timer);
 
-        $this->entries->deleteTimer($timer);
+                throw $e;
+            }
+        }
 
         return $task;
     }

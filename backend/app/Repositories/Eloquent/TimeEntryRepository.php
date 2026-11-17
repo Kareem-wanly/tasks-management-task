@@ -55,6 +55,16 @@ class TimeEntryRepository implements TimeEntryRepositoryInterface
         $timer->delete();
     }
 
+    public function claimTimer(RunningTimer $timer): bool
+    {
+        return RunningTimer::whereKey($timer->getKey())->delete() === 1;
+    }
+
+    public function restoreTimer(RunningTimer $timer): void
+    {
+        RunningTimer::create(['user_id' => $timer->user_id, 'task_id' => $timer->task_id, 'started_at' => $timer->started_at]);
+    }
+
     public function bitrixEntries(Task $task): Collection
     {
         return $task->elapsedItems()->whereNotNull('bitrix_item_id')->get()->keyBy('bitrix_item_id');

@@ -12,6 +12,7 @@ use App\Models\RunningTimer;
 use App\Models\Task;
 use App\Models\TaskElapsedItem;
 use App\Models\User;
+use App\Repositories\Contracts\TimeEntryRepositoryInterface;
 use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -19,6 +20,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
+use Mockery;
 use Tests\TestCase;
 
 /**
@@ -189,6 +191,56 @@ class BitrixTimeTest extends TestCase
             ->assertJsonPath('meta.timer', null)
             ->assertJsonPath('meta.time_spent', 1500);
         Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'task.elapseditem.add.json') && $r['ARFIELDS'] === ['SECONDS' => 1500, 'COMMENT_TEXT' => 'Focus']);
+    }
+
+    /** Review B2: a double click (or a second tab) on Stop logs the time once. */
+    public function test_a_second_stop_logs_nothing_more(): void
+    {
+        $this->postJson("/api/tasks/{$this->task->id}/timer");
+        $this->travel(25)->minutes();
+
+        $this->postJson("/api/tasks/{$this->task->id}/timer/stop")->assertOk();
+        $this->postJson("/api/tasks/{$this->task->id}/timer/stop")->assertOk()->assertJsonPath('meta.timer', null);
+
+        $this->assertCount(1, Http::recorded(fn (Request $r) => str_ends_with($r->url(), 'task.elapseditem.add.json')));
+    }
+
+    /** Review B2: of two requests stopping the same timer at once, only one gets to log it. */
+    public function test_a_timer_can_be_claimed_only_once(): void
+    {
+        $this->postJson("/api/tasks/{$this->task->id}/timer");
+        $timer = RunningTimer::sole();
+        $entries = app(TimeEntryRepositoryInterface::class);
+
+        $this->assertTrue($entries->claimTimer($timer));
+        $this->assertFalse($entries->claimTimer($timer));
+    }
+
+    /** Review B2: two requests starting a timer at once answer 409, not 500. */
+    public function test_starting_twice_at_once_is_a_conflict_not_a_server_error(): void
+    {
+        RunningTimer::create(['user_id' => $this->actor->id, 'task_id' => $this->task->id, 'started_at' => now()]);
+        // The other request's timer appears after this one looked for a running timer.
+        $entries = Mockery::mock(app(TimeEntryRepositoryInterface::class))->makePartial();
+        $entries->shouldReceive('runningTimer')->andReturnNull();
+        $this->app->instance(TimeEntryRepositoryInterface::class, $entries);
+
+        $this->postJson("/api/tasks/{$this->task->id}/timer")->assertStatus(409);
+
+        $this->assertSame(1, RunningTimer::count());
+    }
+
+    /** Review B2: Stop on a task only stops the timer running on that task. */
+    public function test_stop_on_another_task_is_refused(): void
+    {
+        $other = $this->task(16);
+        $this->postJson("/api/tasks/{$other->id}/timer");
+        $this->travel(5)->minutes();
+
+        $this->postJson("/api/tasks/{$this->task->id}/timer/stop")->assertUnprocessable();
+
+        $this->assertSame($other->id, RunningTimer::sole()->task_id);
+        Http::assertNotSent(fn (Request $r) => str_ends_with($r->url(), 'task.elapseditem.add.json'));
     }
 
     public function test_starting_a_timer_stops_and_logs_the_running_one(): void

@@ -34,6 +34,17 @@ interface TimeEntryRepositoryInterface
     public function deleteTimer(RunningTimer $timer): void;
 
     /**
+     * Deletes the timer row in one statement, so of two requests stopping the
+     * same timer only one gets it.
+     *
+     * @return bool Whether this call deleted it.
+     */
+    public function claimTimer(RunningTimer $timer): bool;
+
+    /** Puts a claimed timer back as it was (same task and start time). */
+    public function restoreTimer(RunningTimer $timer): void;
+
+    /**
      * The task's entries that came from Bitrix.
      *
      * @return Collection<int, TaskElapsedItem> By Bitrix item ID.
