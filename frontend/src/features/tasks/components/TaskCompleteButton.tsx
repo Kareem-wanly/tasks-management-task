@@ -1,7 +1,6 @@
 import type { MouseEvent } from 'react';
 import { CheckIcon, CircleCheckBigIcon, CircleIcon, Loader2Icon, RotateCcwIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { TASK_DONE_STATUS, TASK_REOPEN_STATUS } from '@/constants/statuses';
 import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import { cn } from '@/lib/utils';
 import useTaskStatus, { type StatusTask } from '../hooks/useTaskStatus';
@@ -12,16 +11,16 @@ interface TaskCompleteButtonProps {
   variant?: 'icon' | 'button';
 }
 
-/** Marks a task completed in one click, or reopens it (back to To Do). Undo lives in the toast. */
+/** Closes a task in one click (its first final status), or reopens it (the first open status). Undo lives in the toast. */
 export default function TaskCompleteButton({ task, variant = 'icon' }: TaskCompleteButtonProps) {
   const status = useTaskStatus();
-  const { isFinal } = useTaskLookups();
+  const { isFinal, doneStatus, reopenStatus } = useTaskLookups();
   const isDone = isFinal(task.status);
 
   const toggle = (e: MouseEvent<HTMLButtonElement>) => {
     // Rows navigate on click; this button must not
     e.stopPropagation();
-    status.change(task, isDone ? TASK_REOPEN_STATUS : TASK_DONE_STATUS);
+    status.change(task, isDone ? reopenStatus : doneStatus);
   };
 
   if (variant === 'button') {

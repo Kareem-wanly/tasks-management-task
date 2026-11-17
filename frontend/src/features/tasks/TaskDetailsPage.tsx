@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import ErrorState from '@/components/ui/ErrorState';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { TASK_DONE_STATUS, TASK_REOPEN_STATUS } from '@/constants/statuses';
 import useApiMutation from '@/hooks/useApiMutation';
 import useHotkeys from '@/hooks/useHotkeys';
 import useProject from '@/hooks/queries/useProject';
@@ -45,7 +44,7 @@ export default function TaskDetailsPage() {
   const siblings = useTaskSiblings(task?.project?.id, task?.id ?? 0);
   const status = useTaskStatus();
   const quick = useTaskQuickUpdate();
-  const { isFinal } = useTaskLookups();
+  const { isFinal, doneStatus, reopenStatus } = useTaskLookups();
   const userOptions = useUserOptions({ enabled: can('users.view') });
   const [dialog, setDialog] = useState<TaskDialog>(null);
 
@@ -61,7 +60,7 @@ export default function TaskDetailsPage() {
   useHotkeys(
     {
       e: () => canEdit && setDialog('edit'),
-      c: () => task && (can('tasks.change_status') || canEdit) && status.change(task, isFinal(task.status) ? TASK_REOPEN_STATUS : TASK_DONE_STATUS),
+      c: () => task && (can('tasks.change_status') || canEdit) && status.change(task, isFinal(task.status) ? reopenStatus : doneStatus),
       j: () => siblings.nextId && navigate(`/tasks/${siblings.nextId}`),
       k: () => siblings.previousId && navigate(`/tasks/${siblings.previousId}`),
     },
