@@ -45,7 +45,7 @@ These rules are hard requirements, not suggestions. Most are enforced by `npm ru
 ## 3. Data fetching (TanStack Query)
 
 - Reference implementation: `src/features/users/` (list query, filters in the URL, mutations, dialogs).
-- Pages and components **never** call `fetch` or `apiClient` directly. Query functions call the modules in `src/api/` (`tasksApi`, `projectsApi`, `usersApi`, `rolesApi`, `commentsApi`, `activitiesApi`, `authApi`).
+- Pages and components **never** call `fetch` or `apiClient` directly. Query functions call the modules in `src/api/` (`tasksApi`, `projectsApi`, `usersApi`, `rolesApi`, `chatApi`, `activitiesApi`, `authApi`).
 - **Reads use `useQuery`**, with keys from `src/api/queryKeys.ts` and the `signal` passed through:
   ```ts
   useQuery({
@@ -123,8 +123,8 @@ These rules are hard requirements, not suggestions. Most are enforced by `npm ru
 
 ## 9. Data display
 
-- Status and priority values must match the backend enums exactly. Task statuses: `todo | in_progress | review | completed`. Priorities: `low | medium | high | urgent`. Project statuses: `active | in_progress | on_hold | completed | archived` (`archived` is set only through the archive toggle, never in a form). Don't invent values like `done` or `pending`.
-- Keep status and priority lists, labels and badge classes in `src/constants/statuses.ts`, not per file.
+- Task statuses and priorities are data, not constants: read them with `useTaskLookups()` (`src/hooks/queries/`), which gives the ordered lists, `statusOptions`/`priorityOptions` for selects, `statusLabel`/`statusTone` for badges, and `isFinal(status)`. A task is done when `isFinal(task.status)`, never `status === 'completed'`. To close or reopen a task, set `doneStatus` / `reopenStatus` from `useTaskLookups()` (the first `is_final` status and the first open one); the built-in keys in `src/constants/statuses.ts` (`TASK_DONE_STATUS`, `TASK_REOPEN_STATUS`) are only their fallback until the list loads. `URGENT_PRIORITY` stays a fixed key for the Urgent chip.
+- Project statuses must match the backend exactly: `active | in_progress | on_hold | completed | archived` (`archived` is set only through the archive toggle, never in a form). Don't invent values like `done` or `pending`. Their labels and tones live in `src/constants/statuses.ts`, not per file.
 - Prefer server-computed flags (`task.is_overdue`, `*_count`) over recomputing them in the browser.
 - Format dates with `src/utils/format.ts`: `formatDateOnly` for calendar dates (`due_date`, `start_date`; no timezone shift), `formatTimestampDate` and `formatDateTime` for timestamps.
 
