@@ -82,14 +82,10 @@ class TaskFileService
             return new FileDownload($file->name, $file->mime, fn () => fpassthru(Storage::disk(self::DISK)->readStream((string) $file->path)));
         }
 
-        // Asked for before the response starts, so a refusal is a normal error.
-        $url = $this->bitrix->downloadUrl($actor, $file);
-        $send = fn () => $this->bitrix->stream($url, function (string $chunk) {
-            echo $chunk;
-            flush();
-        });
+        // Opened before the response starts, so a refusal is a normal error.
+        $body = $this->bitrix->open($this->bitrix->downloadUrl($actor, $file));
 
-        return new FileDownload($file->name, $file->mime, $send);
+        return FileDownload::fromStream($file->name, $file->mime, $body);
     }
 
     private function current(Task $task, bool $stale = false): TaskFiles

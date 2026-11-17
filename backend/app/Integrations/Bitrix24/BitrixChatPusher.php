@@ -6,6 +6,7 @@ use App\Models\Task;
 use App\Models\TaskChatMessage;
 use App\Models\User;
 use App\Repositories\Contracts\TaskRepositoryInterface;
+use Psr\Http\Message\StreamInterface;
 
 /**
  * Step 4.7: the task chat in Bitrix. Messages are written with the
@@ -101,10 +102,10 @@ class BitrixChatPusher
         return is_string($url) && $url !== '' ? $url : throw BitrixException::cannotSync('Bitrix24 did not return the file.');
     }
 
-    /** @param  callable(string): void  $write */
-    public function stream(string $url, callable $write): void
+    /** Opens a link from downloadUrl() before the response starts; Bitrix's errors are thrown here. */
+    public function open(string $url): StreamInterface
     {
-        $this->bitrix->streamDownload($url, $write);
+        return $this->bitrix->openDownload($url);
     }
 
     /** The task's chat in Bitrix, asked for once and remembered; null for tasks without one. */

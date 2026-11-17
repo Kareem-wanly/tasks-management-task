@@ -3,7 +3,6 @@
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixClient;
-use App\Integrations\Bitrix24\BitrixException;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Jobs\Bitrix\ImportBitrixFiles;
 use App\Models\Permission;
@@ -19,7 +18,6 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Log\Events\MessageLogged;
-use Illuminate\Routing\Exceptions\StreamedResponseException;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -49,6 +47,9 @@ class BitrixTaskFilesTest extends TestCase
     /** Only the download host fails, with Guzzle quoting the tokenised link. */
     private bool $downloadUnreachable = false;
 
+    /** The download host answers with this error status instead of the file. */
+    private ?int $downloadStatus = null;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -71,6 +72,9 @@ class BitrixTaskFilesTest extends TestCase
             if (str_starts_with($request->url(), 'https://portal.test/download/')) {
                 if ($this->downloadUnreachable) {
                     throw new ConnectionException("cURL error 28: Operation timed out for {$request->url()}");
+                }
+                if ($this->downloadStatus !== null) {
+                    return Http::response('<html>Error page</html>', $this->downloadStatus, ['Content-Type' => 'text/html']);
                 }
 
                 return Http::response('file-bytes', 200, ['Content-Type' => 'application/octet-stream']);
@@ -205,26 +209,28 @@ class BitrixTaskFilesTest extends TestCase
         $this->getJson("/api/tasks/{$this->task->id}/files");
         $this->downloadUnreachable = true;
 
-        // The body streams after the headers, so the failure surfaces while it is read
-        // and reaches the exception handler, which logs it.
-        $bufferLevel = ob_get_level();
-        try {
-            $this->get('/api/task-files/'.TaskFile::sole()->id.'/download')->streamedContent();
-            $this->fail('Expected a BitrixException.');
-        } catch (StreamedResponseException $e) {
-            while (ob_get_level() > $bufferLevel) {
-                ob_end_clean(); // streamedContent() leaves its buffer open when the stream throws
-            }
-            $this->assertInstanceOf(BitrixException::class, $e->originalException);
-            $this->assertSame(BitrixException::UNREACHABLE, $e->originalException->errorCode);
-            $this->assertStringNotContainsString('secret', $e->getMessage());
-            report($e);
-        }
+        // The download is opened before the response starts, so the failure is a normal 503.
+        $response = $this->getJson('/api/task-files/'.TaskFile::sole()->id.'/download');
 
+        $response->assertStatus(503);
+        $this->assertStringNotContainsString('secret', (string) $response->getContent());
         $this->assertNotEmpty($logged);
         foreach ($logged as $line) {
             $this->assertStringNotContainsString('secret', $line);
         }
+    }
+
+    /** Review C1: an error page from Bitrix is reported as an error, never saved as the file. */
+    public function test_an_error_from_the_download_host_is_an_error_not_the_file(): void
+    {
+        $this->attach(24, 197, 'plan.pdf', 5);
+        $this->getJson("/api/tasks/{$this->task->id}/files");
+        $this->downloadStatus = 404;
+
+        $response = $this->getJson('/api/task-files/'.TaskFile::sole()->id.'/download');
+
+        $response->assertUnprocessable()->assertJsonPath('message', 'Bitrix24 did not return the file (HTTP 404).');
+        $this->assertStringNotContainsString('Error page', (string) $response->getContent());
     }
 
     public function test_auditors_download_but_only_the_people_on_the_task_attach(): void

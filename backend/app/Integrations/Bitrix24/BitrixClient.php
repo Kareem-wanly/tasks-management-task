@@ -7,6 +7,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 use InvalidArgumentException;
+use Psr\Http\Message\StreamInterface;
 
 /**
  * The only place that talks to the Bitrix24 REST API.
@@ -21,7 +22,7 @@ class BitrixClient
     private const REST_V3_PATH = '/rest/api/';
 
     /** Bytes per read when streaming a download. */
-    private const DOWNLOAD_CHUNK_BYTES = 1048576;
+    public const DOWNLOAD_CHUNK_BYTES = 1048576;
 
     /** List methods return fixed pages of 50 rows. */
     public const PAGE_SIZE = 50;
@@ -80,23 +81,38 @@ class BitrixClient
     }
 
     /**
-     * Streams a file from a Bitrix download URL (one Bitrix signed for the
-     * user who asked for it) to $write, chunk by chunk, so large files never
-     * sit in memory.
-     *
-     * @param  callable(string): void  $write
+     * Opens a Bitrix download link (it carries the caller's token: never send
+     * it to the browser). Called before any response header is sent, so a
+     * failure is a normal API error, not an error page saved as the file.
      */
-    public function streamDownload(string $url, callable $write): void
+    public function openDownload(string $url): StreamInterface
     {
         if (parse_url($url, PHP_URL_HOST) !== config('bitrix.portal')) {
             throw BitrixException::cannotSync('Bitrix24 returned a download link to another site.');
         }
 
         try {
-            $body = Http::withOptions(['stream' => true])->timeout(config('bitrix.timeout'))->get($url)->toPsrResponse()->getBody();
+            $response = Http::withOptions(['stream' => true])->timeout(config('bitrix.timeout'))->get($url);
         } catch (ConnectionException $e) {
             throw BitrixException::unreachable($e->getMessage());
         }
+
+        if ($response->failed()) {
+            throw BitrixException::cannotSync("Bitrix24 did not return the file (HTTP {$response->status()}).");
+        }
+
+        return $response->toPsrResponse()->getBody();
+    }
+
+    /**
+     * Opens the link and hands the file to $write in chunks, so a large file
+     * never sits in memory.
+     *
+     * @param  callable(string): void  $write
+     */
+    public function streamDownload(string $url, callable $write): void
+    {
+        $body = $this->openDownload($url);
 
         while (! $body->eof()) {
             $write($body->read(self::DOWNLOAD_CHUNK_BYTES));

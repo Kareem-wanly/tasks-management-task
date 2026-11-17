@@ -85,14 +85,10 @@ class TaskChatService
     {
         $file = $message->file($bitrixFileId);
 
-        // Asked for before the response starts, so a refusal is a normal error.
-        $url = $this->bitrix->downloadUrl($actor, $bitrixFileId);
-        $send = fn () => $this->bitrix->stream($url, function (string $chunk) {
-            echo $chunk;
-            flush();
-        });
+        // Opened before the response starts, so a refusal is a normal error.
+        $body = $this->bitrix->open($this->bitrix->downloadUrl($actor, $bitrixFileId));
 
-        return new FileDownload((string) ($file['name'] ?? 'file'), null, $send);
+        return FileDownload::fromStream((string) ($file['name'] ?? 'file'), null, $body);
     }
 
     private function current(Task $task, bool $stale = false): TaskChat
