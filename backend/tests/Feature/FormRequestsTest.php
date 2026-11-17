@@ -13,6 +13,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -163,5 +164,37 @@ class FormRequestsTest extends TestCase
         $target = $this->member();
         Sanctum::actingAs($this->admin());
         $this->putJson("/api/users/{$target->id}/roles", [])->assertStatus(422);
+    }
+
+    public static function outOfRangePageSizes(): array
+    {
+        $endpoints = ['/api/tasks', '/api/projects', '/api/users'];
+        $sizes = ['zero' => '0', 'negative' => '-1', 'over the limit' => '101', 'not a number' => 'abc'];
+        $cases = [];
+        foreach ($endpoints as $endpoint) {
+            foreach ($sizes as $label => $size) {
+                $cases["{$endpoint} {$label}"] = [$endpoint, $size];
+            }
+        }
+
+        return $cases;
+    }
+
+    #[DataProvider('outOfRangePageSizes')]
+    public function test_page_size_outside_1_to_100_is_rejected(string $endpoint, string $perPage): void
+    {
+        Sanctum::actingAs($this->admin());
+
+        $this->getJson("{$endpoint}?per_page={$perPage}")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('per_page');
+    }
+
+    public function test_page_size_at_the_limits_is_accepted(): void
+    {
+        Sanctum::actingAs($this->admin());
+
+        $this->getJson('/api/tasks?per_page=1')->assertOk()->assertJsonPath('meta.per_page', 1);
+        $this->getJson('/api/tasks?per_page=100')->assertOk()->assertJsonPath('meta.per_page', 100);
     }
 }

@@ -3,23 +3,30 @@
 namespace App\Http\Requests\Concerns;
 
 /**
- * For list requests: per_page must be a whole number, and is kept between
- * 1 and 100. Add paginationRules() to rules() and paginationMessages() to messages().
+ * For list requests: per_page must be a whole number between 1 and 100 (SEC-3).
+ * Add paginationRules() to rules() and paginationMessages() to messages().
  */
 trait HasPagination
 {
+    private const MAX_PER_PAGE = 100;
+
     protected function paginationRules(): array
     {
-        return ['per_page' => ['sometimes', 'integer']];
+        return ['per_page' => ['sometimes', 'integer', 'min:1', 'max:'.self::MAX_PER_PAGE]];
     }
 
     protected function paginationMessages(): array
     {
-        return ['per_page.integer' => 'The per_page parameter must be an integer.'];
+        return [
+            'per_page.integer' => 'The per_page parameter must be an integer.',
+            'per_page.min' => 'The per_page parameter must be at least 1.',
+            'per_page.max' => 'The per_page parameter may not be greater than '.self::MAX_PER_PAGE.'.',
+        ];
     }
 
     public function perPage(int $default = 15): int
     {
-        return min(max((int) $this->query('per_page', $default), 1), 100);
+        // Validation already enforces the range; the clamp is a safety net for a request that forgets paginationRules().
+        return min(max((int) $this->query('per_page', $default), 1), self::MAX_PER_PAGE);
     }
 }
