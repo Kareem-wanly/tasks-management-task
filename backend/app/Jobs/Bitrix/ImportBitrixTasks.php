@@ -3,6 +3,7 @@
 namespace App\Jobs\Bitrix;
 
 use App\Integrations\Bitrix24\BitrixClient;
+use App\Integrations\Bitrix24\BitrixDeletionGuard;
 use App\Integrations\Bitrix24\BitrixRecordFetcher;
 use App\Integrations\Bitrix24\BitrixTaskSync;
 use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
@@ -36,7 +37,7 @@ class ImportBitrixTasks implements ShouldQueue
         $this->onQueue('bitrix');
     }
 
-    public function handle(BitrixClient $bitrix, BitrixTaskSync $tasks, BitrixTaskMapper $mapper, BitrixRecordFetcher $fetch, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $taskRepository): void
+    public function handle(BitrixClient $bitrix, BitrixTaskSync $tasks, BitrixTaskMapper $mapper, BitrixRecordFetcher $fetch, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $taskRepository, BitrixDeletionGuard $guard): void
     {
         $cursor = $cursors->start(self::ENTITY);
         $skipped = 0;
@@ -74,7 +75,7 @@ class ImportBitrixTasks implements ShouldQueue
             });
         }
 
-        $deleted = $this->changedSince ? 0 : $this->deleteMissing($taskRepository, $seen);
+        $deleted = $this->changedSince ? 0 : $this->deleteMissing($taskRepository, $seen, $fetch, $guard);
 
         $cursors->complete($cursor);
         Log::info($this->changedSince ? 'Bitrix24 task changes synced.' : 'Bitrix24 tasks imported.', [
@@ -93,17 +94,21 @@ class ImportBitrixTasks implements ShouldQueue
     }
 
     /**
-     * Deletes our copies of Bitrix tasks the full listing no longer returns.
+     * Deletes our copies of Bitrix tasks the full listing no longer returns,
+     * once Bitrix confirms each is gone (see BitrixDeletionGuard).
      *
      * @param  list<int>  $seen
      */
-    private function deleteMissing(TaskRepositoryInterface $tasks, array $seen): int
+    private function deleteMissing(TaskRepositoryInterface $tasks, array $seen, BitrixRecordFetcher $fetch, BitrixDeletionGuard $guard): int
     {
         // An empty listing is more likely a Bitrix hiccup than an empty portal.
         if ($seen === []) {
             return 0;
         }
 
-        return $tasks->deleteMissingFromBitrix($seen);
+        // Compared here, not in SQL: a NOT IN with every Bitrix ID outgrows the placeholder limit.
+        $missing = array_values(array_diff($tasks->allBitrixIds(), $seen));
+
+        return $tasks->deleteByBitrixIds($guard->confirmedGone($missing, fn (int $id) => $fetch->task($id) !== null, 'tasks'));
     }
 }

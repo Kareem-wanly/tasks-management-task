@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\BitrixSignInException;
 use App\Http\Requests\BitrixSignInRequest;
+use App\Http\Requests\ExchangeBitrixLoginCodeRequest;
 use App\Services\BitrixAuthService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Str;
 
@@ -15,9 +17,10 @@ use Illuminate\Support\Str;
  *   code + state.
  * - App opened inside Bitrix: Bitrix POSTs AUTH_ID/REFRESH_ID to the same path.
  *
- * Both end with a Sanctum token handed to the frontend in the URL fragment,
- * so it never reaches server logs. This controller keeps only the HTTP side
- * (session state and redirects); BitrixAuthService signs the user in.
+ * Both end with a one-time code in the URL fragment (never an API token),
+ * which the frontend trades for a token through exchange(). This controller
+ * keeps only the HTTP side (session state and redirects); BitrixAuthService
+ * signs the user in.
  */
 class BitrixAuthController extends Controller
 {
@@ -45,14 +48,20 @@ class BitrixAuthController extends Controller
     public function callback(BitrixSignInRequest $request): RedirectResponse
     {
         try {
-            $token = $request->isAppOpen()
+            $code = $request->isAppOpen()
                 ? $this->auth->signInFromAppOpen($request->all())
                 : $this->fromOAuth($request);
         } catch (BitrixSignInException $e) {
             return redirect()->away(config('bitrix.frontend_callback_url').'#error='.$e->reason);
         }
 
-        return redirect()->away(config('bitrix.frontend_callback_url').'#token='.urlencode($token));
+        return redirect()->away(config('bitrix.frontend_callback_url').'#code='.$code);
+    }
+
+    /** POST /api/auth/bitrix/exchange: the one-time code from the callback for an API token. */
+    public function exchange(ExchangeBitrixLoginCodeRequest $request): JsonResponse
+    {
+        return response()->json(['token' => $this->auth->exchangeCode($request->code())]);
     }
 
     private function fromOAuth(BitrixSignInRequest $request): string

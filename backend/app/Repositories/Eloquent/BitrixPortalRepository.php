@@ -12,6 +12,11 @@ class BitrixPortalRepository implements BitrixPortalRepositoryInterface
         return BitrixPortal::current();
     }
 
+    public function findByMemberId(string $memberId): ?BitrixPortal
+    {
+        return BitrixPortal::where('member_id', $memberId)->first();
+    }
+
     public function saveInstall(string $memberId, array $attributes): BitrixPortal
     {
         return BitrixPortal::updateOrCreate(['member_id' => $memberId], $attributes);

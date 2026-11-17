@@ -139,9 +139,14 @@ class ProjectRepository implements ProjectRepositoryInterface
         $project->members()->sync($members);
     }
 
-    public function deleteMissingFromBitrix(array $bitrixGroupIds): int
+    public function allBitrixIds(): array
     {
-        $gone = Project::whereNotNull('bitrix_group_id')->whereNotIn('bitrix_group_id', $bitrixGroupIds)->get();
+        return Project::whereNotNull('bitrix_group_id')->pluck('bitrix_group_id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    public function deleteByBitrixIds(array $bitrixGroupIds): int
+    {
+        $gone = Project::whereIn('bitrix_group_id', $bitrixGroupIds)->get();
         $gone->each->delete();
 
         return $gone->count();

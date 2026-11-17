@@ -32,9 +32,11 @@ class BitrixAuthTest extends TestCase
         Role::create(['name' => 'Member', 'display_name' => 'Team Member', 'description' => 'x']);
     }
 
-    private function fakeBitrix(array $profile = [], string $tokenDomain = 'portal.test'): void
+    private function fakeBitrix(array $profile = [], string $tokenDomain = 'portal.test', string $appCode = 'app-id'): void
     {
         Http::fake([
+            // A local app's CODE is its client_id.
+            'https://portal.test/rest/app.info.json' => Http::response(['result' => ['ID' => 40, 'CODE' => $appCode]]),
             'https://oauth.bitrix.info/*' => Http::response([
                 'access_token' => 'user-access',
                 'refresh_token' => 'user-refresh',
@@ -64,12 +66,21 @@ class BitrixAuthTest extends TestCase
             ], $query)));
     }
 
+    /** The one-time code the callback hands the frontend. */
+    private function codeFrom(TestResponse $response): string
+    {
+        $location = (string) $response->headers->get('Location');
+        $this->assertStringStartsWith(self::FRONTEND.'#code=', $location);
+
+        return substr($location, strlen(self::FRONTEND.'#code='));
+    }
+
+    /** Signs in the way the frontend does: trades the code for an API token. */
     private function tokenFrom(TestResponse $response): string
     {
-        $location = $response->headers->get('Location');
-        $this->assertStringStartsWith(self::FRONTEND.'#token=', $location);
-
-        return urldecode(substr($location, strlen(self::FRONTEND.'#token=')));
+        return $this->postJson('/api/auth/bitrix/exchange', ['code' => $this->codeFrom($response)])
+            ->assertOk()
+            ->json('token');
     }
 
     public function test_redirect_sends_the_user_to_bitrix_with_a_state(): void
@@ -148,15 +159,21 @@ class BitrixAuthTest extends TestCase
             ->assertJsonPath('user.avatar_url', 'https://portal.test/photo.jpg');
     }
 
-    public function test_existing_account_with_same_email_is_linked(): void
+    /**
+     * Review A3: an employee who puts the administrator's email on their Bitrix
+     * profile must not get the administrator's account.
+     */
+    public function test_sign_in_never_takes_over_an_account_by_email(): void
     {
-        $existing = User::factory()->create(['email' => 'sara@portal.test']);
+        $admin = User::factory()->create(['email' => 'sara@portal.test']);
+        $admin->roles()->attach(Role::create(['name' => 'Administrator', 'display_name' => 'Admin', 'description' => 'x']));
         $this->fakeBitrix();
 
-        $this->tokenFrom($this->oauthCallback());
+        $this->oauthCallback()->assertRedirect(self::FRONTEND.'#error=account_not_linked');
 
         $this->assertDatabaseCount('users', 1);
-        $this->assertSame(42, $existing->fresh()->bitrix_user_id);
+        $this->assertNull($admin->fresh()->bitrix_user_id);
+        $this->assertSame(0, $admin->tokens()->count());
     }
 
     public function test_returning_employee_is_found_by_bitrix_id(): void
@@ -217,6 +234,39 @@ class BitrixAuthTest extends TestCase
         $this->tokenFrom($response);
         $this->assertSame('frame-access', User::sole()->bitrixToken()->accessToken);
         Http::assertSent(fn (Request $r) => str_contains($r->url(), 'user.current') && $r['auth'] === 'frame-access');
+    }
+
+    /** Review B1: no API token ever travels in the URL; the code works once. */
+    public function test_the_callback_hands_over_a_one_time_code_not_a_token(): void
+    {
+        $this->fakeBitrix();
+        $code = $this->codeFrom($this->oauthCallback());
+
+        $this->assertSame(0, User::sole()->tokens()->count());
+        $this->postJson('/api/auth/bitrix/exchange', ['code' => $code])->assertOk()->assertJsonStructure(['token']);
+        $this->postJson('/api/auth/bitrix/exchange', ['code' => $code])->assertStatus(422);
+        $this->assertSame(1, User::sole()->tokens()->count());
+    }
+
+    public function test_the_code_expires_after_a_minute(): void
+    {
+        $this->fakeBitrix();
+        $code = $this->codeFrom($this->oauthCallback());
+
+        $this->travel(61)->seconds();
+
+        $this->postJson('/api/auth/bitrix/exchange', ['code' => $code])->assertStatus(422);
+    }
+
+    /** Review B1: a valid token of another app on the portal does not sign anyone in. */
+    public function test_app_open_with_a_token_of_another_app_is_refused(): void
+    {
+        $this->fakeBitrix(appCode: 'someone-elses-app');
+
+        $this->post('/auth/bitrix/callback?DOMAIN=portal.test', ['AUTH_ID' => 'other-app-access', 'REFRESH_ID' => 'other-app-refresh'])
+            ->assertRedirect(self::FRONTEND.'#error=bitrix_rejected');
+
+        $this->assertDatabaseCount('users', 0);
     }
 
     public function test_app_open_with_a_token_bitrix_rejects_is_refused(): void

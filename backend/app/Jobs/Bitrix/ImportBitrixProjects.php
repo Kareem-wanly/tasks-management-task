@@ -3,8 +3,10 @@
 namespace App\Jobs\Bitrix;
 
 use App\Integrations\Bitrix24\BitrixClient;
+use App\Integrations\Bitrix24\BitrixDeletionGuard;
 use App\Integrations\Bitrix24\BitrixException;
 use App\Integrations\Bitrix24\BitrixProjectSync;
+use App\Integrations\Bitrix24\BitrixRecordFetcher;
 use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;
 use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
 use App\Repositories\Contracts\ProjectRepositoryInterface;
@@ -28,7 +30,7 @@ class ImportBitrixProjects implements ShouldQueue
         $this->onQueue('bitrix');
     }
 
-    public function handle(BitrixClient $bitrix, BitrixProjectSync $projects, BitrixSyncCursorRepositoryInterface $cursors, ProjectRepositoryInterface $projectRepository): void
+    public function handle(BitrixClient $bitrix, BitrixProjectSync $projects, BitrixSyncCursorRepositoryInterface $cursors, ProjectRepositoryInterface $projectRepository, BitrixRecordFetcher $fetch, BitrixDeletionGuard $guard): void
     {
         $cursor = $cursors->start(self::ENTITY);
         $skipped = 0;
@@ -56,7 +58,7 @@ class ImportBitrixProjects implements ShouldQueue
             $cursors->advance($cursor, count($groups), $total);
         });
 
-        $deleted = $this->deleteMissing($projectRepository, $seen);
+        $deleted = $this->deleteMissing($projectRepository, $seen, $fetch, $guard);
 
         $cursors->complete($cursor);
         Log::info('Bitrix24 projects imported.', ['processed' => $cursor->processed, 'skipped' => $skipped, 'deleted' => $deleted, 'portal_total' => $total]);
@@ -64,18 +66,21 @@ class ImportBitrixProjects implements ShouldQueue
 
     /**
      * Step 3.6: deletes our copies of groups gone from Bitrix (their delete
-     * event may have been lost).
+     * event may have been lost), once Bitrix confirms each is gone (see
+     * BitrixDeletionGuard).
      *
      * @param  list<int>  $seen
      */
-    private function deleteMissing(ProjectRepositoryInterface $projects, array $seen): int
+    private function deleteMissing(ProjectRepositoryInterface $projects, array $seen, BitrixRecordFetcher $fetch, BitrixDeletionGuard $guard): int
     {
         // An empty listing is more likely a Bitrix hiccup than an empty portal.
         if ($seen === []) {
             return 0;
         }
 
-        return $projects->deleteMissingFromBitrix($seen);
+        $missing = array_values(array_diff($projects->allBitrixIds(), $seen));
+
+        return $projects->deleteByBitrixIds($guard->confirmedGone($missing, fn (int $id) => $fetch->group($id) !== null, 'groups'));
     }
 
     /**

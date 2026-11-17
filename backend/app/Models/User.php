@@ -104,6 +104,20 @@ class User extends Authenticatable implements HasBitrixToken
         return $this->permissionNames()->contains($name);
     }
 
+    /** Permissions that let an account manage people and their access. */
+    public const ADMINISTRATIVE_PERMISSIONS = [
+        'users.create', 'users.update', 'users.delete', 'users.manage_roles',
+        'roles.create', 'roles.update', 'roles.delete', 'roles.assign', 'roles.manage',
+        'permissions.assign',
+    ];
+
+    /** Administrators, and anyone who can manage users, roles or permissions. */
+    public function hasAdministrativeRights(): bool
+    {
+        return $this->hasRole('Administrator')
+            || $this->permissionNames()->intersect(self::ADMINISTRATIVE_PERMISSIONS)->isNotEmpty();
+    }
+
     public function hasRole(string $name): bool
     {
         return ($this->roleCache ??= $this->roles()->pluck('name'))->contains($name);

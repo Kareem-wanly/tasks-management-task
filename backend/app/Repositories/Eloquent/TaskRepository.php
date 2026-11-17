@@ -189,9 +189,14 @@ class TaskRepository implements TaskRepositoryInterface
         return $members;
     }
 
-    public function deleteMissingFromBitrix(array $bitrixTaskIds): int
+    public function allBitrixIds(): array
     {
-        $gone = Task::whereNotNull('bitrix_task_id')->whereNotIn('bitrix_task_id', $bitrixTaskIds)->get();
+        return Task::whereNotNull('bitrix_task_id')->pluck('bitrix_task_id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    public function deleteByBitrixIds(array $bitrixTaskIds): int
+    {
+        $gone = Task::whereIn('bitrix_task_id', $bitrixTaskIds)->get();
         $gone->each->delete();
 
         return $gone->count();

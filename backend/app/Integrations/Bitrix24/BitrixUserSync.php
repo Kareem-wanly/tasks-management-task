@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Repositories\Contracts\RoleRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Creates or updates our copy of a Bitrix24 user. Used by the import and by
@@ -21,19 +22,37 @@ class BitrixUserSync
     ) {}
 
     /**
-     * Find by Bitrix ID, else link an existing account with the same email,
-     * else create a Member.
+     * Find by Bitrix ID, else create a Member. An existing local account with
+     * the same email is linked only when $linkByEmail is set (an import an
+     * administrator runs on purpose) and never when it has administrative
+     * rights: anyone can put any email on their Bitrix profile.
+     *
+     * @return User|null Null when a local account with that email exists but may not be linked.
      */
-    public function upsert(array $row): User
+    public function upsert(array $row, bool $linkByEmail = false): ?User
     {
         $attributes = $this->mapper->attributes($row);
         $bitrixId = $attributes['bitrix_user_id'];
         $name = $this->mapper->name($row);
         $email = $this->mapper->email($row);
 
-        return DB::transaction(function () use ($attributes, $bitrixId, $name, $email) {
-            $user = $this->users->findByBitrixId($bitrixId)
-                ?? ($email !== null ? $this->users->findUnlinkedByEmail($email) : null);
+        return DB::transaction(function () use ($attributes, $bitrixId, $name, $email, $linkByEmail) {
+            $user = $this->users->findByBitrixId($bitrixId);
+
+            if (! $user && $email !== null) {
+                $unlinked = $this->users->findUnlinkedByEmail($email);
+
+                if ($unlinked && (! $linkByEmail || $unlinked->hasAdministrativeRights())) {
+                    Log::warning('Bitrix24 user not linked: a local account with the same email exists.', [
+                        'bitrix_user_id' => $bitrixId,
+                        'local_user_id' => $unlinked->id,
+                    ]);
+
+                    return null;
+                }
+
+                $user = $unlinked;
+            }
 
             if ($user) {
                 $this->update($user, $attributes, $name, $email);

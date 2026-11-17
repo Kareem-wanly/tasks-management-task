@@ -3,6 +3,7 @@
 namespace App\Integrations\Bitrix24;
 
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
@@ -40,6 +41,16 @@ class TokenManager
             return $token;
         }
 
+        try {
+            return $this->refreshUnderLock($holder, $token, $force);
+        } catch (LockTimeoutException) {
+            // Another process kept refreshing for too long: Bitrix is most likely slow.
+            throw BitrixException::unreachable('Timed out waiting for the Bitrix24 token refresh.');
+        }
+    }
+
+    private function refreshUnderLock(HasBitrixToken $holder, BitrixToken $token, bool $force): BitrixToken
+    {
         return Cache::lock($holder->bitrixTokenLockKey(), self::LOCK_SECONDS)
             ->block(self::LOCK_SECONDS, function () use ($holder, $token, $force) {
                 if ($holder instanceof Model && $holder->exists) {

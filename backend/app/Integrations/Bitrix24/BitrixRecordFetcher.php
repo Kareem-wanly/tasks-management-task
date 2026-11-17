@@ -18,7 +18,13 @@ class BitrixRecordFetcher
         private readonly UserRepositoryInterface $userRepository,
     ) {}
 
-    /** @return array|null Null when the task no longer exists. */
+    /**
+     * Checked on the real portal (2026-11-17): for a deleted task Bitrix answers
+     * an empty result, not ACCESS_DENIED. An error (e.g. no access) is thrown
+     * as a BitrixException, never read as "deleted".
+     *
+     * @return array|null Null when the task no longer exists.
+     */
     public function task(int $id): ?array
     {
         $task = $this->bitrix->callAsService('tasks.task.get', ['taskId' => $id, 'select' => BitrixTaskMapper::SELECT])['result']['task'] ?? null;

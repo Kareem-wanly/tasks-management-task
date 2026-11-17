@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Bitrix;
 
+use App\Integrations\Bitrix24\BitrixDeletionGuard;
 use App\Integrations\Bitrix24\BitrixEchoGuard;
 use App\Integrations\Bitrix24\BitrixRecordFetcher;
 use App\Integrations\Bitrix24\BitrixTaskSync;
@@ -40,13 +41,14 @@ class SyncBitrixTask implements ShouldBeUniqueUntilProcessing, ShouldQueue
         return (string) $this->bitrixTaskId;
     }
 
-    public function handle(BitrixRecordFetcher $fetch, BitrixTaskSync $tasks, BitrixTaskMapper $mapper, BitrixEchoGuard $echo, TaskRepositoryInterface $taskRepository, ProjectRepositoryInterface $projects): void
+    public function handle(BitrixRecordFetcher $fetch, BitrixTaskSync $tasks, BitrixTaskMapper $mapper, BitrixEchoGuard $echo, TaskRepositoryInterface $taskRepository, ProjectRepositoryInterface $projects, BitrixDeletionGuard $guard): void
     {
         $row = $fetch->task($this->bitrixTaskId);
 
-        // Gone from Bitrix (deleted there): delete it here too.
+        // Gone from Bitrix (deleted there): delete it here too. Only an admin
+        // service account sees every task, so "not found" proves nothing otherwise.
         if ($row === null) {
-            if (! $echo->isTaskEcho($this->bitrixTaskId, null)) {
+            if (! $echo->isTaskEcho($this->bitrixTaskId, null) && $guard->serviceAccountIsAdmin()) {
                 if ($task = $taskRepository->findByBitrixId($this->bitrixTaskId)) {
                     $taskRepository->delete($task);
                 }

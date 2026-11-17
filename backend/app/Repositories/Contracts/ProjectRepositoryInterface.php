@@ -56,10 +56,17 @@ interface ProjectRepositoryInterface
     public function syncMembersWithRoles(Project $project, array $members): void;
 
     /**
-     * Deletes our copies of Bitrix groups not in the list.
+     * The Bitrix IDs of all our linked groups.
+     *
+     * @return list<int>
+     */
+    public function allBitrixIds(): array;
+
+    /**
+     * Deletes our copies of these Bitrix groups.
      *
      * @param  list<int>  $bitrixGroupIds
      * @return int How many were deleted.
      */
-    public function deleteMissingFromBitrix(array $bitrixGroupIds): int;
+    public function deleteByBitrixIds(array $bitrixGroupIds): int;
 }

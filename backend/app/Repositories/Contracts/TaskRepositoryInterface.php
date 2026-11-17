@@ -69,12 +69,19 @@ interface TaskRepositoryInterface
     public function memberBitrixIds(Task $task): array;
 
     /**
-     * Deletes our copies of Bitrix tasks not in the list.
+     * The Bitrix IDs of all our linked tasks.
+     *
+     * @return list<int>
+     */
+    public function allBitrixIds(): array;
+
+    /**
+     * Deletes our copies of these Bitrix tasks.
      *
      * @param  list<int>  $bitrixTaskIds
      * @return int How many were deleted.
      */
-    public function deleteMissingFromBitrix(array $bitrixTaskIds): int;
+    public function deleteByBitrixIds(array $bitrixTaskIds): int;
 
     /** How many of our tasks are in Bitrix. */
     public function countInBitrix(): int;

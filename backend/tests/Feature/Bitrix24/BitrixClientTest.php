@@ -10,6 +10,7 @@ use App\Integrations\Bitrix24\TokenManager;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 use InvalidArgumentException;
@@ -97,6 +98,23 @@ class BitrixClientTest extends TestCase
             && $r['refresh_token'] === 'old-refresh'
             && $r['client_secret'] === 'app-secret');
         Http::assertSent(fn (Request $r) => str_contains($r->url(), '/rest/user.current.json') && $r['auth'] === 'new-access');
+    }
+
+    /** Review C11: waiting too long for another process's refresh is "Bitrix unreachable" (503), not a 500. */
+    public function test_a_refresh_lock_held_too_long_is_reported_as_unreachable(): void
+    {
+        Sleep::fake(syncWithCarbon: true);
+        Http::fake();
+        Cache::lock('bitrix-token:test', 60)->get();
+
+        try {
+            $this->client()->callAsUser($this->holder($this->token(expiresInSeconds: 30)), 'user.current');
+            $this->fail('Expected a BitrixException.');
+        } catch (BitrixException $e) {
+            $this->assertSame(BitrixException::UNREACHABLE, $e->errorCode);
+        }
+
+        Http::assertNothingSent();
     }
 
     public function test_valid_token_is_not_refreshed(): void
@@ -272,6 +290,52 @@ class BitrixClientTest extends TestCase
         Http::assertSent(fn (Request $r) => str_contains($r->url(), '/rest/batch.json')
             && $r['halt'] === 0
             && $r['cmd'] === ['me' => 'user.current', 'dept' => 'department.get?ID=5']);
+    }
+
+    /** Review C9: a rate-limited command inside a batch is sent again, alone, and the results merge. */
+    public function test_rate_limited_batch_commands_are_retried_alone(): void
+    {
+        Http::fakeSequence(self::REST)
+            ->push(['result' => [
+                'result' => ['a' => ['ok' => 'a']],
+                'result_error' => ['b' => ['error' => 'QUERY_LIMIT_EXCEEDED', 'error_description' => 'Too many requests']],
+                'result_total' => ['a' => 1],
+            ]])
+            ->push(['result' => ['result' => ['b' => ['ok' => 'b']], 'result_error' => [], 'result_total' => ['b' => 2]]]);
+
+        $result = $this->client()->batch($this->holder($this->token()), ['a' => ['user.current'], 'b' => ['user.get']]);
+
+        $this->assertSame(['a' => ['ok' => 'a'], 'b' => ['ok' => 'b']], $result['result']);
+        $this->assertSame([], $result['result_error']);
+        $this->assertSame(['a' => 1, 'b' => 2], $result['result_total']);
+        Http::assertSentCount(2);
+        Http::assertSent(fn (Request $r) => $r['cmd'] === ['b' => 'user.get']);
+    }
+
+    public function test_batch_gives_up_on_rate_limits_after_three_retries(): void
+    {
+        Http::fake([self::REST => Http::response(['result' => [
+            'result' => [],
+            'result_error' => ['a' => ['error' => 'OVERLOAD_LIMIT', 'error_description' => 'Blocked']],
+        ]])]);
+
+        $result = $this->client()->batch($this->holder($this->token()), ['a' => ['user.current']]);
+
+        $this->assertSame('OVERLOAD_LIMIT', $result['result_error']['a']['error']);
+        Http::assertSentCount(4);
+    }
+
+    public function test_other_batch_errors_are_not_retried(): void
+    {
+        Http::fake([self::REST => Http::response(['result' => [
+            'result' => [],
+            'result_error' => ['a' => ['error' => 'ACCESS_DENIED', 'error_description' => 'Access denied']],
+        ]])]);
+
+        $result = $this->client()->batch($this->holder($this->token()), ['a' => ['user.current']]);
+
+        $this->assertSame('ACCESS_DENIED', $result['result_error']['a']['error']);
+        Http::assertSentCount(1);
     }
 
     public function test_batch_rejects_more_than_fifty_commands(): void

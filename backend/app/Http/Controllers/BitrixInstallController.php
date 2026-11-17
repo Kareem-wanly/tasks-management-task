@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\BusinessRuleException;
 use App\Http\Requests\BitrixInstallRequest;
 use App\Services\BitrixInstallService;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,7 +28,12 @@ class BitrixInstallController extends Controller
         }
 
         if ($request->isInstallPage()) {
-            $this->installs->installFromPage($request->all());
+            // The admin sees this page inside Bitrix, so a refusal is a page too.
+            try {
+                $this->installs->installFromPage($request->all());
+            } catch (BusinessRuleException $e) {
+                return response()->view('bitrix.install-refused', ['message' => $e->getMessage()], $e->status);
+            }
 
             return response()->view('bitrix.install-finish');
         }

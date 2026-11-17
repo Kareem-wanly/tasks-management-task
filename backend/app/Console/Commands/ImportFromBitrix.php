@@ -26,6 +26,7 @@ class ImportFromBitrix extends Command
     protected $signature = 'bitrix:import
         {--only= : Comma-separated subset of users,projects,tasks,checklists,time,files,results,chat}
         {--sync : Run now in this process, with a progress bar, instead of queueing}
+        {--link-by-email : Link Bitrix24 users to existing local accounts with the same email (never accounts with administrative rights)}
         {--status : Show the progress of the last import and exit}';
 
     protected $description = 'Import users, projects, tasks and their checklists, time logs, files, results and chats from Bitrix24';
@@ -81,13 +82,20 @@ class ImportFromBitrix extends Command
         return array_values(array_intersect(array_keys(self::JOBS), $wanted));
     }
 
+    private function job(string $entity): object
+    {
+        return $entity === ImportBitrixUsers::ENTITY
+            ? new ImportBitrixUsers((bool) $this->option('link-by-email'))
+            : new (self::JOBS[$entity]);
+    }
+
     /**
      * @param  list<string>  $entities
      */
     private function queue(array $entities): int
     {
         // A chain stops at the first failure, so tasks never run on missing users or projects.
-        Bus::chain(array_map(fn (string $entity) => new (self::JOBS[$entity]), $entities))
+        Bus::chain(array_map(fn (string $entity) => $this->job($entity), $entities))
             ->onQueue('bitrix')
             ->dispatch();
 
@@ -118,7 +126,7 @@ class ImportFromBitrix extends Command
             $this->bar->start();
 
             try {
-                (self::JOBS[$entity])::dispatchSync();
+                dispatch_sync($this->job($entity));
             } catch (Throwable $e) {
                 $this->bar->clear();
                 $this->newLine();

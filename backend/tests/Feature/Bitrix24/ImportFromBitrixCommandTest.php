@@ -128,7 +128,17 @@ class ImportFromBitrixCommandTest extends TestCase
         $this->artisan('bitrix:import')->assertSuccessful();
 
         Bus::assertChained([ImportBitrixUsers::class, ImportBitrixProjects::class, ImportBitrixTasks::class, ImportBitrixChecklists::class, ImportBitrixTime::class, ImportBitrixFiles::class, ImportBitrixResults::class, ImportBitrixChat::class]);
-        Bus::assertDispatched(ImportBitrixUsers::class, fn (ImportBitrixUsers $job) => $job->queue === 'bitrix');
+        Bus::assertDispatched(ImportBitrixUsers::class, fn (ImportBitrixUsers $job) => $job->queue === 'bitrix' && ! $job->linkByEmail);
+    }
+
+    /** Review A3: linking by email only happens when an administrator asks for it. */
+    public function test_link_by_email_is_passed_to_the_users_import_only_when_asked(): void
+    {
+        Bus::fake();
+
+        $this->artisan('bitrix:import --only=users --link-by-email')->assertSuccessful();
+
+        Bus::assertDispatched(ImportBitrixUsers::class, fn (ImportBitrixUsers $job) => $job->linkByEmail);
     }
 
     public function test_unknown_only_value_is_rejected(): void

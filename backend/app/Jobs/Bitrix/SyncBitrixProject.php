@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Bitrix;
 
+use App\Integrations\Bitrix24\BitrixDeletionGuard;
 use App\Integrations\Bitrix24\BitrixEchoGuard;
 use App\Integrations\Bitrix24\BitrixProjectSync;
 use App\Integrations\Bitrix24\BitrixRecordFetcher;
@@ -38,13 +39,14 @@ class SyncBitrixProject implements ShouldBeUniqueUntilProcessing, ShouldQueue
         return (string) $this->bitrixGroupId;
     }
 
-    public function handle(BitrixRecordFetcher $fetch, BitrixProjectSync $projects, BitrixProjectMapper $mapper, BitrixEchoGuard $echo, ProjectRepositoryInterface $projectRepository): void
+    public function handle(BitrixRecordFetcher $fetch, BitrixProjectSync $projects, BitrixProjectMapper $mapper, BitrixEchoGuard $echo, ProjectRepositoryInterface $projectRepository, BitrixDeletionGuard $guard): void
     {
         $group = $fetch->group($this->bitrixGroupId);
 
-        // Gone from Bitrix (deleted there): delete it here too.
+        // Gone from Bitrix (deleted there): delete it here too. Only an admin
+        // service account sees every group, so "not found" proves nothing otherwise.
         if ($group === null) {
-            if (! $echo->isProjectEcho($this->bitrixGroupId, null, false)) {
+            if (! $echo->isProjectEcho($this->bitrixGroupId, null, false) && $guard->serviceAccountIsAdmin()) {
                 if ($project = $projectRepository->findByBitrixGroupId($this->bitrixGroupId)) {
                     $projectRepository->delete($project);
                 }
