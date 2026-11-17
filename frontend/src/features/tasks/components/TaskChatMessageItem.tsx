@@ -49,7 +49,8 @@ export default function TaskChatMessageItem({ message, isOwn, chat, onDelete }: 
         </div>
         {editing ? (
           <TaskChatForm
-            initial={text}
+            // The raw text: Bitrix mentions, links and formatting survive the edit.
+            initial={message.text}
             pending={chat.isPending}
             onSubmit={(value) => chat.update(message, value, () => setEditing(false))}
             onCancel={() => setEditing(false)}

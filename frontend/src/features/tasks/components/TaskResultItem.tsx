@@ -43,7 +43,8 @@ export default function TaskResultItem({ result, results }: TaskResultItemProps)
         </div>
         {editing ? (
           <TaskResultForm
-            initial={bbcodeToText(result.text)}
+            // The raw text: Bitrix formatting survives the edit.
+            initial={result.text}
             pending={results.isPending}
             submitLabel="Save"
             onSubmit={(text) => results.update(result, text, () => setEditing(false))}
