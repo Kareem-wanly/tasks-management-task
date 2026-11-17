@@ -7,6 +7,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Repositories\Contracts\TaskRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
+use Illuminate\Database\ConnectionInterface;
 
 /**
  * Step 4.1: a task's accomplices and auditors, watching and delegating.
@@ -19,6 +20,7 @@ class TaskMemberService
         private readonly TaskRepositoryInterface $tasks,
         private readonly UserRepositoryInterface $users,
         private readonly BitrixTaskMemberPusher $bitrix,
+        private readonly ConnectionInterface $database,
     ) {}
 
     /**
@@ -32,8 +34,10 @@ class TaskMemberService
         if ($this->bitrix->handles($task)) {
             $this->bitrix->setMembers($actor, $task, $accompliceIds, $auditorIds);
         } else {
-            $this->tasks->syncAccomplices($task, $accompliceIds);
-            $this->tasks->syncAuditors($task, $auditorIds);
+            $this->database->transaction(function () use ($task, $accompliceIds, $auditorIds) {
+                $this->tasks->syncAccomplices($task, $accompliceIds);
+                $this->tasks->syncAuditors($task, $auditorIds);
+            });
         }
 
         return $this->tasks->freshForDetail($task, $actor);
@@ -59,9 +63,11 @@ class TaskMemberService
         if ($this->bitrix->handles($task)) {
             $this->bitrix->delegate($actor, $task, $to);
         } else {
-            $task->assigned_to = $to->id;
-            $this->tasks->save($task);
-            $this->tasks->addAuditor($task, $actor->id);
+            $this->database->transaction(function () use ($actor, $task, $to) {
+                $task->assigned_to = $to->id;
+                $this->tasks->save($task);
+                $this->tasks->addAuditor($task, $actor->id);
+            });
         }
 
         return $this->tasks->freshForDetail($task, $actor);

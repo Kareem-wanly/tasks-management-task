@@ -10,6 +10,7 @@ use App\Models\Task;
 use App\Models\TaskChecklistItem;
 use App\Models\User;
 use App\Repositories\Contracts\TaskChecklistRepositoryInterface;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -25,6 +26,7 @@ class TaskChecklistService
     public function __construct(
         private readonly TaskChecklistRepositoryInterface $checklists,
         private readonly BitrixChecklistPusher $bitrix,
+        private readonly ConnectionInterface $database,
     ) {}
 
     /** The checklist, fresh from Bitrix; our last copy when Bitrix can't be reached. */
@@ -103,7 +105,7 @@ class TaskChecklistService
             $siblings = $this->checklists->siblingsOf($item)->all();
             $position = $after === null ? 0 : array_search($after->id, array_map(fn ($s) => $s->id, $siblings), true) + 1;
             array_splice($siblings, $position, 0, [$item]);
-            $this->checklists->reorder($siblings);
+            $this->database->transaction(fn () => $this->checklists->reorder($siblings));
         }
 
         return $this->current($task);
