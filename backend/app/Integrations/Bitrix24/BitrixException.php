@@ -37,10 +37,26 @@ class BitrixException extends RuntimeException
         return new self(self::NO_TOKEN, 'No Bitrix24 token is stored for this account.');
     }
 
-    /** Timeout or network failure: Bitrix never answered. */
+    /**
+     * Timeout or network failure: Bitrix never answered.
+     * The reason comes from the HTTP client and can quote the full URL, whose query
+     * string may carry tokens or the client secret (SEC-5), so it is redacted here.
+     */
     public static function unreachable(string $reason): self
     {
-        return new self(self::UNREACHABLE, $reason);
+        return new self(self::UNREACHABLE, self::redactSecrets($reason));
+    }
+
+    /** Drop URL query strings and any token-like key=value pair from a message. */
+    public static function redactSecrets(string $text): string
+    {
+        $text = (string) preg_replace('~(https?://[^\s?#"\'<>]+)\?[^\s"\'<>]*~i', '$1?[redacted]', $text);
+
+        return (string) preg_replace(
+            '~\b(auth|access_token|refresh_token|client_secret|code)=[^\s&"\'<>]+~i',
+            '$1=[redacted]',
+            $text,
+        );
     }
 
     /** Our data can't be expressed in Bitrix (e.g. a user who isn't in Bitrix). */

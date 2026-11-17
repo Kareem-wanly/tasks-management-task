@@ -8,6 +8,7 @@ use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use App\Integrations\Bitrix24\TokenManager;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
@@ -232,6 +233,29 @@ class BitrixClientTest extends TestCase
         } catch (BitrixException $e) {
             $this->assertTrue($e->isAccessDenied());
             $this->assertSame('Access denied', $e->getMessage());
+        }
+    }
+
+    public function test_unreachable_bitrix_never_quotes_the_token_or_secret(): void
+    {
+        Http::fake(fn (Request $r) => throw new ConnectionException("cURL error 28: timed out for {$r->url()}?auth=secret-token&client_secret=app-secret"));
+
+        $calls = [
+            fn () => $this->client()->callAsUser($this->holder($this->token(access: 'secret-token')), 'user.current'),
+            fn () => $this->client()->streamDownload('https://portal.test/download/1?auth=secret-token', fn () => null),
+            fn () => app(TokenManager::class)->exchangeCode('secret-token'),
+        ];
+
+        foreach ($calls as $call) {
+            try {
+                $call();
+                $this->fail('Expected a BitrixException.');
+            } catch (BitrixException $e) {
+                $this->assertSame(BitrixException::UNREACHABLE, $e->errorCode);
+                $this->assertStringContainsString('timed out for https://', $e->getMessage());
+                $this->assertStringNotContainsString('secret', $e->getMessage());
+                $this->assertNull($e->getPrevious());
+            }
         }
     }
 
