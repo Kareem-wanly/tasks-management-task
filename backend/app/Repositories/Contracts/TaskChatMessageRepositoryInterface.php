@@ -27,6 +27,7 @@ interface TaskChatMessageRepositoryInterface
 
     public function save(TaskChatMessage $message): void;
 
+    /** A message sent in Bitrix is stored once, even if a refresh stored it first. */
     public function create(Task $task, int $authorId, string $text, ?int $bitrixMessageId = null): TaskChatMessage;
 
     public function update(TaskChatMessage $message, string $text): void;

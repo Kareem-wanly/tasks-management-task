@@ -48,6 +48,9 @@ class BitrixTaskChatTest extends TestCase
 
     private bool $unreachable = false;
 
+    /** Runs as Bitrix creates a message, e.g. a page poll storing it before our request does. */
+    private ?\Closure $beforeAdd = null;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -122,6 +125,9 @@ class BitrixTaskChatTest extends TestCase
         $id = ($this->messages === [] ? 1000 : max(array_keys($this->messages))) + 1;
         $this->messages[$id] = ['id' => $id, 'chat_id' => self::CHAT, 'author_id' => $authorBitrixId,
             'date' => '2026-11-17T09:00:00+00:00', 'text' => $text, 'params' => $params];
+        if ($this->beforeAdd) {
+            ($this->beforeAdd)($id);
+        }
 
         return $id;
     }
@@ -167,6 +173,19 @@ class BitrixTaskChatTest extends TestCase
 
         // Bitrix then sends OnTaskCommentAdd for our own message.
         app()->call([new SyncBitrixTaskChat(15), 'handle']);
+        $this->assertSame(1, TaskChatMessage::count());
+    }
+
+    /** Review C2: a refresh that stores the new message first must not make sending fail or double it. */
+    public function test_a_message_a_refresh_stored_first_is_not_saved_twice(): void
+    {
+        Sanctum::actingAs($this->colleague);
+        $this->beforeAdd = function (int $bitrixId) {
+            TaskChatMessage::create(['task_id' => $this->task->id, 'bitrix_message_id' => $bitrixId, 'author_id' => $this->colleague->id, 'text' => 'On it']);
+        };
+
+        $this->postJson("/api/tasks/{$this->task->id}/chat", ['text' => 'On it'])->assertOk()->assertJsonCount(1, 'data');
+
         $this->assertSame(1, TaskChatMessage::count());
     }
 

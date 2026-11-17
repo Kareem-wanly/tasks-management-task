@@ -33,7 +33,12 @@ class TaskChatMessageRepository implements TaskChatMessageRepositoryInterface
 
     public function create(Task $task, int $authorId, string $text, ?int $bitrixMessageId = null): TaskChatMessage
     {
-        return $task->chatMessages()->create(['author_id' => $authorId, 'text' => $text, 'bitrix_message_id' => $bitrixMessageId]);
+        if ($bitrixMessageId === null) {
+            return $task->chatMessages()->create(['author_id' => $authorId, 'text' => $text]);
+        }
+
+        // A refresh (page poll or OnTaskCommentAdd) may have stored it from Bitrix already.
+        return $task->chatMessages()->firstOrCreate(['bitrix_message_id' => $bitrixMessageId], ['author_id' => $authorId, 'text' => $text]);
     }
 
     public function update(TaskChatMessage $message, string $text): void
