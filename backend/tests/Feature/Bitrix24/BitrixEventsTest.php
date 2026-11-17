@@ -63,10 +63,13 @@ class BitrixEventsTest extends TestCase
                 'socialnetwork.api.workgroup.list' => ['workgroups' => array_values(array_filter([$this->groups[$request['filter']['ID']] ?? null]))],
                 'sonet_group.user.get' => [['USER_ID' => '5', 'ROLE' => 'A']],
                 'user.get' => array_values(array_filter([$this->users[$request['FILTER']['ID']] ?? null])),
+                'user.admin' => $this->serviceIsAdmin,
                 default => true,
             }]);
         });
     }
+
+    private bool $serviceIsAdmin = true;
 
     private function event(string $event, array $data, string $token = 'app-token'): TestResponse
     {
@@ -148,6 +151,24 @@ class BitrixEventsTest extends TestCase
 
         $this->assertSame(0, Task::count());
         $this->assertSame(1, Task::onlyTrashed()->count());
+    }
+
+    /** Review A4: a non-admin service account may simply not see the task, so it isn't deleted. */
+    public function test_task_job_deletes_nothing_when_the_service_account_is_not_an_admin(): void
+    {
+        $this->tasks[15] = $this->bitrixTask(15);
+        SyncBitrixTask::dispatchSync(15);
+
+        $this->tasks[15] = [];
+        $this->serviceIsAdmin = false;
+        SyncBitrixTask::dispatchSync(15);
+        $this->groups[4] = ['id' => '4', 'name' => 'G', 'ownerId' => '5', 'closed' => 'N'];
+        SyncBitrixProject::dispatchSync(4);
+        unset($this->groups[4]);
+        SyncBitrixProject::dispatchSync(4);
+
+        $this->assertSame(1, Task::count());
+        $this->assertSame(1, Project::where('bitrix_group_id', 4)->count());
     }
 
     public function test_task_job_brings_in_a_new_group_and_a_new_user_first(): void

@@ -26,6 +26,8 @@ class ImportBitrixProjectsTest extends TestCase
     /** @var array<int, list<array>> group ID => members */
     private array $members = [];
 
+    private bool $serviceIsAdmin = true;
+
     private ?array $batchError = null;
 
     protected function setUp(): void
@@ -54,10 +56,15 @@ class ImportBitrixProjectsTest extends TestCase
 
         // Stubs can't be replaced later, so they read the properties above.
         Http::fake([
-            'https://portal.test/rest/socialnetwork.api.workgroup.list.json' => fn () => Http::response([
-                'result' => ['workgroups' => array_slice($this->groups, 0, 50)],
-                'total' => count($this->groups),
-            ]),
+            'https://portal.test/rest/socialnetwork.api.workgroup.list.json' => function (Request $request) {
+                // One group by ID (BitrixRecordFetcher::group) or the first page of the listing.
+                $groups = isset($request['filter']['ID'])
+                    ? array_values(array_filter($this->groups, fn (array $g) => (int) $g['id'] === (int) $request['filter']['ID']))
+                    : array_slice($this->groups, 0, 50);
+
+                return Http::response(['result' => ['workgroups' => $groups], 'total' => count($this->groups)]);
+            },
+            'https://portal.test/rest/user.admin.json' => fn () => Http::response(['result' => $this->serviceIsAdmin]),
             'https://portal.test/rest/batch.json' => function (Request $request) {
                 $result = [];
                 foreach ($request['cmd'] as $key => $command) {
@@ -240,6 +247,19 @@ class ImportBitrixProjectsTest extends TestCase
         $this->import();
 
         $this->assertSame([10], Project::pluck('bitrix_group_id')->all());
+    }
+
+    /** Review A4: a non-admin service account doesn't see every group, so nothing is deleted. */
+    public function test_no_group_is_deleted_when_the_service_account_is_not_an_admin(): void
+    {
+        $this->groups = [$this->group(10), $this->group(11)];
+        $this->import();
+
+        $this->groups = [$this->group(10)];
+        $this->serviceIsAdmin = false;
+        $this->import();
+
+        $this->assertSame(2, Project::count());
     }
 
     public function test_re_importing_an_unchanged_group_keeps_its_updated_at(): void
