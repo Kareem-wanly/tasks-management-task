@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ExchangeBitrixLoginCodeRequest;
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixException;
+use App\Integrations\Bitrix24\BitrixLoginCodes;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\BitrixUserSync;
 use App\Integrations\Bitrix24\TokenManager;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -20,8 +23,8 @@ use Illuminate\Support\Str;
  * - App opened inside Bitrix: Bitrix POSTs AUTH_ID/REFRESH_ID to the same
  *   handler path. Not in the plan, but it is what Bitrix sends on every open.
  *
- * Both end with a Sanctum token handed to the frontend in the URL fragment,
- * so it never reaches server logs.
+ * Both end with a one-time code in the URL fragment (never an API token): the
+ * frontend trades it once, within a minute, for a Sanctum token via exchange().
  */
 class BitrixAuthController extends Controller
 {
@@ -31,6 +34,7 @@ class BitrixAuthController extends Controller
         private readonly TokenManager $tokens,
         private readonly BitrixClient $bitrix,
         private readonly BitrixUserSync $users,
+        private readonly BitrixLoginCodes $codes,
     ) {}
 
     public function redirect(Request $request): RedirectResponse
@@ -92,6 +96,11 @@ class BitrixAuthController extends Controller
             return $this->fail('unknown_portal');
         }
 
+        // A valid token of another app on the portal is not a sign-in to ours.
+        if (! $this->isOurAppToken((string) $request->input('AUTH_ID'))) {
+            return $this->fail('bitrix_rejected');
+        }
+
         return $this->signIn(new BitrixToken(
             accessToken: (string) $request->input('AUTH_ID'),
             refreshToken: (string) $request->input('REFRESH_ID'),
@@ -116,7 +125,12 @@ class BitrixAuthController extends Controller
             return $this->fail('bitrix_rejected');
         }
 
+        // Never links by email here: anyone can put any email on their Bitrix profile.
         $user = $this->users->upsert($profile);
+
+        if ($user === null) {
+            return $this->fail('account_not_linked');
+        }
 
         if (! $user->is_active) {
             return $this->fail('inactive');
@@ -124,9 +138,31 @@ class BitrixAuthController extends Controller
 
         $user->storeBitrixToken($token);
 
-        $sanctum = $user->createToken('bitrix_auth')->plainTextToken;
+        return redirect()->away(config('bitrix.frontend_callback_url').'#code='.$this->codes->issue($user));
+    }
 
-        return redirect()->away(config('bitrix.frontend_callback_url').'#token='.urlencode($sanctum));
+    /** POST /api/auth/bitrix/exchange: the one-time code from the callback for an API token. */
+    public function exchange(ExchangeBitrixLoginCodeRequest $request): JsonResponse
+    {
+        $user = $this->codes->redeem($request->code());
+
+        if ($user === null || ! $user->is_active) {
+            return response()->json(['message' => 'The sign-in link expired or was already used. Please sign in again.'], 422);
+        }
+
+        return response()->json(['token' => $user->createToken('bitrix_auth')->plainTextToken]);
+    }
+
+    /** For a local app, app.info's CODE is its client_id. */
+    private function isOurAppToken(string $accessToken): bool
+    {
+        try {
+            $code = (string) ($this->bitrix->callWithToken($accessToken, 'app.info')['result']['CODE'] ?? '');
+        } catch (BitrixException) {
+            return false;
+        }
+
+        return hash_equals((string) config('bitrix.client_id'), $code);
     }
 
     private function isOurPortal(mixed $domain): bool

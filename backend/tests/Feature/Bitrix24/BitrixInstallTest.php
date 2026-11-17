@@ -76,11 +76,22 @@ class BitrixInstallTest extends TestCase
         ], $overrides);
     }
 
-    private function fakeBitrix(bool $isAdmin = true, array $bindErrors = []): void
+    /**
+     * @param  string  $appCode  What app.info names as the app (a local app's CODE is its client_id).
+     */
+    private function fakeBitrix(bool $isAdmin = true, array $bindErrors = [], string $appCode = 'app-id', bool $detailsFail = false): void
     {
-        Http::fake(function (Request $request) use ($isAdmin, $bindErrors) {
+        Http::fake(function (Request $request) use ($isAdmin, $bindErrors, $appCode, $detailsFail) {
             if (str_contains($request->url(), '/rest/app.info.json')) {
-                return Http::response(['result' => ['ID' => 40, 'STATUS' => 'L', 'INSTALLED' => false]]);
+                return Http::response(['result' => ['ID' => 40, 'CODE' => $appCode, 'STATUS' => 'L', 'INSTALLED' => false]]);
+            }
+
+            if (str_contains($request->url(), '/rest/user.admin.json')) {
+                return Http::response(['result' => $isAdmin]);
+            }
+
+            if ($detailsFail) {
+                return Http::response(['error' => 'ACCESS_DENIED', 'error_description' => 'Access denied'], 403);
             }
 
             if (isset($request['cmd']['app'])) {
@@ -141,32 +152,61 @@ class BitrixInstallTest extends TestCase
         $this->assertNotSame('app-token-1', $row->application_token);
     }
 
-    public function test_reinstall_updates_the_same_portal(): void
+    public function test_reinstall_event_signed_with_the_saved_token_updates_the_portal(): void
     {
         $this->fakeBitrix(bindErrors: ['OnTaskAdd' => ['error' => 'ERROR_CORE', 'error_description' => 'Handler already binded']]);
 
         $this->post('/api/bitrix/install', $this->payload())->assertOk();
-        $this->post('/api/bitrix/install', $this->payload(['access_token' => 'second-access', 'application_token' => 'app-token-2']))->assertOk();
+        $this->post('/api/bitrix/install', $this->payload(['access_token' => 'second-access']))->assertOk();
 
-        $portal = BitrixPortal::sole();
-        $this->assertSame('second-access', $portal->access_token);
-        $this->assertSame('app-token-2', $portal->application_token);
+        $this->assertSame('second-access', BitrixPortal::sole()->access_token);
     }
 
-    public function test_non_admin_install_still_succeeds_and_becomes_service_account(): void
+    /** Review A1: whoever knows member_id must not be able to take the portal over. */
+    public function test_forged_install_event_on_an_installed_portal_is_refused(): void
+    {
+        $this->fakeBitrix();
+        $this->post('/api/bitrix/install', $this->payload())->assertOk();
+
+        $this->post('/api/bitrix/install', $this->payload([
+            'access_token' => 'attacker-access',
+            'refresh_token' => 'attacker-refresh',
+            'application_token' => 'attacker-app-token',
+        ]))->assertForbidden();
+
+        $portal = BitrixPortal::sole();
+        $this->assertSame('app-token-1', $portal->application_token);
+        $this->assertSame('install-access', $portal->access_token);
+        $this->assertSame('install-refresh', $portal->refresh_token);
+    }
+
+    /** Review A1: the first install event is only trusted after Bitrix confirms its token is our app's. */
+    public function test_install_event_with_a_token_of_another_app_is_refused(): void
+    {
+        $this->fakeBitrix(appCode: 'someone-elses-app');
+
+        $this->post('/api/bitrix/install', $this->payload())->assertForbidden();
+
+        $this->assertDatabaseCount('bitrix_portals', 0);
+    }
+
+    /** Review A2: the installer's token becomes the service account, so only an admin may install. */
+    public function test_non_admin_install_is_refused_and_saves_no_token(): void
     {
         $this->fakeBitrix(isAdmin: false);
 
-        $this->post('/api/bitrix/install', $this->payload())->assertOk();
+        $this->post('/api/bitrix/install', $this->payload())->assertForbidden();
+        $this->post($this->pageUrl(), $this->pagePayload())
+            ->assertForbidden()
+            ->assertSee('Only a Bitrix24 administrator can install this app.')
+            ->assertDontSee('BX24.installFinish()', false);
 
-        $portal = BitrixPortal::sole();
-        $this->assertFalse($portal->installer_is_admin);
-        $this->assertSame('install-access', app(BitrixClient::SERVICE_ACCOUNT)->bitrixToken()->accessToken);
+        $this->assertDatabaseCount('bitrix_portals', 0);
     }
 
-    public function test_install_is_saved_even_when_bitrix_calls_fail(): void
+    public function test_install_is_saved_even_when_fetching_details_fails(): void
     {
-        Http::fake(['*' => Http::response(['error' => 'ACCESS_DENIED', 'error_description' => 'Access denied'], 403)]);
+        $this->fakeBitrix(detailsFail: true);
 
         $this->post('/api/bitrix/install', $this->payload())->assertOk();
 
@@ -175,15 +215,13 @@ class BitrixInstallTest extends TestCase
         $this->assertNull($portal->app_info);
     }
 
-    public function test_install_without_user_tokens_is_saved_without_service_account(): void
+    public function test_install_event_without_user_tokens_is_refused(): void
     {
         Http::fake();
 
-        $this->post('/api/bitrix/install', $this->payload(['access_token' => '', 'refresh_token' => '']))->assertOk();
+        $this->post('/api/bitrix/install', $this->payload(['access_token' => '', 'refresh_token' => '']))->assertStatus(422);
 
-        $portal = BitrixPortal::sole();
-        $this->assertSame('app-token-1', $portal->application_token);
-        $this->assertNull($portal->bitrixToken());
+        $this->assertDatabaseCount('bitrix_portals', 0);
         Http::assertNothingSent();
     }
 
@@ -229,6 +267,16 @@ class BitrixInstallTest extends TestCase
         Http::fake(['*' => Http::response(['error' => 'invalid_token', 'error_description' => 'The access token provided is invalid.'], 401)]);
 
         $this->post($this->pageUrl(), $this->pagePayload(['AUTH_ID' => 'forged']))->assertForbidden();
+
+        $this->assertDatabaseCount('bitrix_portals', 0);
+    }
+
+    /** Review A2: a valid token of another app on the portal is not ours to keep. */
+    public function test_install_page_with_a_token_of_another_app_is_refused(): void
+    {
+        $this->fakeBitrix(appCode: 'someone-elses-app');
+
+        $this->post($this->pageUrl(), $this->pagePayload())->assertForbidden()->assertSee('not issued for this app');
 
         $this->assertDatabaseCount('bitrix_portals', 0);
     }

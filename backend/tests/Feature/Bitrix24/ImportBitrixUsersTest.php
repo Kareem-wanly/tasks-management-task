@@ -99,9 +99,9 @@ class ImportBitrixUsersTest extends TestCase
         ]);
     }
 
-    private function import(): void
+    private function import(bool $linkByEmail = false): void
     {
-        ImportBitrixUsers::dispatchSync();
+        ImportBitrixUsers::dispatchSync($linkByEmail);
     }
 
     public function test_every_page_of_portal_users_is_imported(): void
@@ -148,7 +148,21 @@ class ImportBitrixUsersTest extends TestCase
         $this->assertSame(1, $user->roles()->count());
     }
 
-    public function test_existing_local_account_is_linked_by_email(): void
+    public function test_existing_local_account_is_linked_by_email_when_an_admin_asks(): void
+    {
+        $local = User::factory()->create(['email' => 'User3@Portal.test']);
+        $this->fakePortal([$this->row(3)]);
+
+        $this->import(linkByEmail: true);
+
+        $this->assertSame(1, User::count());
+        $local->refresh();
+        $this->assertSame(3, $local->bitrix_user_id);
+        $this->assertNotNull($local->password);
+    }
+
+    /** Review A3: the scheduled import never links by email, nor creates a duplicate. */
+    public function test_scheduled_import_does_not_link_by_email(): void
     {
         $local = User::factory()->create(['email' => 'User3@Portal.test']);
         $this->fakePortal([$this->row(3)]);
@@ -156,9 +170,20 @@ class ImportBitrixUsersTest extends TestCase
         $this->import();
 
         $this->assertSame(1, User::count());
-        $local->refresh();
-        $this->assertSame(3, $local->bitrix_user_id);
-        $this->assertNotNull($local->password);
+        $this->assertNull($local->fresh()->bitrix_user_id);
+    }
+
+    /** Review A3: an account with administrative rights is never linked by email. */
+    public function test_administrator_account_is_never_linked_by_email(): void
+    {
+        $admin = User::factory()->create(['email' => 'User3@Portal.test']);
+        $admin->roles()->attach(Role::create(['name' => 'Administrator', 'display_name' => 'Admin', 'description' => 'x']));
+        $this->fakePortal([$this->row(3)]);
+
+        $this->import(linkByEmail: true);
+
+        $this->assertSame(1, User::count());
+        $this->assertNull($admin->fresh()->bitrix_user_id);
     }
 
     public function test_deactivated_user_is_imported_inactive_and_cannot_log_in(): void

@@ -71,14 +71,38 @@ class BitrixClient
     }
 
     /**
-     * Run up to 50 calls in one request.
+     * Run up to 50 calls in one request. Commands Bitrix turns down for its
+     * rate limit (in result_error, the batch itself succeeds) are sent again
+     * on their own, with the same backoff as single calls.
      *
      * @param  array<string, array{0: string, 1?: array}>  $commands  key => [method, params]
      * @return array<string, mixed> result.result, result_error, result_total, result_next, result_time
      */
     public function batch(HasBitrixToken $holder, array $commands, bool $halt = false): array
     {
-        return $this->callAsUser($holder, 'batch', $this->batchParams($commands, $halt))['result'];
+        $merged = ['result' => [], 'result_error' => [], 'result_total' => [], 'result_next' => [], 'result_time' => []];
+        $pending = $commands;
+
+        for ($attempt = 0; ; $attempt++) {
+            $batch = $this->callAsUser($holder, 'batch', $this->batchParams($pending, $halt))['result'];
+
+            foreach (['result', 'result_total', 'result_next', 'result_time'] as $part) {
+                $merged[$part] = array_replace($merged[$part], (array) ($batch[$part] ?? []));
+            }
+
+            $errors = (array) ($batch['result_error'] ?? []);
+            $limited = array_filter($errors, fn ($error) => BitrixException::fromResponse(is_array($error) ? $error : null, 200)->isRetryable());
+            $merged['result_error'] = array_replace($merged['result_error'], array_diff_key($errors, $limited));
+
+            if ($limited === [] || $attempt >= self::RATE_LIMIT_RETRIES) {
+                $merged['result_error'] = array_replace($merged['result_error'], $limited);
+
+                return $merged;
+            }
+
+            $pending = array_intersect_key($pending, $limited);
+            Sleep::for(2 ** $attempt)->seconds();
+        }
     }
 
     /**

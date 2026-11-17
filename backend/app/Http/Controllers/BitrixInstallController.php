@@ -22,9 +22,12 @@ use Symfony\Component\HttpFoundation\Response;
  * - ONAPPINSTALL event: Bitrix's server posts event/auth[...] (API-only apps,
  *   and on every update).
  *
- * Installation always succeeds for our portal, whoever installs the app:
- * the data is saved first, and a failure while fetching extra details is
- * logged instead of rejecting the install.
+ * Nothing is saved until Bitrix confirms the install token belongs to our
+ * app and to a portal administrator: the token becomes the service account
+ * the background sync runs with. A portal that is already installed only
+ * accepts an install event signed with its saved application token. Once the
+ * install is accepted, a failure while fetching extra details is logged
+ * instead of rejecting it.
  */
 class BitrixInstallController extends Controller
 {
@@ -65,8 +68,19 @@ class BitrixInstallController extends Controller
             return response()->json(['message' => 'Unknown portal.'], 403);
         }
 
-        if (empty($auth['member_id']) || empty($auth['application_token'])) {
-            return response()->json(['message' => 'Missing member_id or application_token.'], 422);
+        if (empty($auth['member_id']) || empty($auth['application_token']) || empty($auth['access_token']) || empty($auth['refresh_token'])) {
+            return response()->json(['message' => 'Missing member_id, application_token or user tokens.'], 422);
+        }
+
+        // Anyone who knows member_id could forge this event: an installed portal
+        // only accepts it with the application token Bitrix gave us before.
+        $installed = BitrixPortal::where('member_id', (string) $auth['member_id'])->first();
+        if ($installed && ! hash_equals((string) $installed->application_token, (string) $auth['application_token'])) {
+            return response()->json(['message' => 'The application token does not match this portal.'], 403);
+        }
+
+        if ($refusal = $this->refusalFor((string) $auth['access_token'])) {
+            return response()->json(['message' => $refusal], 403);
         }
 
         $this->savePortal([
@@ -99,10 +113,8 @@ class BitrixInstallController extends Controller
             return response()->json(['message' => 'Missing install parameters.'], 422);
         }
 
-        try {
-            $this->bitrix->callWithToken($request->input('AUTH_ID'), 'app.info');
-        } catch (BitrixException $e) {
-            return response()->json(['message' => 'Bitrix24 did not accept the install token.'], 403);
+        if ($refusal = $this->refusalFor((string) $request->input('AUTH_ID'))) {
+            return response()->view('bitrix.install-refused', ['message' => $refusal], 403);
         }
 
         $this->savePortal([
@@ -119,13 +131,38 @@ class BitrixInstallController extends Controller
         return response()->view('bitrix.install-finish');
     }
 
+    /**
+     * Why Bitrix's answers forbid installing with this token, or null when
+     * the token is our app's and its owner is a portal administrator.
+     */
+    private function refusalFor(string $accessToken): ?string
+    {
+        try {
+            $app = $this->bitrix->callWithToken($accessToken, 'app.info')['result'] ?? [];
+            $isAdmin = (bool) ($this->bitrix->callWithToken($accessToken, 'user.admin')['result'] ?? false);
+        } catch (BitrixException $e) {
+            return 'Bitrix24 did not accept the install token.';
+        }
+
+        // For a local app, CODE is its client_id.
+        if (! hash_equals((string) config('bitrix.client_id'), (string) ($app['CODE'] ?? ''))) {
+            return 'The install token was not issued for this app.';
+        }
+
+        if (! $isAdmin) {
+            return 'Only a Bitrix24 administrator can install this app. Ask your portal administrator to install it.';
+        }
+
+        return null;
+    }
+
     private function isOurPortal(mixed $domain): bool
     {
         return is_string($domain) && hash_equals((string) config('bitrix.portal'), $domain);
     }
 
     /**
-     * @param  array{member_id: string, domain: string, application_token: string, access_token: ?string, refresh_token: ?string, expires_in: mixed, scope: string, language: ?string}  $install
+     * @param  array{member_id: string, domain: string, application_token: string, access_token: string, refresh_token: string, expires_in: mixed, scope: string, language: ?string}  $install
      */
     private function savePortal(array $install): void
     {
@@ -141,13 +178,6 @@ class BitrixInstallController extends Controller
                 'installed_at' => now(),
             ]
         );
-
-        // The event carries tokens only when it is linked to a user.
-        if (empty($install['access_token']) || empty($install['refresh_token'])) {
-            Log::warning('Bitrix24 install carried no user tokens; service account not set.', ['member_id' => $portal->member_id]);
-
-            return;
-        }
 
         $portal->storeBitrixToken(new BitrixToken(
             accessToken: $install['access_token'],
@@ -200,11 +230,6 @@ class BitrixInstallController extends Controller
             Log::warning('Bitrix24 app is missing required scopes.', ['missing' => $missing]);
         }
 
-        if (! $isAdmin) {
-            Log::warning('Bitrix24 app was installed by a non-admin; background sync runs with their permissions.', [
-                'installer_id' => $me['ID'] ?? null,
-            ]);
-        }
     }
 
     /**

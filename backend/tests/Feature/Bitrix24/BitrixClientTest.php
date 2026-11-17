@@ -250,6 +250,52 @@ class BitrixClientTest extends TestCase
             && $r['cmd'] === ['me' => 'user.current', 'dept' => 'department.get?ID=5']);
     }
 
+    /** Review C9: a rate-limited command inside a batch is sent again, alone, and the results merge. */
+    public function test_rate_limited_batch_commands_are_retried_alone(): void
+    {
+        Http::fakeSequence(self::REST)
+            ->push(['result' => [
+                'result' => ['a' => ['ok' => 'a']],
+                'result_error' => ['b' => ['error' => 'QUERY_LIMIT_EXCEEDED', 'error_description' => 'Too many requests']],
+                'result_total' => ['a' => 1],
+            ]])
+            ->push(['result' => ['result' => ['b' => ['ok' => 'b']], 'result_error' => [], 'result_total' => ['b' => 2]]]);
+
+        $result = $this->client()->batch($this->holder($this->token()), ['a' => ['user.current'], 'b' => ['user.get']]);
+
+        $this->assertSame(['a' => ['ok' => 'a'], 'b' => ['ok' => 'b']], $result['result']);
+        $this->assertSame([], $result['result_error']);
+        $this->assertSame(['a' => 1, 'b' => 2], $result['result_total']);
+        Http::assertSentCount(2);
+        Http::assertSent(fn (Request $r) => $r['cmd'] === ['b' => 'user.get']);
+    }
+
+    public function test_batch_gives_up_on_rate_limits_after_three_retries(): void
+    {
+        Http::fake([self::REST => Http::response(['result' => [
+            'result' => [],
+            'result_error' => ['a' => ['error' => 'OVERLOAD_LIMIT', 'error_description' => 'Blocked']],
+        ]])]);
+
+        $result = $this->client()->batch($this->holder($this->token()), ['a' => ['user.current']]);
+
+        $this->assertSame('OVERLOAD_LIMIT', $result['result_error']['a']['error']);
+        Http::assertSentCount(4);
+    }
+
+    public function test_other_batch_errors_are_not_retried(): void
+    {
+        Http::fake([self::REST => Http::response(['result' => [
+            'result' => [],
+            'result_error' => ['a' => ['error' => 'ACCESS_DENIED', 'error_description' => 'Access denied']],
+        ]])]);
+
+        $result = $this->client()->batch($this->holder($this->token()), ['a' => ['user.current']]);
+
+        $this->assertSame('ACCESS_DENIED', $result['result_error']['a']['error']);
+        Http::assertSentCount(1);
+    }
+
     public function test_batch_rejects_more_than_fifty_commands(): void
     {
         Http::fake();

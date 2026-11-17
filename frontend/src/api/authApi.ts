@@ -43,6 +43,12 @@ const authApi = {
     return await apiClient.put<{ message?: string }>('/me/password', { ...data });
   },
 
+  /** Trades the one-time code from a Bitrix24 sign-in for an API token (it works once, within a minute). */
+  exchangeBitrixCode: async (code: string): Promise<string> => {
+    const res = await apiClient.post<{ token: string }>('/auth/bitrix/exchange', { code });
+    return res.token;
+  },
+
   getCurrentUser: async () => {
     const res = await apiClient.get<{ user: User }>('/me');
     return res.user;
