@@ -105,6 +105,40 @@ class BitrixClient
     }
 
     /**
+     * Sends a file to an upload URL Bitrix gave us (disk.folder.uploadfile
+     * without fileContent), as multipart streamed from disk: the file is
+     * never read into memory or base64-encoded.
+     *
+     * @return array<string, mixed>
+     */
+    public function uploadFile(string $uploadUrl, string $field, string $path, string $name, int $timeout): array
+    {
+        if (parse_url($uploadUrl, PHP_URL_HOST) !== config('bitrix.portal')) {
+            throw BitrixException::cannotSync('Bitrix24 returned an upload link to another site.');
+        }
+
+        $stream = fopen($path, 'r') ?: throw BitrixException::cannotSync('The uploaded file could not be read.');
+
+        try {
+            $response = Http::acceptJson()->timeout($timeout)->attach($field, $stream, $name)->post($uploadUrl);
+        } catch (ConnectionException $e) {
+            throw BitrixException::unreachable($e->getMessage());
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
+
+        $body = $response->json();
+
+        if ($response->failed() || ! is_array($body) || isset($body['error'])) {
+            throw BitrixException::fromResponse(is_array($body) ? $body : null, $response->status());
+        }
+
+        return $body;
+    }
+
+    /**
      * Opens the link and hands the file to $write in chunks, so a large file
      * never sits in memory.
      *

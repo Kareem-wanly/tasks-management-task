@@ -111,13 +111,23 @@ class BitrixFilePusher
     {
         $this->ensureLinked($actor);
 
-        $file = $this->bitrix->callAsUser($actor, 'disk.folder.uploadfile', [
+        $name = $upload->getClientOriginalName();
+
+        // Without fileContent Bitrix answers with an upload URL, and the file is
+        // then sent there as multipart straight from disk (no base64 copy in memory).
+        $target = $this->bitrix->callAsUser($actor, 'disk.folder.uploadfile', [
             'id' => $this->uploadsFolderId($actor),
-            'data' => ['NAME' => $upload->getClientOriginalName()],
-            'fileContent' => [$upload->getClientOriginalName(), base64_encode((string) file_get_contents($upload->getRealPath()))],
+            'data' => ['NAME' => $name],
             // Same name as a file already there: Bitrix adds " (1)" instead of failing.
             'generateUniqueName' => true,
-        ], self::UPLOAD_TIMEOUT)['result'] ?? [];
+        ])['result'] ?? [];
+
+        if (empty($target['uploadUrl']) || empty($target['field'])) {
+            throw BitrixException::cannotSync('Bitrix24 did not give an upload link.');
+        }
+
+        $stored = $this->bitrix->uploadFile($target['uploadUrl'], $target['field'], $upload->getRealPath(), $name, self::UPLOAD_TIMEOUT);
+        $file = $stored['result'] ?? $stored;
 
         $diskFileId = (int) ($file['ID'] ?? 0) ?: throw BitrixException::cannotSync('Bitrix24 did not store the file.');
 

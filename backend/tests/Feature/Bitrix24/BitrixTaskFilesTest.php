@@ -79,6 +79,10 @@ class BitrixTaskFilesTest extends TestCase
 
                 return Http::response('file-bytes', 200, ['Content-Type' => 'application/octet-stream']);
             }
+            // Second upload step: the file itself, as multipart, to the URL Bitrix gave.
+            if (str_starts_with($request->url(), 'https://portal.test/rest/upload.json')) {
+                return Http::response(['result' => ['ID' => 197, 'NAME' => collect($request->data())->firstWhere('name', 'file')['filename'] ?? '']]);
+            }
 
             return Http::response(['result' => $this->bitrix(basename(parse_url($request->url(), PHP_URL_PATH), '.json'), $request->data())]);
         });
@@ -101,7 +105,8 @@ class BitrixTaskFilesTest extends TestCase
             'disk.attachedObject.get' => $this->attached[(int) $data['id']] ?? null,
             'disk.storage.getlist' => [['ID' => '9', 'ROOT_OBJECT_ID' => '38']],
             'disk.storage.getchildren' => $this->driveChildren,
-            'disk.folder.uploadfile' => ['ID' => 197, 'NAME' => $data['data']['NAME']],
+            // Without fileContent Bitrix answers where to send the file.
+            'disk.folder.uploadfile' => ['field' => 'file', 'uploadUrl' => 'https://portal.test/rest/upload.json?auth=upload-auth&token=t1'],
             'tasks.task.files.attach' => ['attachmentId' => $this->attach(24, 197, 'report.pdf', 5)],
             'tasks.task.update' => (function () use ($data) {
                 $this->attached = array_intersect_key($this->attached, array_flip($data['fields']['UF_TASK_WEBDAV_FILES']));
@@ -149,7 +154,10 @@ class BitrixTaskFilesTest extends TestCase
             ->assertJsonPath('data.0.name', 'report.pdf');
 
         Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'disk.folder.uploadfile.json')
-            && $r['auth'] === 'actor-access' && $r['id'] === 41 && $r['fileContent'][0] === 'report.pdf' && $r['generateUniqueName'] === true);
+            && $r['auth'] === 'actor-access' && $r['id'] === 41 && ! isset($r['fileContent']) && $r['generateUniqueName'] === true);
+        // Review C4: the file goes as multipart streamed from disk, not as base64 in JSON.
+        Http::assertSent(fn (Request $r) => str_starts_with($r->url(), 'https://portal.test/rest/upload.json')
+            && $r->isMultipart() && collect($r->data())->firstWhere('name', 'file')['filename'] === 'report.pdf');
         Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'tasks.task.files.attach.json') && $r['taskId'] === 15 && $r['fileId'] === 197);
     }
 

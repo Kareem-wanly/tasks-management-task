@@ -34,3 +34,14 @@ team-task-manager
  The API server will run at: http://127.0.0.1:8000
 
  
+ -PHP settings
+
+ Task files go up to 20 MB (Bitrix24 step 4.5). PHP must accept that much in
+ one request, or uploads fail with 413 before the app sees them. In php.ini
+ (or the server's PHP settings):
+
+     upload_max_filesize = 25M
+     post_max_size = 26M
+
+ The file is streamed to Bitrix24 from disk, so memory_limit does not need to
+ grow with the file size.
