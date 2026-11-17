@@ -21,13 +21,15 @@ class BitrixException extends RuntimeException
     }
 
     /**
-     * Build from a Bitrix error body: {"error": "...", "error_description": "..."}.
+     * Build from a Bitrix error body: {"error": "...", "error_description": "..."},
+     * or REST 3.0's {"error": {"code": "...", "message": "..."}}.
      * The body never contains tokens, so it is safe to keep in the message.
      */
     public static function fromResponse(?array $body, int $status): self
     {
-        $code = (string) ($body['error'] ?? '');
-        $description = (string) ($body['error_description'] ?? '');
+        $error = $body['error'] ?? '';
+        $code = (string) (is_array($error) ? ($error['code'] ?? '') : $error);
+        $description = (string) (is_array($error) ? ($error['message'] ?? '') : ($body['error_description'] ?? ''));
 
         return new self($code !== '' ? $code : "HTTP_{$status}", $description, $status);
     }
@@ -86,7 +88,7 @@ class BitrixException extends RuntimeException
 
     public function isAccessDenied(): bool
     {
-        return $this->errorCode === 'ACCESS_DENIED';
+        return in_array($this->errorCode, ['ACCESS_DENIED', 'BITRIX_REST_V3_EXCEPTION_ACCESSDENIEDEXCEPTION'], true);
     }
 
     public function isMissingToken(): bool

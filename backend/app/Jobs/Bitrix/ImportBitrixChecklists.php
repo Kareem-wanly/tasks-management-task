@@ -4,8 +4,8 @@ namespace App\Jobs\Bitrix;
 
 use App\Integrations\Bitrix24\BitrixChecklistSync;
 use App\Integrations\Bitrix24\BitrixClient;
-use App\Models\BitrixSyncCursor;
-use App\Models\Task;
+use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
+use App\Repositories\Contracts\TaskRepositoryInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -29,14 +29,13 @@ class ImportBitrixChecklists implements ShouldQueue
         $this->onQueue('bitrix');
     }
 
-    public function handle(BitrixClient $bitrix, BitrixChecklistSync $checklists): void
+    public function handle(BitrixClient $bitrix, BitrixChecklistSync $checklists, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $taskRepository): void
     {
-        $cursor = BitrixSyncCursor::start(self::ENTITY);
-        $query = Task::whereNotNull('bitrix_task_id');
-        $total = $query->count();
+        $cursor = $cursors->start(self::ENTITY);
+        $total = $taskRepository->countInBitrix();
         $failed = 0;
 
-        $query->orderBy('id')->chunk(self::BATCH, function ($tasks) use ($bitrix, $checklists, $cursor, $total, &$failed) {
+        $taskRepository->chunkInBitrix(self::BATCH, function ($tasks) use ($bitrix, $checklists, $cursor, $cursors, $total, &$failed) {
             $commands = [];
             foreach ($tasks as $task) {
                 $commands["task_{$task->id}"] = ['task.checklistitem.getlist', ['TASKID' => $task->bitrix_task_id, 'ORDER' => ['SORT_INDEX' => 'asc']]];
@@ -55,10 +54,10 @@ class ImportBitrixChecklists implements ShouldQueue
                 $checklists->sync($task, (array) $batch['result'][$key]);
             }
 
-            $cursor->advance($tasks->count(), $total);
+            $cursors->advance($cursor, $tasks->count(), $total);
         });
 
-        $cursor->complete();
+        $cursors->complete($cursor);
         Log::info('Bitrix24 checklists imported.', ['tasks' => $cursor->processed, 'failed' => $failed]);
     }
 }

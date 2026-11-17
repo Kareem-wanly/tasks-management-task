@@ -28,7 +28,6 @@ class TaskResource extends JsonResource
             'auditors' => UserResource::collection($this->whenLoaded('auditors')),
             'parent' => $this->whenLoaded('parent', fn () => $this->parent ? ['id' => $this->parent->id, 'title' => $this->parent->title] : null),
             'subtasks' => self::collection($this->whenLoaded('subtasks')),
-            'comments' => CommentResource::collection($this->whenLoaded('comments')),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

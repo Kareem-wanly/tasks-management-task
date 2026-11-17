@@ -6,7 +6,7 @@ use App\Integrations\Bitrix24\BitrixEchoGuard;
 use App\Integrations\Bitrix24\BitrixProjectSync;
 use App\Integrations\Bitrix24\BitrixRecordFetcher;
 use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;
-use App\Models\Project;
+use App\Repositories\Contracts\ProjectRepositoryInterface;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -38,14 +38,16 @@ class SyncBitrixProject implements ShouldBeUniqueUntilProcessing, ShouldQueue
         return (string) $this->bitrixGroupId;
     }
 
-    public function handle(BitrixRecordFetcher $fetch, BitrixProjectSync $projects, BitrixProjectMapper $mapper, BitrixEchoGuard $echo): void
+    public function handle(BitrixRecordFetcher $fetch, BitrixProjectSync $projects, BitrixProjectMapper $mapper, BitrixEchoGuard $echo, ProjectRepositoryInterface $projectRepository): void
     {
         $group = $fetch->group($this->bitrixGroupId);
 
         // Gone from Bitrix (deleted there): delete it here too.
         if ($group === null) {
             if (! $echo->isProjectEcho($this->bitrixGroupId, null, false)) {
-                Project::where('bitrix_group_id', $this->bitrixGroupId)->first()?->delete();
+                if ($project = $projectRepository->findByBitrixGroupId($this->bitrixGroupId)) {
+                    $projectRepository->delete($project);
+                }
             }
 
             return;

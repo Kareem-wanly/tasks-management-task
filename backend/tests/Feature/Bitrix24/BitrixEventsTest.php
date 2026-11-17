@@ -7,6 +7,7 @@ use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use App\Jobs\Bitrix\SyncBitrixProject;
 use App\Jobs\Bitrix\SyncBitrixTask;
+use App\Jobs\Bitrix\SyncBitrixTaskChat;
 use App\Models\BitrixPortal;
 use App\Models\Project;
 use App\Models\Task;
@@ -117,13 +118,14 @@ class BitrixEventsTest extends TestCase
         Queue::assertPushed(SyncBitrixProject::class, fn (SyncBitrixProject $job) => $job->bitrixGroupId === 4);
     }
 
-    public function test_comment_events_are_ignored_for_now(): void
+    public function test_chat_message_event_queues_a_chat_fetch(): void
     {
         Queue::fake();
 
         $this->event('ONTASKCOMMENTADD', ['FIELDS_AFTER' => ['ID' => 1, 'TASK_ID' => 15]])->assertOk();
 
-        Queue::assertNothingPushed();
+        Queue::assertPushedOn('bitrix', SyncBitrixTaskChat::class);
+        Queue::assertPushed(SyncBitrixTaskChat::class, fn (SyncBitrixTaskChat $job) => $job->bitrixTaskId === 15 && $job->delay !== null);
     }
 
     public function test_task_job_creates_or_updates_the_task(): void

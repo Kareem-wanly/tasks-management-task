@@ -6,6 +6,9 @@ use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
 use App\Models\BitrixOutboundOp;
 use App\Models\Task;
 use App\Models\User;
+use App\Repositories\Contracts\BitrixOutboundOpRepositoryInterface;
+use App\Repositories\Contracts\TaskRepositoryInterface;
+use App\Repositories\Contracts\UserRepositoryInterface;
 
 /**
  * Step 4.1: accomplices, auditors, watching and delegating, sent with the
@@ -22,6 +25,10 @@ class BitrixTaskMemberPusher
         private readonly BitrixRecordFetcher $fetch,
         private readonly BitrixTaskSync $sync,
         private readonly BitrixTaskMapper $mapper,
+        private readonly BitrixOutboundOpRepositoryInterface $ops,
+        private readonly BitrixFingerprint $fingerprints,
+        private readonly UserRepositoryInterface $users,
+        private readonly TaskRepositoryInterface $taskRepository,
     ) {}
 
     /**
@@ -86,8 +93,8 @@ class BitrixTaskMemberPusher
         $this->fetch->importMissingUsers([...$members['accomplice'] ?? [], ...$members['auditor'] ?? []]);
         $this->sync->upsert($row);
 
-        $task->refresh();
-        BitrixOutboundOp::record(BitrixOutboundOp::TASK, $task->bitrix_task_id, 'update', BitrixFingerprint::task($task), $actor);
+        $this->taskRepository->reload($task);
+        $this->ops->record(BitrixOutboundOp::TASK, $task->bitrix_task_id, 'update', $this->fingerprints->task($task), $actor);
     }
 
     /**
@@ -96,7 +103,7 @@ class BitrixTaskMemberPusher
      */
     private function bitrixIds(array $userIds): array
     {
-        $users = User::whereIn('id', $userIds)->get(['id', 'name', 'bitrix_user_id']);
+        $users = $this->users->findMany($userIds);
 
         return $users->map(fn (User $user) => $user->bitrix_user_id
             ?? throw BitrixException::cannotSync("{$user->name} is not a Bitrix24 user, so they cannot be added to this task."))

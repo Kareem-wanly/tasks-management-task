@@ -4,6 +4,7 @@ namespace App\Rules;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Repositories\Contracts\TaskRepositoryInterface;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 
@@ -20,7 +21,7 @@ class ParentTask implements ValidationRule
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        $parent = Task::find($value);
+        $parent = app(TaskRepositoryInterface::class)->find((int) $value);
 
         if (! $parent || ! $this->user->can('view', $parent)) {
             $fail('The selected parent task does not exist.');

@@ -6,8 +6,8 @@ use App\Integrations\Bitrix24\BitrixEchoGuard;
 use App\Integrations\Bitrix24\BitrixRecordFetcher;
 use App\Integrations\Bitrix24\BitrixTaskSync;
 use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
-use App\Models\Project;
-use App\Models\Task;
+use App\Repositories\Contracts\ProjectRepositoryInterface;
+use App\Repositories\Contracts\TaskRepositoryInterface;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -40,14 +40,16 @@ class SyncBitrixTask implements ShouldBeUniqueUntilProcessing, ShouldQueue
         return (string) $this->bitrixTaskId;
     }
 
-    public function handle(BitrixRecordFetcher $fetch, BitrixTaskSync $tasks, BitrixTaskMapper $mapper, BitrixEchoGuard $echo): void
+    public function handle(BitrixRecordFetcher $fetch, BitrixTaskSync $tasks, BitrixTaskMapper $mapper, BitrixEchoGuard $echo, TaskRepositoryInterface $taskRepository, ProjectRepositoryInterface $projects): void
     {
         $row = $fetch->task($this->bitrixTaskId);
 
         // Gone from Bitrix (deleted there): delete it here too.
         if ($row === null) {
             if (! $echo->isTaskEcho($this->bitrixTaskId, null)) {
-                Task::where('bitrix_task_id', $this->bitrixTaskId)->first()?->delete();
+                if ($task = $taskRepository->findByBitrixId($this->bitrixTaskId)) {
+                    $taskRepository->delete($task);
+                }
             }
 
             return;
@@ -61,7 +63,7 @@ class SyncBitrixTask implements ShouldBeUniqueUntilProcessing, ShouldQueue
         ]);
 
         $groupId = $mapper->groupBitrixId($row);
-        if ($groupId !== 0 && ! Project::where('bitrix_group_id', $groupId)->exists()) {
+        if ($groupId !== 0 && $projects->idByBitrixGroupId($groupId) === null) {
             app()->call([new SyncBitrixProject($groupId), 'handle']);
         }
 

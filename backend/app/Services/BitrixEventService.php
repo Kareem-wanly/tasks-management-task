@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Jobs\Bitrix\SyncBitrixProject;
 use App\Jobs\Bitrix\SyncBitrixTask;
+use App\Jobs\Bitrix\SyncBitrixTaskChat;
 use App\Repositories\Contracts\BitrixPortalRepositoryInterface;
 use Illuminate\Support\Facades\Log;
 
@@ -42,13 +43,14 @@ class BitrixEventService
             'ONTASKADD', 'ONTASKUPDATE' => $this->taskJob(data_get($data, 'FIELDS_AFTER.ID')),
             'ONTASKDELETE' => $this->taskJob(data_get($data, 'FIELDS_BEFORE.ID')),
             'ONSONETGROUPADD', 'ONSONETGROUPUPDATE', 'ONSONETGROUPDELETE' => $this->projectJob(data_get($data, 'FIELDS.ID')),
-            // Comments arrive with the task chat (step 4.7).
+            // Step 4.7: a new message in a task's chat.
+            'ONTASKCOMMENTADD' => $this->chatJob(data_get($data, 'FIELDS_AFTER.TASK_ID')),
             default => null,
         };
 
         if ($job) {
             dispatch($job)->delay(now()->addSeconds(self::DEBOUNCE_SECONDS));
-        } elseif ($event !== 'ONTASKCOMMENTADD') {
+        } else {
             Log::info('Bitrix24 event ignored.', ['event' => $event]);
         }
     }
@@ -56,6 +58,11 @@ class BitrixEventService
     private function taskJob(mixed $id): ?SyncBitrixTask
     {
         return (int) $id > 0 ? new SyncBitrixTask((int) $id) : null;
+    }
+
+    private function chatJob(mixed $taskId): ?SyncBitrixTaskChat
+    {
+        return (int) $taskId > 0 ? new SyncBitrixTaskChat((int) $taskId) : null;
     }
 
     private function projectJob(mixed $id): ?SyncBitrixProject

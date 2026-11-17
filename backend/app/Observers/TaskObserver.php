@@ -2,15 +2,17 @@
 
 namespace App\Observers;
 
-use App\Models\ActivityLog;
 use App\Models\Task;
+use App\Repositories\Contracts\ActivityLogRepositoryInterface;
 use Illuminate\Support\Facades\Auth;
 
 class TaskObserver
 {
+    public function __construct(private readonly ActivityLogRepositoryInterface $activities) {}
+
     public function created(Task $task): void
     {
-        ActivityLog::create([
+        $this->activities->create([
             'user_id' => Auth::id() ?? $task->created_by,
             'project_id' => $task->project_id,
             'action' => 'task_created',
@@ -21,7 +23,7 @@ class TaskObserver
 
     public function updated(Task $task): void
     {
-        ActivityLog::create([
+        $this->activities->create([
             'user_id' => Auth::id() ?? $task->created_by,
             'project_id' => $task->project_id,
             'action' => 'task_updated',
@@ -32,7 +34,7 @@ class TaskObserver
 
     public function deleted(Task $task): void
     {
-        ActivityLog::create([
+        $this->activities->create([
             'user_id' => Auth::id() ?? $task->created_by,
             'project_id' => $task->project_id,
             'action' => 'task_deleted',

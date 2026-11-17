@@ -32,4 +32,20 @@ interface TimeEntryRepositoryInterface
     public function startTimer(User $user, Task $task): RunningTimer;
 
     public function deleteTimer(RunningTimer $timer): void;
+
+    /**
+     * The task's entries that came from Bitrix.
+     *
+     * @return Collection<int, TaskElapsedItem> By Bitrix item ID.
+     */
+    public function bitrixEntries(Task $task): Collection;
+
+    public function save(TaskElapsedItem $entry): void;
+
+    /**
+     * Deletes the task's Bitrix entries not in the list.
+     *
+     * @param  list<int>  $bitrixItemIds
+     */
+    public function deleteBitrixEntriesExcept(Task $task, array $bitrixItemIds): void;
 }

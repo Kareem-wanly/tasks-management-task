@@ -40,5 +40,10 @@ export const queryKeys = {
     lists: ['tasks', 'list'] as const,
     list: (params: QueryParams) => ['tasks', 'list', params] as const,
     detail: (id: number | string) => ['tasks', 'detail', String(id)] as const,
+    checklist: (id: number) => ['tasks', 'checklist', id] as const,
+    time: (id: number) => ['tasks', 'time', id] as const,
+    files: (id: number) => ['tasks', 'files', id] as const,
+    results: (id: number) => ['tasks', 'results', id] as const,
+    chat: (id: number) => ['tasks', 'chat', id] as const,
   },
 };

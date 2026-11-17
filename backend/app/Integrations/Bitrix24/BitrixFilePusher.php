@@ -1,0 +1,195 @@
+<?php
+
+namespace App\Integrations\Bitrix24;
+
+use App\Models\Task;
+use App\Models\TaskFile;
+use App\Models\User;
+use Illuminate\Http\UploadedFile;
+
+/**
+ * Step 4.5: task files in Bitrix24, with the employee's own token. A file is
+ * uploaded to the employee's Drive (their "Uploaded files" folder, as Bitrix
+ * does), then attached to the task. Removing only detaches it: the file
+ * stays on the Drive. Only for tasks it handles(); TaskFileService keeps the
+ * others' files here.
+ */
+class BitrixFilePusher
+{
+    /** The Drive folder Bitrix itself puts uploads in. */
+    private const UPLOADS_FOLDER_CODE = 'FOR_UPLOADED_FILES';
+
+    /** Seconds allowed for sending a file (base64 in the request body). */
+    private const UPLOAD_TIMEOUT = 120;
+
+    public function __construct(
+        private readonly BitrixClient $bitrix,
+        private readonly BitrixTaskPusher $tasks,
+        private readonly BitrixFileSync $sync,
+    ) {}
+
+    /** Whether the task lives in Bitrix. */
+    public function handles(Task $task): bool
+    {
+        return $task->bitrix_task_id !== null && $this->tasks->syncs($task);
+    }
+
+    /** Brings our list of the task's files up to date. */
+    public function refresh(Task $task): void
+    {
+        $this->sync->sync($task, array_values($this->attachments($this->attachedIds($task))));
+    }
+
+    /**
+     * disk.attachedObject.get rows, 50 per batch.
+     *
+     * @param  list<int>  $attachedIds
+     * @return array<int, array<string, mixed>> By attached object ID.
+     */
+    private function attachments(array $attachedIds): array
+    {
+        $attachments = [];
+
+        foreach (array_chunk(array_values(array_unique($attachedIds)), BitrixClient::MAX_BATCH_COMMANDS) as $chunk) {
+            $commands = [];
+            foreach ($chunk as $id) {
+                $commands["a{$id}"] = ['disk.attachedObject.get', ['id' => $id]];
+            }
+            $batch = $this->bitrix->batchAsService($commands);
+            foreach ($chunk as $id) {
+                if (is_array($row = $batch['result']["a{$id}"] ?? null)) {
+                    $attachments[$id] = $row;
+                }
+            }
+        }
+
+        return $attachments;
+    }
+
+    /**
+     * The nightly pass: up to 50 tasks, in batched requests. A task Bitrix
+     * refuses (e.g. deleted meanwhile) is skipped, its list kept.
+     *
+     * @param  iterable<Task>  $tasks
+     * @return int How many tasks were skipped.
+     */
+    public function refreshMany(iterable $tasks): int
+    {
+        $commands = [];
+        foreach ($tasks as $task) {
+            $commands["t{$task->id}"] = ['tasks.task.get', ['taskId' => $task->bitrix_task_id, 'select' => ['ID', 'UF_TASK_WEBDAV_FILES']]];
+        }
+        if ($commands === []) {
+            return 0;
+        }
+
+        $batch = $this->bitrix->batchAsService($commands);
+        $attachedByTask = [];
+        foreach ($tasks as $task) {
+            $row = $batch['result']["t{$task->id}"]['task'] ?? null;
+            if (is_array($row)) {
+                $attachedByTask[$task->id] = array_values(array_map('intval', (array) ($row['ufTaskWebdavFiles'] ?? [])));
+            }
+        }
+
+        $attachments = $this->attachments(array_merge(...array_values($attachedByTask ?: [[]])));
+        $skipped = 0;
+        foreach ($tasks as $task) {
+            if (! isset($attachedByTask[$task->id])) {
+                $skipped++;
+
+                continue;
+            }
+            $this->sync->sync($task, array_values(array_intersect_key($attachments, array_flip($attachedByTask[$task->id]))));
+        }
+
+        return $skipped;
+    }
+
+    public function upload(User $actor, Task $task, UploadedFile $upload): void
+    {
+        $this->ensureLinked($actor);
+
+        $file = $this->bitrix->callAsUser($actor, 'disk.folder.uploadfile', [
+            'id' => $this->uploadsFolderId($actor),
+            'data' => ['NAME' => $upload->getClientOriginalName()],
+            'fileContent' => [$upload->getClientOriginalName(), base64_encode((string) file_get_contents($upload->getRealPath()))],
+            // Same name as a file already there: Bitrix adds " (1)" instead of failing.
+            'generateUniqueName' => true,
+        ], self::UPLOAD_TIMEOUT)['result'] ?? [];
+
+        $diskFileId = (int) ($file['ID'] ?? 0) ?: throw BitrixException::cannotSync('Bitrix24 did not store the file.');
+
+        $this->bitrix->callAsUser($actor, 'tasks.task.files.attach', ['taskId' => $task->bitrix_task_id, 'fileId' => $diskFileId]);
+        $this->refresh($task);
+    }
+
+    /** Takes the file off the task; it stays on the uploader's Drive. */
+    public function detach(User $actor, TaskFile $file): void
+    {
+        $this->ensureLinked($actor);
+        $task = $file->task;
+
+        $this->bitrix->callAsUser($actor, 'tasks.task.update', [
+            'taskId' => $task->bitrix_task_id,
+            // The whole list: what is left after removing this one (empty clears it).
+            'fields' => ['UF_TASK_WEBDAV_FILES' => array_values(array_diff($this->attachedIds($task), [$file->attached_object_id]))],
+        ]);
+        $this->refresh($task);
+    }
+
+    /**
+     * A download link for the file, asked for with the employee's token so
+     * Bitrix checks they may open it. It carries their token: never send it
+     * to the browser, stream it with stream().
+     */
+    public function downloadUrl(User $actor, TaskFile $file): string
+    {
+        $this->ensureLinked($actor);
+
+        $url = $this->bitrix->callAsUser($actor, 'disk.attachedObject.get', ['id' => $file->attached_object_id])['result']['DOWNLOAD_URL'] ?? null;
+
+        return is_string($url) && $url !== '' ? $url : throw BitrixException::cannotSync('Bitrix24 did not return the file.');
+    }
+
+    /** @param  callable(string): void  $write */
+    public function stream(string $url, callable $write): void
+    {
+        $this->bitrix->streamDownload($url, $write);
+    }
+
+    /** @return list<int> The task's attachments in Bitrix. */
+    private function attachedIds(Task $task): array
+    {
+        $task = $this->bitrix->callAsService('tasks.task.get', ['taskId' => $task->bitrix_task_id, 'select' => ['ID', 'UF_TASK_WEBDAV_FILES']])['result']['task'] ?? [];
+
+        return array_values(array_map('intval', (array) ($task['ufTaskWebdavFiles'] ?? [])));
+    }
+
+    /** The employee's "Uploaded files" folder, or their Drive's root when Bitrix hasn't made it yet. */
+    private function uploadsFolderId(User $actor): int
+    {
+        $storage = $this->bitrix->callAsUser($actor, 'disk.storage.getlist', [
+            'filter' => ['ENTITY_TYPE' => 'user', 'ENTITY_ID' => $actor->bitrix_user_id],
+        ])['result'][0] ?? null;
+
+        if (! $storage) {
+            throw BitrixException::cannotSync('Your Bitrix24 Drive was not found.');
+        }
+
+        foreach ($this->bitrix->callAsUser($actor, 'disk.storage.getchildren', ['id' => $storage['ID']])['result'] ?? [] as $child) {
+            if (($child['CODE'] ?? null) === self::UPLOADS_FOLDER_CODE) {
+                return (int) $child['ID'];
+            }
+        }
+
+        return (int) $storage['ROOT_OBJECT_ID'];
+    }
+
+    private function ensureLinked(User $actor): void
+    {
+        if (! $actor->isLinkedToBitrix()) {
+            throw BitrixException::missingToken();
+        }
+    }
+}

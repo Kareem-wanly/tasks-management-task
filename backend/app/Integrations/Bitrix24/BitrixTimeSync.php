@@ -4,7 +4,8 @@ namespace App\Integrations\Bitrix24;
 
 use App\Models\Task;
 use App\Models\TaskElapsedItem;
-use App\Models\User;
+use App\Repositories\Contracts\TimeEntryRepositoryInterface;
+use App\Repositories\Contracts\UserRepositoryInterface;
 use Carbon\Carbon;
 
 /**
@@ -14,13 +15,18 @@ use Carbon\Carbon;
  */
 class BitrixTimeSync
 {
+    public function __construct(
+        private readonly TimeEntryRepositoryInterface $entries,
+        private readonly UserRepositoryInterface $users,
+    ) {}
+
     /**
      * @param  list<array<string, mixed>>  $rows
      */
     public function sync(Task $task, array $rows): void
     {
-        $ours = $task->elapsedItems()->whereNotNull('bitrix_item_id')->get()->keyBy('bitrix_item_id');
-        $users = User::whereIn('bitrix_user_id', array_map(fn ($r) => (int) ($r['USER_ID'] ?? 0), $rows))->pluck('id', 'bitrix_user_id');
+        $ours = $this->entries->bitrixEntries($task);
+        $users = $this->users->idsByBitrixIds(array_map(fn ($r) => (int) ($r['USER_ID'] ?? 0), $rows));
         $seen = [];
 
         foreach ($rows as $row) {
@@ -37,21 +43,11 @@ class BitrixTimeSync
             ]);
 
             if (! $item->exists || $item->isDirty()) {
-                $item->save();
+                $this->entries->save($item);
             }
         }
 
-        $task->elapsedItems()->whereNotNull('bitrix_item_id')->whereNotIn('bitrix_item_id', $seen ?: [0])->delete();
-        $this->updateTotal($task);
-    }
-
-    /** The task's time_spent is the sum of its log (Bitrix TIME_SPENT_IN_LOGS). */
-    public function updateTotal(Task $task): void
-    {
-        $total = (int) $task->elapsedItems()->sum('seconds');
-
-        if ($task->time_spent !== $total) {
-            Task::withoutTimestamps(fn () => $task->forceFill(['time_spent' => $total])->saveQuietly());
-        }
+        $this->entries->deleteBitrixEntriesExcept($task, $seen);
+        $this->entries->updateTaskTotal($task);
     }
 }

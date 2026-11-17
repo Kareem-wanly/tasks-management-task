@@ -71,7 +71,7 @@ class TaskChecklistService
 
         if (isset($changes['is_complete'])) {
             $this->bitrix->handles($task)
-                ? $this->bitrix->toggle($actor, $item->fresh(), $changes['is_complete'])
+                ? $this->bitrix->toggle($actor, $this->checklists->find($item->id), $changes['is_complete'])
                 : $this->checklists->update($item, ['is_complete' => $changes['is_complete']]);
         }
 

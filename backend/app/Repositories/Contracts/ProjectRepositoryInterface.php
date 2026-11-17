@@ -39,4 +39,27 @@ interface ProjectRepositoryInterface
     public function attachMember(Project $project, int $userId, string $role): void;
 
     public function detachMember(Project $project, int $userId): void;
+
+    public function findByBitrixGroupId(int $bitrixGroupId, bool $withTrashed = false): ?Project;
+
+    public function idByBitrixGroupId(int $bitrixGroupId): ?int;
+
+    /** The Bitrix group of a project, deleted ones too. */
+    public function bitrixGroupIdOf(int $projectId): ?int;
+
+    public function restore(Project $project): void;
+
+    /** Notes the sync time without touching updated_at or the activity log. */
+    public function markSynced(Project $project): void;
+
+    /** @param  array<int, array{role: string}>  $members  Our user ID => pivot. */
+    public function syncMembersWithRoles(Project $project, array $members): void;
+
+    /**
+     * Deletes our copies of Bitrix groups not in the list.
+     *
+     * @param  list<int>  $bitrixGroupIds
+     * @return int How many were deleted.
+     */
+    public function deleteMissingFromBitrix(array $bitrixGroupIds): int;
 }

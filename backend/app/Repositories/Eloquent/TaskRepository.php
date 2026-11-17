@@ -34,14 +34,9 @@ class TaskRepository implements TaskRepositoryInterface
         return $project->tasks()->with('assignee:id,name,email')->latest()->paginate($perPage);
     }
 
-    public function loadForDetail(Task $task, User $viewer, bool $withComments = false): Task
+    public function loadForDetail(Task $task, User $viewer): Task
     {
-        $relations = $this->detailRelations($viewer);
-        if ($withComments) {
-            $relations[] = 'comments.user:id,name,email';
-        }
-
-        return $task->load($relations);
+        return $task->load($this->detailRelations($viewer));
     }
 
     public function freshForDetail(Task $task, User $viewer): Task
@@ -82,6 +77,11 @@ class TaskRepository implements TaskRepositoryInterface
     public function find(int $id): ?Task
     {
         return Task::find($id);
+    }
+
+    public function reload(Task $task): void
+    {
+        $task->refresh();
     }
 
     /**
@@ -141,5 +141,69 @@ class TaskRepository implements TaskRepositoryInterface
             'priority' => $query->orderBy(TaskPriority::select('sort')->whereColumn('task_priorities.key', 'tasks.priority'), $sortOrder),
             default => $query->orderBy($sortBy, $sortOrder),
         };
+    }
+
+    public function findByBitrixId(int $bitrixTaskId, bool $withTrashed = false): ?Task
+    {
+        return Task::query()->when($withTrashed, fn ($q) => $q->withTrashed())->where('bitrix_task_id', $bitrixTaskId)->first();
+    }
+
+    public function idByBitrixId(int $bitrixTaskId): ?int
+    {
+        return Task::where('bitrix_task_id', $bitrixTaskId)->value('id');
+    }
+
+    public function bitrixTaskIdOf(int $taskId): ?int
+    {
+        $bitrixId = Task::withTrashed()->whereKey($taskId)->value('bitrix_task_id');
+
+        return $bitrixId === null ? null : (int) $bitrixId;
+    }
+
+    public function restore(Task $task): void
+    {
+        $task->restore();
+    }
+
+    public function markSynced(Task $task): void
+    {
+        Task::withoutTimestamps(fn () => $task->forceFill(['bitrix_synced_at' => now()])->saveQuietly());
+    }
+
+    public function setBitrixChatId(Task $task, int $chatId): void
+    {
+        Task::withoutTimestamps(fn () => $task->forceFill(['bitrix_chat_id' => $chatId])->saveQuietly());
+    }
+
+    public function memberBitrixIds(Task $task): array
+    {
+        $members = ['accomplice' => [], 'auditor' => []];
+        if (! $task->exists) {
+            return $members;
+        }
+
+        foreach (['accomplice' => $task->accomplices(), 'auditor' => $task->auditors()] as $role => $relation) {
+            $members[$role] = $relation->whereNotNull('bitrix_user_id')->orderBy('bitrix_user_id')->pluck('bitrix_user_id')->map(fn ($id) => (int) $id)->all();
+        }
+
+        return $members;
+    }
+
+    public function deleteMissingFromBitrix(array $bitrixTaskIds): int
+    {
+        $gone = Task::whereNotNull('bitrix_task_id')->whereNotIn('bitrix_task_id', $bitrixTaskIds)->get();
+        $gone->each->delete();
+
+        return $gone->count();
+    }
+
+    public function countInBitrix(): int
+    {
+        return Task::whereNotNull('bitrix_task_id')->count();
+    }
+
+    public function chunkInBitrix(int $size, callable $callback): void
+    {
+        Task::whereNotNull('bitrix_task_id')->orderBy('id')->chunk($size, $callback);
     }
 }

@@ -6,8 +6,8 @@ use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixRecordFetcher;
 use App\Integrations\Bitrix24\BitrixTaskSync;
 use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
-use App\Models\BitrixSyncCursor;
-use App\Models\Task;
+use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
+use App\Repositories\Contracts\TaskRepositoryInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -36,9 +36,9 @@ class ImportBitrixTasks implements ShouldQueue
         $this->onQueue('bitrix');
     }
 
-    public function handle(BitrixClient $bitrix, BitrixTaskSync $tasks, BitrixTaskMapper $mapper, BitrixRecordFetcher $fetch): void
+    public function handle(BitrixClient $bitrix, BitrixTaskSync $tasks, BitrixTaskMapper $mapper, BitrixRecordFetcher $fetch, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $taskRepository): void
     {
-        $cursor = BitrixSyncCursor::start(self::ENTITY);
+        $cursor = $cursors->start(self::ENTITY);
         $skipped = 0;
         $seen = [];
         // Totals of the passes already finished; the closed pass's own total
@@ -50,7 +50,7 @@ class ImportBitrixTasks implements ShouldQueue
                 'select' => BitrixTaskMapper::SELECT,
                 'filter' => $filter,
                 'order' => ['ID' => 'ASC'],
-            ], function (array $page, int $total) use ($tasks, $mapper, $fetch, $cursor, $earlierTotal, &$skipped, &$seen) {
+            ], function (array $page, int $total) use ($tasks, $mapper, $fetch, $cursor, $cursors, $earlierTotal, &$skipped, &$seen) {
                 $rows = $page['tasks'] ?? [];
 
                 // A full import runs after the users; a delta may meet someone new.
@@ -70,13 +70,13 @@ class ImportBitrixTasks implements ShouldQueue
                     }
                 }
 
-                $cursor->advance(count($rows), $earlierTotal + $total);
+                $cursors->advance($cursor, count($rows), $earlierTotal + $total);
             });
         }
 
-        $deleted = $this->changedSince ? 0 : $this->deleteMissing($seen);
+        $deleted = $this->changedSince ? 0 : $this->deleteMissing($taskRepository, $seen);
 
-        $cursor->complete();
+        $cursors->complete($cursor);
         Log::info($this->changedSince ? 'Bitrix24 task changes synced.' : 'Bitrix24 tasks imported.', [
             'processed' => $cursor->processed, 'skipped' => $skipped, 'deleted' => $deleted, 'portal_total' => $earlierTotal,
         ]);
@@ -97,16 +97,13 @@ class ImportBitrixTasks implements ShouldQueue
      *
      * @param  list<int>  $seen
      */
-    private function deleteMissing(array $seen): int
+    private function deleteMissing(TaskRepositoryInterface $tasks, array $seen): int
     {
         // An empty listing is more likely a Bitrix hiccup than an empty portal.
         if ($seen === []) {
             return 0;
         }
 
-        $gone = Task::whereNotNull('bitrix_task_id')->whereNotIn('bitrix_task_id', $seen)->get();
-        $gone->each->delete();
-
-        return $gone->count();
+        return $tasks->deleteMissingFromBitrix($seen);
     }
 }

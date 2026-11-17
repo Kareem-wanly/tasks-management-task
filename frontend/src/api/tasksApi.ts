@@ -10,6 +10,16 @@ export interface TaskInput {
   due_date?: string | null;
   /** Leave out to keep the current assignee; null unassigns. */
   assigned_to?: number | null;
+  /** Makes it a subtask of that task; null takes it out of its parent. */
+  parent_id?: number | null;
+  allow_time_tracking?: boolean;
+  /** Planned time in seconds. */
+  time_estimate?: number;
+}
+
+export interface TaskMembersInput {
+  accomplice_ids: number[];
+  auditor_ids: number[];
 }
 
 const tasksApi = {
@@ -37,6 +47,26 @@ const tasksApi = {
 
   updateStatus: async (id: number, status: TaskStatus) => {
     const res = await apiClient.patch<DataBody<Task>>(`/tasks/${id}/status`, { status });
+    return res.data;
+  },
+
+  /** Replaces both lists; an empty list removes everyone from it. */
+  setMembers: async (id: number, members: TaskMembersInput) => {
+    const res = await apiClient.put<DataBody<Task>>(`/tasks/${id}/members`, { ...members });
+    return res.data;
+  },
+
+  /** The signed-in user starts (true) or stops following the task. */
+  watch: async (id: number, watching: boolean) => {
+    const res = watching
+      ? await apiClient.post<DataBody<Task>>(`/tasks/${id}/watch`, {})
+      : await apiClient.delete<DataBody<Task>>(`/tasks/${id}/watch`);
+    return res.data;
+  },
+
+  /** Only the assignee may hand the task over; Bitrix makes them an auditor unless they created it. */
+  delegate: async (id: number, userId: number) => {
+    const res = await apiClient.post<DataBody<Task>>(`/tasks/${id}/delegate`, { user_id: userId });
     return res.data;
   },
 

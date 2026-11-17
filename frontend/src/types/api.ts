@@ -99,15 +99,6 @@ export interface ProjectOption {
   status: ProjectStatus;
 }
 
-export interface Comment {
-  id: number;
-  body: string;
-  task_id: number;
-  user: { id: number | null; name: string | null; email: string | null };
-  created_at: string | null;
-  updated_at: string | null;
-}
-
 export interface Task {
   id: number;
   title: string;
@@ -117,13 +108,39 @@ export interface Task {
   due_date: string | null;
   is_overdue: boolean;
   completed_at: string | null;
+  /** Time tracking (Bitrix24 step 4.4); times in seconds. */
+  allow_time_tracking: boolean;
+  time_estimate: number;
+  time_spent: number;
   project?: Pick<Project, 'id' | 'title'> & Partial<Project>;
   assignee?: User | null;
   creator?: User | null;
-  comments?: Comment[];
+  /** Work on the task besides the assignee (Bitrix24 accomplices). On the task's own page. */
+  accomplices?: User[];
+  /** Follow the task (Bitrix24 auditors). On the task's own page. */
+  auditors?: User[];
+  /** The task this one is a subtask of (Bitrix24 PARENT_ID). On the task's own page. */
+  parent?: Pick<Task, 'id' | 'title'> | null;
+  /** Its subtasks the viewer may see. On the task's own page. */
+  subtasks?: Task[];
   created_at: string | null;
   updated_at: string | null;
 }
+
+// The task card's panels (checklist, time, files, results, chat) live in taskCard.ts.
+export type {
+  Checklist,
+  ChecklistItem,
+  TaskChat,
+  TaskChatFile,
+  TaskChatMessage,
+  TaskFile,
+  TaskFiles,
+  TaskResult,
+  TaskResults,
+  TimeEntry,
+  TimeLog,
+} from './taskCard';
 
 /** A row of /task-priorities (and the shared part of /task-statuses). */
 export interface TaskPriorityOption {

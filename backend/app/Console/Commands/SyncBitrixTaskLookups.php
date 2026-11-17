@@ -7,6 +7,7 @@ use App\Integrations\Bitrix24\BitrixException;
 use App\Models\TaskLookup;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
+use App\Repositories\Contracts\TaskLookupRepositoryInterface;
 use Illuminate\Console\Command;
 
 /**
@@ -20,7 +21,7 @@ class SyncBitrixTaskLookups extends Command
 
     protected $description = 'Sync task statuses and priorities from Bitrix24';
 
-    public function handle(BitrixClient $bitrix): int
+    public function handle(BitrixClient $bitrix, TaskLookupRepositoryInterface $lookups): int
     {
         try {
             $fields = $bitrix->callAsService('tasks.task.getFields')['result']['fields'] ?? [];
@@ -40,8 +41,8 @@ class SyncBitrixTaskLookups extends Command
         }
 
         $rows = [
-            ...$this->sync(TaskStatus::class, 'status', $statuses),
-            ...$this->sync(TaskPriority::class, 'priority', $priorities),
+            ...$this->sync($lookups, TaskStatus::class, 'status', $statuses),
+            ...$this->sync($lookups, TaskPriority::class, 'priority', $priorities),
         ];
 
         $this->table(['Type', 'Bitrix ID', 'Key', 'Name', 'Change'], $rows);
@@ -55,25 +56,25 @@ class SyncBitrixTaskLookups extends Command
      * @param  array<int|string, string>  $values  Bitrix ID => name
      * @return list<array{string, int, string, string, string}>
      */
-    private function sync(string $model, string $type, array $values): array
+    private function sync(TaskLookupRepositoryInterface $lookups, string $model, string $type, array $values): array
     {
         $rows = [];
 
         foreach ($values as $bitrixId => $name) {
             $bitrixId = (int) $bitrixId;
-            $lookup = $model::where('is_system', true)->where('bitrix_id', $bitrixId)->first();
+            $lookup = $lookups->findSystem($model, $bitrixId);
 
             if (! $lookup) {
                 $lookup = new $model(['key' => "bitrix_{$type}_{$bitrixId}", 'bitrix_id' => $bitrixId, 'color' => 'neutral']);
                 $lookup->is_system = true;
-                $lookup->sort = $model::max('sort') + 1;
+                $lookup->sort = $lookups->nextSort($model);
                 $change = 'added';
             } else {
                 $change = $lookup->name === $name ? 'unchanged' : 'renamed';
             }
 
             $lookup->name = $name;
-            $lookup->save();
+            $lookups->save($lookup);
 
             $rows[] = [$type, $bitrixId, $lookup->key, $name, $change];
         }

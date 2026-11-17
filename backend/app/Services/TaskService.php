@@ -35,7 +35,7 @@ class TaskService
 
     public function show(User $viewer, Task $task): Task
     {
-        return $this->tasks->loadForDetail($task, $viewer, $viewer->hasPermission('comments.view'));
+        return $this->tasks->loadForDetail($task, $viewer);
     }
 
     /**

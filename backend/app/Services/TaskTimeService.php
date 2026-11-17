@@ -103,7 +103,9 @@ class TaskTimeService
     {
         $this->stopRunning($actor, $comment);
 
-        return $this->current($actor, $task->fresh());
+        $this->tasks->reload($task);
+
+        return $this->current($actor, $task);
     }
 
     /**

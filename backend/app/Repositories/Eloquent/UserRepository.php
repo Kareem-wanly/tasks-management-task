@@ -102,4 +102,48 @@ class UserRepository implements UserRepositoryInterface
     {
         return $user->load('roles:id,name,display_name');
     }
+
+    public function findByBitrixId(int $bitrixId): ?User
+    {
+        return User::where('bitrix_user_id', $bitrixId)->first();
+    }
+
+    public function idByBitrixId(int $bitrixId): ?int
+    {
+        return $bitrixId === 0 ? null : User::where('bitrix_user_id', $bitrixId)->value('id');
+    }
+
+    public function idsByBitrixIds(array $bitrixIds): array
+    {
+        return User::whereIn('bitrix_user_id', $bitrixIds)->pluck('id', 'bitrix_user_id')->all();
+    }
+
+    public function bitrixIdOf(int $userId): ?int
+    {
+        $bitrixId = User::whereKey($userId)->value('bitrix_user_id');
+
+        return $bitrixId === null ? null : (int) $bitrixId;
+    }
+
+    public function findMany(array $userIds): Collection
+    {
+        return User::whereIn('id', $userIds)->get(['id', 'name', 'bitrix_user_id']);
+    }
+
+    public function findUnlinkedByEmail(string $email): ?User
+    {
+        return User::whereRaw('LOWER(email) = ?', [strtolower($email)])->whereNull('bitrix_user_id')->first();
+    }
+
+    public function emailTaken(string $email, ?int $exceptUserId = null): bool
+    {
+        return User::whereRaw('LOWER(email) = ?', [strtolower($email)])
+            ->when($exceptUserId, fn ($query) => $query->whereKeyNot($exceptUserId))
+            ->exists();
+    }
+
+    public function forceCreate(array $attributes): User
+    {
+        return User::forceCreate($attributes);
+    }
 }

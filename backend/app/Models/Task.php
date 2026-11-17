@@ -45,6 +45,7 @@ class Task extends Model
             'due_date' => 'datetime',
             'completed_at' => 'datetime',
             'bitrix_synced_at' => 'datetime',
+            'bitrix_chat_id' => 'integer',
             'allow_time_tracking' => 'boolean',
             'time_estimate' => 'integer',
             'time_spent' => 'integer',
@@ -124,14 +125,25 @@ class Task extends Model
         return $this->hasMany(TaskChecklistItem::class);
     }
 
+    public function results(): HasMany
+    {
+        return $this->hasMany(TaskResult::class);
+    }
+
+    public function files(): HasMany
+    {
+        return $this->hasMany(TaskFile::class);
+    }
+
     public function elapsedItems(): HasMany
     {
         return $this->hasMany(TaskElapsedItem::class);
     }
 
-    public function comments(): HasMany
+    /** Step 4.7: the task chat (replaced comments). */
+    public function chatMessages(): HasMany
     {
-        return $this->hasMany(Comment::class);
+        return $this->hasMany(TaskChatMessage::class);
     }
 
     public function activityLogs(): HasMany

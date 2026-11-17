@@ -47,7 +47,7 @@ class TaskLookupService
             throw new BusinessRuleException('Values that come from Bitrix24 cannot be deleted.');
         }
 
-        if ($lookup->isUsed()) {
+        if ($this->lookups->isUsed($lookup)) {
             throw new BusinessRuleException('This value is used by tasks and cannot be deleted.');
         }
 

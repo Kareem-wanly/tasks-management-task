@@ -68,4 +68,19 @@ class TaskChecklistRepository implements TaskChecklistRepositoryInterface
             ->orderBy('id')
             ->get();
     }
+
+    public function bitrixItems(Task $task): Collection
+    {
+        return $task->checklistItems()->whereNotNull('bitrix_item_id')->get()->keyBy('bitrix_item_id');
+    }
+
+    public function save(TaskChecklistItem $item): void
+    {
+        $item->save();
+    }
+
+    public function deleteBitrixItemsExcept(Task $task, array $bitrixItemIds): void
+    {
+        $task->checklistItems()->whereNotNull('bitrix_item_id')->whereNotIn('bitrix_item_id', $bitrixItemIds ?: [0])->delete();
+    }
 }

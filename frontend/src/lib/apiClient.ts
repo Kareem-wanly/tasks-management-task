@@ -136,6 +136,36 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   return data as T;
 }
 
+/**
+ * A file the API streams (e.g. a task attachment). Downloads need the
+ * Bearer token, so a plain <a href> can't fetch them.
+ */
+async function requestBlob(endpoint: string, options: RequestOptions = {}): Promise<Blob> {
+  const url = `${BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const token = getToken();
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      signal: options.signal,
+      headers: { Accept: 'application/json, */*', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    });
+  } catch (networkError) {
+    if (isAbortError(networkError)) throw networkError;
+    throw new ApiError('Could not connect to the server. Please check your internet connection.', 0, null, true);
+  }
+
+  if (!response.ok) {
+    let errorBody: ErrorBody | null = null;
+    if (response.headers.get('content-type')?.includes('application/json')) {
+      errorBody = (await response.json().catch(() => null)) as ErrorBody | null;
+    }
+    throw new ApiError(errorBody?.message || 'The file could not be downloaded.', response.status, errorBody);
+  }
+
+  return response.blob();
+}
+
 const apiClient = {
   get: <T>(endpoint: string, options: RequestOptions = {}) => request<T>(endpoint, { ...options, method: 'GET' }),
   post: <T>(endpoint: string, body?: Body, options: RequestOptions = {}) =>
@@ -146,6 +176,7 @@ const apiClient = {
     request<T>(endpoint, { ...options, method: 'PATCH', body }),
   delete: <T = unknown>(endpoint: string, options: RequestOptions = {}) =>
     request<T>(endpoint, { ...options, method: 'DELETE' }),
+  blob: requestBlob,
 };
 
 export default apiClient;

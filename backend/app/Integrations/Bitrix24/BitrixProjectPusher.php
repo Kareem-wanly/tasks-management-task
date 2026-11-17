@@ -5,6 +5,7 @@ namespace App\Integrations\Bitrix24;
 use App\Models\BitrixOutboundOp;
 use App\Models\Project;
 use App\Models\User;
+use App\Repositories\Contracts\BitrixOutboundOpRepositoryInterface;
 use Carbon\CarbonInterface;
 
 /**
@@ -29,7 +30,11 @@ class BitrixProjectPusher
     /** project_user.role => Bitrix member role. The owner is set by Bitrix itself. */
     private const MEMBER_ROLES = ['moderator' => 'E', 'member' => 'K'];
 
-    public function __construct(private readonly BitrixClient $bitrix) {}
+    public function __construct(
+        private readonly BitrixClient $bitrix,
+        private readonly BitrixOutboundOpRepositoryInterface $ops,
+        private readonly BitrixFingerprint $fingerprints,
+    ) {}
 
     /**
      * New projects are Bitrix projects; the creator becomes the group owner.
@@ -44,7 +49,7 @@ class BitrixProjectPusher
         $groupId = (int) ($this->bitrix->callAsUser($actor, 'sonet_group.create', $fields)['result'] ?? 0);
         $project->bitrix_group_id = $groupId ?: throw BitrixException::cannotSync('Bitrix24 did not return the new project.');
         $project->bitrix_synced_at = now();
-        BitrixOutboundOp::record(BitrixOutboundOp::PROJECT, $groupId, 'create', BitrixFingerprint::project($project), $actor);
+        $this->ops->record(BitrixOutboundOp::PROJECT, $groupId, 'create', $this->fingerprints->project($project), $actor);
     }
 
     /**
@@ -71,7 +76,7 @@ class BitrixProjectPusher
         $this->ensureLinked($actor);
         $this->bitrix->callAsUser($actor, 'sonet_group.update', ['GROUP_ID' => $project->bitrix_group_id, ...$fields]);
         $project->bitrix_synced_at = now();
-        BitrixOutboundOp::record(BitrixOutboundOp::PROJECT, $project->bitrix_group_id, 'update', BitrixFingerprint::project($project), $actor);
+        $this->ops->record(BitrixOutboundOp::PROJECT, $project->bitrix_group_id, 'update', $this->fingerprints->project($project), $actor);
     }
 
     /**
@@ -86,7 +91,7 @@ class BitrixProjectPusher
 
         $this->ensureLinked($actor);
         $this->bitrix->callAsUser($actor, 'sonet_group.update', ['GROUP_ID' => $project->bitrix_group_id, 'CLOSED' => 'Y']);
-        BitrixOutboundOp::record(BitrixOutboundOp::PROJECT, $project->bitrix_group_id, 'delete', null, $actor);
+        $this->ops->record(BitrixOutboundOp::PROJECT, $project->bitrix_group_id, 'delete', null, $actor);
     }
 
     public function addMember(User $actor, Project $project, User $member, string $role): void

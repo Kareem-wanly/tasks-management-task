@@ -55,4 +55,33 @@ interface UserRepositoryInterface
 
     /** The user with roles loaded. */
     public function withRoles(User $user): User;
+
+    public function findByBitrixId(int $bitrixId): ?User;
+
+    public function idByBitrixId(int $bitrixId): ?int;
+
+    /**
+     * Our IDs of the given Bitrix users we have.
+     *
+     * @param  list<int>  $bitrixIds
+     * @return array<int, int> Bitrix user ID => our user ID
+     */
+    public function idsByBitrixIds(array $bitrixIds): array;
+
+    public function bitrixIdOf(int $userId): ?int;
+
+    /**
+     * id, name and Bitrix ID of the given users.
+     *
+     * @param  list<int>  $userIds
+     */
+    public function findMany(array $userIds): Collection;
+
+    /** An account with this email (any case) that isn't linked to Bitrix yet. */
+    public function findUnlinkedByEmail(string $email): ?User;
+
+    public function emailTaken(string $email, ?int $exceptUserId = null): bool;
+
+    /** @param  array<string, mixed>  $attributes  Saved as given (Bitrix columns are not fillable). */
+    public function forceCreate(array $attributes): User;
 }

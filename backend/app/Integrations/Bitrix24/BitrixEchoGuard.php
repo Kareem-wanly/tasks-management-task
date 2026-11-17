@@ -2,11 +2,14 @@
 
 namespace App\Integrations\Bitrix24;
 
-use App\Models\ActivityLog;
 use App\Models\BitrixOutboundOp;
 use App\Models\Project;
 use App\Models\Task;
-use Illuminate\Database\Eloquent\Collection;
+use App\Repositories\Contracts\ActivityLogRepositoryInterface;
+use App\Repositories\Contracts\BitrixOutboundOpRepositoryInterface;
+use App\Repositories\Contracts\ProjectRepositoryInterface;
+use App\Repositories\Contracts\TaskRepositoryInterface;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -18,6 +21,14 @@ use Illuminate\Support\Facades\Log;
  */
 class BitrixEchoGuard
 {
+    public function __construct(
+        private readonly BitrixOutboundOpRepositoryInterface $ops,
+        private readonly TaskRepositoryInterface $tasks,
+        private readonly ProjectRepositoryInterface $projects,
+        private readonly ActivityLogRepositoryInterface $activities,
+        private readonly BitrixFingerprint $fingerprints,
+    ) {}
+
     /**
      * @param  array<string, mixed>|null  $attributes  Our columns for the fetched task; null when it is gone from Bitrix.
      * @param  array{accomplice: list<int>, auditor: list<int>}|null  $members  Its accomplices and auditors (Bitrix IDs).
@@ -25,16 +36,16 @@ class BitrixEchoGuard
      */
     public function isTaskEcho(int $bitrixTaskId, ?array $attributes, ?array $members = null): bool
     {
-        $ops = BitrixOutboundOp::pending(BitrixOutboundOp::TASK, $bitrixTaskId);
+        $ops = $this->ops->pending(BitrixOutboundOp::TASK, $bitrixTaskId);
         if ($ops->isEmpty()) {
             return false;
         }
 
         $fingerprint = $attributes === null
             ? null
-            : BitrixFingerprint::task((new Task)->forceFill($attributes), $members ?? ['accomplice' => [], 'auditor' => []]);
+            : $this->fingerprints->task((new Task)->forceFill($attributes), $members ?? ['accomplice' => [], 'auditor' => []]);
 
-        return $this->settle($ops, $fingerprint, Task::withTrashed()->where('bitrix_task_id', $bitrixTaskId)->first());
+        return $this->settle($ops, $fingerprint, $this->tasks->findByBitrixId($bitrixTaskId, withTrashed: true));
     }
 
     /**
@@ -42,19 +53,19 @@ class BitrixEchoGuard
      */
     public function isProjectEcho(int $bitrixGroupId, ?array $attributes, bool $closed): bool
     {
-        $ops = BitrixOutboundOp::pending(BitrixOutboundOp::PROJECT, $bitrixGroupId);
+        $ops = $this->ops->pending(BitrixOutboundOp::PROJECT, $bitrixGroupId);
         if ($ops->isEmpty()) {
             return false;
         }
 
         $fingerprint = $attributes === null
             ? null
-            : BitrixFingerprint::project((new Project)->forceFill([...$attributes, 'status' => $closed ? 'archived' : 'active']));
+            : $this->fingerprints->project((new Project)->forceFill([...$attributes, 'status' => $closed ? 'archived' : 'active']));
 
         // Deleting here archives the group, so a closed group answers our delete.
         $answers = fn (BitrixOutboundOp $op) => $op->isDelete() && $closed;
 
-        return $this->settle($ops, $fingerprint, Project::withTrashed()->where('bitrix_group_id', $bitrixGroupId)->first(), $answers);
+        return $this->settle($ops, $fingerprint, $this->projects->findByBitrixGroupId($bitrixGroupId, withTrashed: true), $answers);
     }
 
     /**
@@ -72,13 +83,13 @@ class BitrixEchoGuard
             || ($alsoAnswers && $alsoAnswers($op)));
 
         if ($answered) {
-            $answered->confirm();
+            $this->ops->settle($answered, BitrixOutboundOp::CONFIRMED);
 
             return true;
         }
 
         $newest = $ops->first();
-        $newest->markConflict();
+        $this->ops->settle($newest, BitrixOutboundOp::CONFLICT);
         $this->logConflict($newest, $record);
 
         return false;
@@ -94,7 +105,7 @@ class BitrixEchoGuard
         }
 
         $isTask = $record instanceof Task;
-        ActivityLog::create([
+        $this->activities->create([
             'user_id' => $op->user_id,
             'project_id' => $isTask ? $record->project_id : $record->id,
             'task_id' => $isTask ? $record->id : null,

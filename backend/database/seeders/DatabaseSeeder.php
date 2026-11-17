@@ -3,9 +3,9 @@
 namespace Database\Seeders;
 
 use App\Models\ActivityLog;
-use App\Models\Comment;
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\TaskChatMessage;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -47,11 +47,11 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        Comment::firstOrCreate(
+        TaskChatMessage::firstOrCreate(
             [
                 'task_id' => $task->id,
-                'user_id' => $adminUser->id,
-                'body' => 'Initial models and migrations are completed!',
+                'author_id' => $adminUser->id,
+                'text' => 'Initial models and migrations are completed!',
             ]
         );
 

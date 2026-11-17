@@ -33,4 +33,33 @@ interface TaskLookupRepositoryInterface
      * @return list<int>
      */
     public function systemBitrixIds(string $model): array;
+
+    /**
+     * Our key for a Bitrix value (a Bitrix row beats our own value that sends the same number).
+     *
+     * @param  class-string<TaskLookup>  $model
+     */
+    public function keyForBitrix(string $model, int $bitrixId): ?string;
+
+    /**
+     * The Bitrix value a key of ours is sent as.
+     *
+     * @param  class-string<TaskLookup>  $model
+     */
+    public function bitrixIdForKey(string $model, ?string $key): ?int;
+
+    /** Whether any task (deleted ones too) uses the value. */
+    public function isUsed(TaskLookup $lookup): bool;
+
+    /**
+     * The value that mirrors a Bitrix one, if we have it.
+     *
+     * @param  class-string<TaskLookup>  $model
+     */
+    public function findSystem(string $model, int $bitrixId): ?TaskLookup;
+
+    /** @param  class-string<TaskLookup>  $model */
+    public function nextSort(string $model): int;
+
+    public function save(TaskLookup $lookup): void;
 }

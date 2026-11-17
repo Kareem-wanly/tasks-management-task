@@ -41,4 +41,20 @@ interface TaskChecklistRepositoryInterface
 
     /** The other items of the item's list, in order. */
     public function siblingsOf(TaskChecklistItem $item): Collection;
+
+    /**
+     * The task's items that came from Bitrix.
+     *
+     * @return Collection<int, TaskChecklistItem> By Bitrix item ID.
+     */
+    public function bitrixItems(Task $task): Collection;
+
+    public function save(TaskChecklistItem $item): void;
+
+    /**
+     * Deletes the task's Bitrix items not in the list.
+     *
+     * @param  list<int>  $bitrixItemIds
+     */
+    public function deleteBitrixItemsExcept(Task $task, array $bitrixItemIds): void;
 }

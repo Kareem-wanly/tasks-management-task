@@ -6,8 +6,8 @@ use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixException;
 use App\Integrations\Bitrix24\BitrixProjectSync;
 use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;
-use App\Models\BitrixSyncCursor;
-use App\Models\Project;
+use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
+use App\Repositories\Contracts\ProjectRepositoryInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -28,9 +28,9 @@ class ImportBitrixProjects implements ShouldQueue
         $this->onQueue('bitrix');
     }
 
-    public function handle(BitrixClient $bitrix, BitrixProjectSync $projects): void
+    public function handle(BitrixClient $bitrix, BitrixProjectSync $projects, BitrixSyncCursorRepositoryInterface $cursors, ProjectRepositoryInterface $projectRepository): void
     {
-        $cursor = BitrixSyncCursor::start(self::ENTITY);
+        $cursor = $cursors->start(self::ENTITY);
         $skipped = 0;
         $seen = [];
 
@@ -39,7 +39,7 @@ class ImportBitrixProjects implements ShouldQueue
             'order' => ['ID' => 'ASC'],
             // Without it the list is limited to groups the service user can see.
             'params' => ['IS_ADMIN' => 'Y'],
-        ], function (array $page, int $total) use ($bitrix, $projects, $cursor, &$skipped, &$seen) {
+        ], function (array $page, int $total) use ($bitrix, $projects, $cursor, $cursors, &$skipped, &$seen) {
             $groups = $page['workgroups'] ?? [];
 
             if ($groups !== []) {
@@ -53,12 +53,12 @@ class ImportBitrixProjects implements ShouldQueue
                 }
             }
 
-            $cursor->advance(count($groups), $total);
+            $cursors->advance($cursor, count($groups), $total);
         });
 
-        $deleted = $this->deleteMissing($seen);
+        $deleted = $this->deleteMissing($projectRepository, $seen);
 
-        $cursor->complete();
+        $cursors->complete($cursor);
         Log::info('Bitrix24 projects imported.', ['processed' => $cursor->processed, 'skipped' => $skipped, 'deleted' => $deleted, 'portal_total' => $total]);
     }
 
@@ -68,17 +68,14 @@ class ImportBitrixProjects implements ShouldQueue
      *
      * @param  list<int>  $seen
      */
-    private function deleteMissing(array $seen): int
+    private function deleteMissing(ProjectRepositoryInterface $projects, array $seen): int
     {
         // An empty listing is more likely a Bitrix hiccup than an empty portal.
         if ($seen === []) {
             return 0;
         }
 
-        $gone = Project::whereNotNull('bitrix_group_id')->whereNotIn('bitrix_group_id', $seen)->get();
-        $gone->each->delete();
-
-        return $gone->count();
+        return $projects->deleteMissingFromBitrix($seen);
     }
 
     /**

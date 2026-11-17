@@ -4,6 +4,7 @@ namespace App\Integrations\Bitrix24;
 
 use App\Models\Task;
 use App\Models\TaskChecklistItem;
+use App\Repositories\Contracts\TaskChecklistRepositoryInterface;
 
 /**
  * Step 4.3: makes our copy of a task's checklists match Bitrix's
@@ -15,12 +16,14 @@ class BitrixChecklistSync
     /** Fields task.checklistitem.getlist must return for this sync. */
     public const SELECT = ['ID', 'PARENT_ID', 'TITLE', 'SORT_INDEX', 'IS_COMPLETE'];
 
+    public function __construct(private readonly TaskChecklistRepositoryInterface $checklists) {}
+
     /**
      * @param  list<array<string, mixed>>  $rows
      */
     public function sync(Task $task, array $rows): void
     {
-        $ours = $task->checklistItems()->whereNotNull('bitrix_item_id')->get()->keyBy('bitrix_item_id');
+        $ours = $this->checklists->bitrixItems($task);
         $byBitrixId = [];
 
         // Every row first, then the links: an item may come before its parent
@@ -38,7 +41,7 @@ class BitrixChecklistSync
 
         foreach ($byBitrixId as $item) {
             if (! $item->exists || $item->isDirty()) {
-                $item->save();
+                $this->checklists->save($item);
             }
         }
 
@@ -48,13 +51,10 @@ class BitrixChecklistSync
             $item->parent_id = $parentBitrixId === 0 ? null : ($byBitrixId[$parentBitrixId] ?? null)?->id;
 
             if ($item->isDirty()) {
-                $item->save();
+                $this->checklists->save($item);
             }
         }
 
-        $task->checklistItems()
-            ->whereNotNull('bitrix_item_id')
-            ->whereNotIn('bitrix_item_id', array_keys($byBitrixId) ?: [0])
-            ->delete();
+        $this->checklists->deleteBitrixItemsExcept($task, array_keys($byBitrixId));
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Repositories\Eloquent;
 
+use App\Models\Task;
 use App\Models\TaskLookup;
 use App\Repositories\Contracts\TaskLookupRepositoryInterface;
 use Illuminate\Support\Collection;
@@ -33,5 +34,40 @@ class TaskLookupRepository implements TaskLookupRepositoryInterface
     public function systemBitrixIds(string $model): array
     {
         return $model::where('is_system', true)->whereNotNull('bitrix_id')->pluck('bitrix_id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    public function keyForBitrix(string $model, int $bitrixId): ?string
+    {
+        return $model::where('bitrix_id', $model::normalizeBitrixId($bitrixId))
+            ->orderByDesc('is_system')
+            ->ordered()
+            ->value('key');
+    }
+
+    public function bitrixIdForKey(string $model, ?string $key): ?int
+    {
+        $bitrixId = $key === null ? null : $model::where('key', $key)->value('bitrix_id');
+
+        return $bitrixId === null ? null : (int) $bitrixId;
+    }
+
+    public function isUsed(TaskLookup $lookup): bool
+    {
+        return Task::withTrashed()->where($lookup::taskColumn(), $lookup->key)->exists();
+    }
+
+    public function findSystem(string $model, int $bitrixId): ?TaskLookup
+    {
+        return $model::where('is_system', true)->where('bitrix_id', $bitrixId)->first();
+    }
+
+    public function nextSort(string $model): int
+    {
+        return (int) $model::max('sort') + 1;
+    }
+
+    public function save(TaskLookup $lookup): void
+    {
+        $lookup->save();
     }
 }

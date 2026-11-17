@@ -88,14 +88,14 @@ class TasksWithoutProjectTest extends TestCase
         $this->deleteJson("/api/tasks/{$this->task->id}")->assertSuccessful();
     }
 
-    public function test_assignee_can_comment_and_others_cannot(): void
+    public function test_assignee_can_chat_and_others_cannot(): void
     {
         Sanctum::actingAs($this->assignee);
-        $this->postJson("/api/tasks/{$this->task->id}/comments", ['body' => 'On it'])->assertCreated();
-        $this->getJson("/api/tasks/{$this->task->id}/comments")->assertOk();
+        $this->postJson("/api/tasks/{$this->task->id}/chat", ['text' => 'On it'])->assertOk();
+        $this->getJson("/api/tasks/{$this->task->id}/chat")->assertOk()->assertJsonPath('data.0.text', 'On it');
 
         Sanctum::actingAs($this->outsider);
-        $this->getJson("/api/tasks/{$this->task->id}/comments")->assertForbidden();
+        $this->getJson("/api/tasks/{$this->task->id}/chat")->assertForbidden();
     }
 
     public function test_the_assignee_sees_a_project_task_outside_its_project_as_in_bitrix(): void

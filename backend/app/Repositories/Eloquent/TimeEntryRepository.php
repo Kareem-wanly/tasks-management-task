@@ -54,4 +54,19 @@ class TimeEntryRepository implements TimeEntryRepositoryInterface
     {
         $timer->delete();
     }
+
+    public function bitrixEntries(Task $task): Collection
+    {
+        return $task->elapsedItems()->whereNotNull('bitrix_item_id')->get()->keyBy('bitrix_item_id');
+    }
+
+    public function save(TaskElapsedItem $entry): void
+    {
+        $entry->save();
+    }
+
+    public function deleteBitrixEntriesExcept(Task $task, array $bitrixItemIds): void
+    {
+        $task->elapsedItems()->whereNotNull('bitrix_item_id')->whereNotIn('bitrix_item_id', $bitrixItemIds ?: [0])->delete();
+    }
 }

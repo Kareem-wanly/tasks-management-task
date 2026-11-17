@@ -106,4 +106,44 @@ class ProjectRepository implements ProjectRepositoryInterface
             'tasks as in_progress_tasks_count' => fn ($q) => $q->where('status', 'in_progress'),
         ];
     }
+
+    public function findByBitrixGroupId(int $bitrixGroupId, bool $withTrashed = false): ?Project
+    {
+        return Project::query()->when($withTrashed, fn ($q) => $q->withTrashed())->where('bitrix_group_id', $bitrixGroupId)->first();
+    }
+
+    public function idByBitrixGroupId(int $bitrixGroupId): ?int
+    {
+        return Project::where('bitrix_group_id', $bitrixGroupId)->value('id');
+    }
+
+    public function bitrixGroupIdOf(int $projectId): ?int
+    {
+        $groupId = Project::withTrashed()->whereKey($projectId)->value('bitrix_group_id');
+
+        return $groupId === null ? null : (int) $groupId;
+    }
+
+    public function restore(Project $project): void
+    {
+        $project->restore();
+    }
+
+    public function markSynced(Project $project): void
+    {
+        Project::withoutTimestamps(fn () => $project->forceFill(['bitrix_synced_at' => now()])->saveQuietly());
+    }
+
+    public function syncMembersWithRoles(Project $project, array $members): void
+    {
+        $project->members()->sync($members);
+    }
+
+    public function deleteMissingFromBitrix(array $bitrixGroupIds): int
+    {
+        $gone = Project::whereNotNull('bitrix_group_id')->whereNotIn('bitrix_group_id', $bitrixGroupIds)->get();
+        $gone->each->delete();
+
+        return $gone->count();
+    }
 }

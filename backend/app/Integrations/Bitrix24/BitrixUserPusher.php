@@ -2,8 +2,8 @@
 
 namespace App\Integrations\Bitrix24;
 
-use App\Models\BitrixPortal;
 use App\Models\User;
+use App\Repositories\Contracts\BitrixPortalRepositoryInterface;
 
 /**
  * Step 3.3: sends employee changes made in our app to Bitrix24, with the
@@ -14,7 +14,10 @@ use App\Models\User;
  */
 class BitrixUserPusher
 {
-    public function __construct(private readonly BitrixClient $bitrix) {}
+    public function __construct(
+        private readonly BitrixClient $bitrix,
+        private readonly BitrixPortalRepositoryInterface $portals,
+    ) {}
 
     /**
      * Invites the (unsaved) user: Bitrix emails them an invitation, and the
@@ -93,7 +96,7 @@ class BitrixUserPusher
     /** The top of the company structure (the department without a parent). */
     private function rootDepartmentId(): int
     {
-        foreach (BitrixPortal::current()?->departments ?? [] as $department) {
+        foreach ($this->portals->current()?->departments ?? [] as $department) {
             if (empty($department['PARENT'])) {
                 return (int) $department['ID'];
             }

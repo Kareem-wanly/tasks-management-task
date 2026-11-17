@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Jobs\Bitrix\ImportBitrixProjects;
 use App\Jobs\Bitrix\ImportBitrixTasks;
-use App\Models\BitrixSyncCursor;
+use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
 use Illuminate\Console\Command;
 
 /**
@@ -21,9 +21,9 @@ class SyncBitrixChanges extends Command
     /** Overlap with the previous run, against clock drift between us and Bitrix. */
     private const OVERLAP_SECONDS = 60;
 
-    public function handle(): int
+    public function handle(BitrixSyncCursorRepositoryInterface $cursors): int
     {
-        $since = BitrixSyncCursor::for(ImportBitrixTasks::ENTITY)->last_synced_at;
+        $since = $cursors->forEntity(ImportBitrixTasks::ENTITY)->last_synced_at;
 
         // Never synced: nothing to measure changes against, so import everything.
         if ($since === null) {

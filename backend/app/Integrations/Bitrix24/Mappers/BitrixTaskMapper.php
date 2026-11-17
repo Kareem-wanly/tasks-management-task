@@ -4,6 +4,7 @@ namespace App\Integrations\Bitrix24\Mappers;
 
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
+use App\Repositories\Contracts\TaskLookupRepositoryInterface;
 use Carbon\Carbon;
 
 /**
@@ -21,6 +22,8 @@ class BitrixTaskMapper
 
     private const DEFAULT_PRIORITY = 1;
 
+    public function __construct(private readonly TaskLookupRepositoryInterface $lookups) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -34,10 +37,10 @@ class BitrixTaskMapper
             'title' => $title !== '' ? $title : "Bitrix task {$task['id']}",
             // Bitrix keeps descriptions in BBCode; stored as-is for now.
             'description' => $description !== '' ? $description : null,
-            'status' => TaskStatus::keyForBitrix((int) ($task['status'] ?? 0))
-                ?? TaskStatus::keyForBitrix(self::DEFAULT_STATUS),
-            'priority' => TaskPriority::keyForBitrix((int) ($task['priority'] ?? 0))
-                ?? TaskPriority::keyForBitrix(self::DEFAULT_PRIORITY),
+            'status' => $this->lookups->keyForBitrix(TaskStatus::class, (int) ($task['status'] ?? 0))
+                ?? $this->lookups->keyForBitrix(TaskStatus::class, self::DEFAULT_STATUS),
+            'priority' => $this->lookups->keyForBitrix(TaskPriority::class, (int) ($task['priority'] ?? 0))
+                ?? $this->lookups->keyForBitrix(TaskPriority::class, self::DEFAULT_PRIORITY),
             'due_date' => $this->dateTime($task['deadline'] ?? null),
             'allow_time_tracking' => ($task['allowTimeTracking'] ?? 'N') === 'Y',
             'time_estimate' => (int) ($task['timeEstimate'] ?? 0),

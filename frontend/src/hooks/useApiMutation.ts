@@ -4,7 +4,7 @@ import { showToast } from '@/lib/toast/ToastContext';
 
 interface ApiMutationOptions<TData, TVariables> {
   mutationFn: (variables: TVariables) => Promise<TData>;
-  /** Toast shown on success; a function receives the result and the variables. */
+  /** Toast shown on success; a function receives the result and the variables. Empty text shows none. */
   successMessage?: string | ((data: TData, variables: TVariables) => string);
   /** Fallback toast text when the server sends no message. */
   errorMessage: string;
@@ -40,8 +40,9 @@ export default function useApiMutation<TData = unknown, TVariables = void>({
     mutationFn,
     onSuccess: async (data, variables) => {
       await Promise.all(invalidate.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
-      if (successMessage) {
-        showToast(typeof successMessage === 'function' ? successMessage(data, variables) : successMessage, 'success');
+      const message = typeof successMessage === 'function' ? successMessage(data, variables) : successMessage;
+      if (message) {
+        showToast(message, 'success');
       }
       onSuccess?.(data, variables);
     },

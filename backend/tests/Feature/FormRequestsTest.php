@@ -71,22 +71,22 @@ class FormRequestsTest extends TestCase
         ]);
     }
 
-    public function test_comment_outsider_gets_403_not_422(): void
+    public function test_chat_outsider_gets_403_not_422(): void
     {
         $task = $this->task($this->project($this->member()));
         Sanctum::actingAs($this->member());
 
-        $this->postJson("/api/tasks/{$task->id}/comments", ['body' => ''])->assertStatus(403);
+        $this->postJson("/api/tasks/{$task->id}/chat", ['text' => ''])->assertStatus(403);
     }
 
-    public function test_comment_body_is_validated_for_members(): void
+    public function test_chat_message_is_validated_for_members(): void
     {
         $owner = $this->member();
         $task = $this->task($this->project($owner));
         Sanctum::actingAs($owner);
 
-        $this->postJson("/api/tasks/{$task->id}/comments", ['body' => str_repeat('a', 5001)])->assertStatus(422);
-        $this->postJson("/api/tasks/{$task->id}/comments", ['body' => 'ok'])->assertStatus(201);
+        $this->postJson("/api/tasks/{$task->id}/chat", ['text' => str_repeat('a', 5001)])->assertStatus(422);
+        $this->postJson("/api/tasks/{$task->id}/chat", ['text' => 'ok'])->assertOk()->assertJsonPath('data.0.text', 'ok');
     }
 
     public function test_update_status_authorizes_before_validating(): void

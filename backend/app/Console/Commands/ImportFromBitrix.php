@@ -2,12 +2,16 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\Bitrix\ImportBitrixChat;
 use App\Jobs\Bitrix\ImportBitrixChecklists;
+use App\Jobs\Bitrix\ImportBitrixFiles;
 use App\Jobs\Bitrix\ImportBitrixProjects;
+use App\Jobs\Bitrix\ImportBitrixResults;
 use App\Jobs\Bitrix\ImportBitrixTasks;
 use App\Jobs\Bitrix\ImportBitrixTime;
 use App\Jobs\Bitrix\ImportBitrixUsers;
 use App\Models\BitrixSyncCursor;
+use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Bus;
 use Symfony\Component\Console\Helper\ProgressBar;
@@ -20,11 +24,11 @@ use Throwable;
 class ImportFromBitrix extends Command
 {
     protected $signature = 'bitrix:import
-        {--only= : Comma-separated subset of users,projects,tasks,checklists,time}
+        {--only= : Comma-separated subset of users,projects,tasks,checklists,time,files,results,chat}
         {--sync : Run now in this process, with a progress bar, instead of queueing}
         {--status : Show the progress of the last import and exit}';
 
-    protected $description = 'Import users, projects, tasks, checklists and time logs from Bitrix24';
+    protected $description = 'Import users, projects, tasks and their checklists, time logs, files, results and chats from Bitrix24';
 
     /** In the order they must run. */
     private const JOBS = [
@@ -33,6 +37,9 @@ class ImportFromBitrix extends Command
         ImportBitrixTasks::ENTITY => ImportBitrixTasks::class,
         ImportBitrixChecklists::ENTITY => ImportBitrixChecklists::class,
         ImportBitrixTime::ENTITY => ImportBitrixTime::class,
+        ImportBitrixFiles::ENTITY => ImportBitrixFiles::class,
+        ImportBitrixResults::ENTITY => ImportBitrixResults::class,
+        ImportBitrixChat::ENTITY => ImportBitrixChat::class,
     ];
 
     private ?ProgressBar $bar = null;
@@ -132,7 +139,7 @@ class ImportFromBitrix extends Command
 
     private function showStatus(): int
     {
-        $cursors = BitrixSyncCursor::whereIn('entity', array_keys(self::JOBS))->get()->keyBy('entity');
+        $cursors = app(BitrixSyncCursorRepositoryInterface::class)->forEntities(array_keys(self::JOBS));
 
         $this->table(['Entity', 'Status', 'Processed', 'Total', 'Last synced', 'Error'], array_map(function (string $entity) use ($cursors) {
             $cursor = $cursors->get($entity);

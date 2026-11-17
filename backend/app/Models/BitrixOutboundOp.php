@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * A change we sent to Bitrix24 (step 3.5). Bitrix echoes it back as an
  * event: matching the fingerprint confirms it; a different record within
  * the window means someone changed it in Bitrix right after us (conflict).
+ * Stored and queried through BitrixOutboundOpRepository.
  */
 class BitrixOutboundOp extends Model
 {
@@ -27,58 +27,8 @@ class BitrixOutboundOp extends Model
 
     protected $fillable = ['entity', 'bitrix_id', 'action', 'fingerprint', 'status', 'user_id'];
 
-    public static function record(string $entity, int $bitrixId, string $action, ?string $fingerprint, User $actor): self
-    {
-        return static::create([
-            'entity' => $entity,
-            'bitrix_id' => $bitrixId,
-            'action' => $action,
-            'fingerprint' => $fingerprint,
-            'status' => self::SENT,
-            'user_id' => $actor->id,
-        ]);
-    }
-
-    /**
-     * Our recent unanswered changes to this record, newest first. Quick
-     * successive changes can all be waiting when the first event arrives.
-     *
-     * @return Collection<int, self>
-     */
-    public static function pending(string $entity, int $bitrixId): Collection
-    {
-        return static::where('entity', $entity)
-            ->where('bitrix_id', $bitrixId)
-            ->where('status', self::SENT)
-            ->where('created_at', '>=', now()->subSeconds(self::WINDOW_SECONDS))
-            ->latest('id')
-            ->get();
-    }
-
     public function isDelete(): bool
     {
         return $this->action === 'delete';
-    }
-
-    /** Also answers our earlier changes to the record: Bitrix has moved past them. */
-    public function confirm(): void
-    {
-        $this->settleUpToHere(self::CONFIRMED);
-    }
-
-    /** Bitrix's version replaces this change and any earlier one still waiting. */
-    public function markConflict(): void
-    {
-        $this->settleUpToHere(self::CONFLICT);
-    }
-
-    private function settleUpToHere(string $status): void
-    {
-        static::where('entity', $this->entity)
-            ->where('bitrix_id', $this->bitrix_id)
-            ->where('status', self::SENT)
-            ->where('id', '<=', $this->id)
-            ->update(['status' => $status, 'updated_at' => now()]);
-        $this->status = $status;
     }
 }
