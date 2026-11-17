@@ -53,7 +53,8 @@ class TaskResultService
     {
         $task = $result->task;
 
-        $this->bitrix->handles($task)
+        // Decided by the result itself: one made here before the task was linked stays here.
+        $result->bitrix_result_id !== null
             ? $this->bitrix->update($actor, $result, $text)
             : $this->results->update($result, $text);
 
@@ -64,7 +65,7 @@ class TaskResultService
     {
         $task = $result->task;
 
-        $this->bitrix->handles($task)
+        $result->bitrix_result_id !== null
             ? $this->bitrix->delete($actor, $result)
             : $this->results->delete($result);
 

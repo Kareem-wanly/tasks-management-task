@@ -183,6 +183,20 @@ class BitrixTaskResultsTest extends TestCase
         Http::assertNothingSent();
     }
 
+    /** Review C7: a result made here before the task was linked to Bitrix is still edited and deleted here. */
+    public function test_a_local_result_on_a_task_now_in_bitrix_changes_here(): void
+    {
+        $result = TaskResult::create(['task_id' => $this->task->id, 'author_id' => $this->actor->id, 'text' => 'Before Bitrix']);
+
+        $this->putJson("/api/task-results/{$result->id}", ['text' => 'Reworded'])->assertOk();
+        $this->assertSame('Reworded', $result->fresh()->text);
+
+        $this->deleteJson("/api/task-results/{$result->id}")->assertOk();
+        $this->assertNull($result->fresh());
+
+        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'tasks.task.result.update') || str_contains($r->url(), 'tasks.task.result.delete'));
+    }
+
     public function test_the_nightly_pass_brings_in_every_tasks_results(): void
     {
         $this->bitrixResult('From Bitrix', 5);
