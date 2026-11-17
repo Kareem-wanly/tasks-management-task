@@ -45,7 +45,7 @@ These rules are hard requirements, not suggestions. Most are enforced by `npm ru
 ## 3. Data fetching (TanStack Query)
 
 - Reference implementation: `src/features/users/` (list query, filters in the URL, mutations, dialogs).
-- Pages and components **never** call `fetch` or `apiClient` directly. Query functions call the modules in `src/api/` (`tasksApi`, `projectsApi`, `usersApi`, `rolesApi`, `chatApi`, `activitiesApi`, `authApi`).
+- Pages and components **never** call `fetch` or `apiClient` directly. Query functions call the modules in `src/api/` (`tasksApi`, `projectsApi`, `usersApi`, `rolesApi`, `commentsApi`, `activitiesApi`, `authApi`).
 - **Reads use `useQuery`**, with keys from `src/api/queryKeys.ts` and the `signal` passed through:
   ```ts
   useQuery({
