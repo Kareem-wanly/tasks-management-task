@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class AddProjectMemberRequest extends FormRequest
 {
@@ -14,7 +15,9 @@ class AddProjectMemberRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'user_id' => ['required', 'integer', 'exists:users,id'],
+            // Only active accounts; the add is written to Bitrix with the service account (SEC-2).
+            // Users who aren't in Bitrix are refused by BitrixProjectPusher before any call.
+            'user_id' => ['required', 'integer', Rule::exists('users', 'id')->where('is_active', true)],
             'role' => ['sometimes', 'string', 'in:member,moderator'],
         ];
     }
