@@ -189,7 +189,8 @@ class BitrixTaskFilesTest extends TestCase
         Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'disk.file.delete'));
     }
 
-    public function test_a_download_streams_the_file_with_a_link_asked_for_as_the_employee(): void
+    /** Review C5: the link is asked for with the service account, after our own visibility check. */
+    public function test_a_download_streams_the_file_through_the_service_account(): void
     {
         $this->attach(24, 197, 'plan.pdf', 5);
         $this->getJson("/api/tasks/{$this->task->id}/files");

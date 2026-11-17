@@ -36,7 +36,7 @@ class TaskFileController extends Controller
 
     public function download(DownloadTaskFileRequest $request, TaskFile $file): StreamedResponse
     {
-        $download = $this->files->download($request->user(), $file);
+        $download = $this->files->download($file);
 
         return response()->streamDownload($download->send, $download->name, ['Content-Type' => $download->mime ?? 'application/octet-stream']);
     }

@@ -253,19 +253,22 @@ class BitrixTaskChatTest extends TestCase
         $this->chat()->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('meta.stale', true);
     }
 
-    public function test_a_file_from_the_chat_downloads_with_a_link_asked_for_as_the_employee(): void
+    /** Review C5: whoever reads the chat downloads its files, through the service account. */
+    public function test_a_file_from_the_chat_downloads_through_the_service_account(): void
     {
         $this->files = [['id' => 202, 'name' => 'plan.png', 'size' => 2048, 'type' => 'image']];
         $this->say(6, '', ['FILE_ID' => [202]]);
         $this->chat();
         $message = TaskChatMessage::sole();
-        Sanctum::actingAs($this->colleague);
+        // Not signed in with Bitrix24: downloading must still work.
+        $this->colleague->forceFill(['bitrix_access_token' => null, 'bitrix_refresh_token' => null])->save();
+        Sanctum::actingAs($this->colleague->fresh());
 
         $response = $this->get("/api/task-chat-messages/{$message->id}/files/202/download");
 
         $response->assertOk()->assertHeader('content-disposition', 'attachment; filename=plan.png');
         $this->assertSame('file-bytes', $response->streamedContent());
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'disk.file.get.json') && $r['auth'] === 'colleague-access');
+        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'disk.file.get.json') && $r['auth'] === 'actor-access');
 
         // Only files of that message.
         $this->get("/api/task-chat-messages/{$message->id}/files/999/download")->assertForbidden();

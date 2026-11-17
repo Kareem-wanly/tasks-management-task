@@ -150,15 +150,14 @@ class BitrixFilePusher
     }
 
     /**
-     * A download link for the file, asked for with the employee's token so
-     * Bitrix checks they may open it. It carries their token: never send it
-     * to the browser, stream it with stream().
+     * A download link for the file, asked for with the service account: who
+     * may download is decided by our own rules (whoever sees the task), so
+     * people without a Bitrix24 sign-in can download too. The link carries
+     * the service token: never send it to the browser, open it with open().
      */
-    public function downloadUrl(User $actor, TaskFile $file): string
+    public function downloadUrl(TaskFile $file): string
     {
-        $this->ensureLinked($actor);
-
-        $url = $this->bitrix->callAsUser($actor, 'disk.attachedObject.get', ['id' => $file->attached_object_id])['result']['DOWNLOAD_URL'] ?? null;
+        $url = $this->bitrix->callAsService('disk.attachedObject.get', ['id' => $file->attached_object_id])['result']['DOWNLOAD_URL'] ?? null;
 
         return is_string($url) && $url !== '' ? $url : throw BitrixException::cannotSync('Bitrix24 did not return the file.');
     }

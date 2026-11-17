@@ -81,12 +81,12 @@ class TaskChatService
     }
 
     /** A file sent in the chat in Bitrix (the request checks it belongs to the message). */
-    public function download(User $actor, TaskChatMessage $message, int $bitrixFileId): FileDownload
+    public function download(TaskChatMessage $message, int $bitrixFileId): FileDownload
     {
         $file = $message->file($bitrixFileId);
 
         // Opened before the response starts, so a refusal is a normal error.
-        $body = $this->bitrix->open($this->bitrix->downloadUrl($actor, $bitrixFileId));
+        $body = $this->bitrix->open($this->bitrix->downloadUrl($bitrixFileId));
 
         return FileDownload::fromStream((string) ($file['name'] ?? 'file'), null, $body);
     }

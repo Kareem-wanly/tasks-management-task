@@ -76,14 +76,14 @@ class TaskFileService
         return $this->current($task);
     }
 
-    public function download(User $actor, TaskFile $file): FileDownload
+    public function download(TaskFile $file): FileDownload
     {
         if (! $file->isInBitrix()) {
             return new FileDownload($file->name, $file->mime, fn () => fpassthru(Storage::disk(self::DISK)->readStream((string) $file->path)));
         }
 
         // Opened before the response starts, so a refusal is a normal error.
-        $body = $this->bitrix->open($this->bitrix->downloadUrl($actor, $file));
+        $body = $this->bitrix->open($this->bitrix->downloadUrl($file));
 
         return FileDownload::fromStream($file->name, $file->mime, $body);
     }

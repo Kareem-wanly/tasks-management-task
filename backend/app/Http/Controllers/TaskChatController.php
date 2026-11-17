@@ -42,7 +42,7 @@ class TaskChatController extends Controller
 
     public function download(DownloadTaskChatFileRequest $request, TaskChatMessage $message): StreamedResponse
     {
-        $download = $this->chat->download($request->user(), $message, $request->fileId());
+        $download = $this->chat->download($message, $request->fileId());
 
         return response()->streamDownload($download->send, $download->name, ['Content-Type' => 'application/octet-stream']);
     }
