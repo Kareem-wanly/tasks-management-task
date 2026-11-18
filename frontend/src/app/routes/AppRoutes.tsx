@@ -25,7 +25,8 @@ export default function AppRoutes() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/auth/bitrix/callback" element={<BitrixCallbackPage />} />
+        {/* Not /auth/bitrix/callback: that path is Laravel's, on the same address. */}
+        <Route path="/auth/bitrix/done" element={<BitrixCallbackPage />} />
         <Route path="/auth/bitrix/app" element={<BitrixAppPage />} />
         <Route path="/403" element={<ForbiddenPage />} />
         <Route path="/unauthorized" element={<Navigate to="/403" replace />} />
