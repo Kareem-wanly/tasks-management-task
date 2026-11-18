@@ -13,6 +13,8 @@ export interface RequestOptions extends Omit<RequestInit, 'body' | 'headers'> {
 interface ErrorBody {
   message?: string;
   errors?: ValidationErrors;
+  /** A machine-readable cause some endpoints add (e.g. Bitrix24 sign-in). */
+  reason?: string;
 }
 
 export class ApiError extends Error {

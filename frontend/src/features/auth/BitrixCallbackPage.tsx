@@ -3,20 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import authApi from '@/api/authApi';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { takeBitrixLoginNonce } from '@/lib/auth/bitrixLoginNonce';
 import AuthShell from './components/AuthShell';
-
-/** Reasons the backend puts in #error=... */
-const ERROR_MESSAGES: Record<string, string> = {
-  invalid_state: 'The sign-in link expired or was opened twice. Please try again.',
-  unknown_portal: 'This Bitrix24 portal is not connected to the app.',
-  exchange_failed: 'Bitrix24 did not confirm the sign-in. Please try again.',
-  bitrix_rejected: 'Bitrix24 did not accept the sign-in. Please try again.',
-  inactive: 'Your account is deactivated. Contact your administrator.',
-  account_not_linked:
-    'An account with your email already exists here but is not linked to Bitrix24. Ask your administrator to link it, or sign in with your password.',
-};
-
-const DEFAULT_ERROR = 'Sign-in with Bitrix24 failed. Please try again.';
+import { BITRIX_SIGN_IN_DEFAULT_ERROR, BITRIX_SIGN_IN_ERRORS, BITRIX_SIGN_IN_OTHER_BROWSER } from './bitrixSignInErrors';
 
 /** Landing page of the Bitrix24 sign-in: the backend redirects here with a one-time #code=... or #error=... */
 export default function BitrixCallbackPage() {
@@ -36,18 +25,24 @@ export default function BitrixCallbackPage() {
     window.history.replaceState(null, '', window.location.pathname);
 
     const code = params.get('code');
+    const nonce = takeBitrixLoginNonce();
     if (!code) {
-      setError(ERROR_MESSAGES[params.get('error') ?? ''] ?? DEFAULT_ERROR);
+      setError(BITRIX_SIGN_IN_ERRORS[params.get('error') ?? ''] ?? BITRIX_SIGN_IN_DEFAULT_ERROR);
+      return;
+    }
+    // A code without this tab's nonce was not started here (e.g. a link someone sent).
+    if (!nonce) {
+      setError(BITRIX_SIGN_IN_OTHER_BROWSER);
       return;
     }
 
     authApi
-      .exchangeBitrixCode(code)
+      .exchangeBitrixCode(code, nonce)
       .then((token) => loginWithToken(token))
       .then(() => navigate('/', { replace: true }))
       .catch((err: unknown) => {
         console.error('Bitrix24 sign-in failed:', err);
-        setError(DEFAULT_ERROR);
+        setError(BITRIX_SIGN_IN_DEFAULT_ERROR);
       });
   }, [loginWithToken, navigate]);
 

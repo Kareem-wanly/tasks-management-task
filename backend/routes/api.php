@@ -22,6 +22,7 @@ Route::middleware('throttle:5,1')->group(function () {
 // Bitrix24 calls this itself, so there is no user auth.
 Route::post('/bitrix/install', [BitrixInstallController::class, 'install']);
 Route::post('/auth/bitrix/exchange', [BitrixAuthController::class, 'exchange'])->middleware('throttle:10,1');
+Route::post('/auth/bitrix/app-session', [BitrixAuthController::class, 'appSession'])->middleware('throttle:10,1');
 
 Route::middleware('auth:sanctum')->group(function () {
 
