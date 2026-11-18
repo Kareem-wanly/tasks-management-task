@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Bitrix24;
 
+use App\Enums\ProjectStatus;
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
@@ -89,7 +90,7 @@ class BitrixProjectPushTest extends TestCase
         $request = $this->sent('sonet_group.update');
         $this->assertSame(['GROUP_ID' => 40, 'NAME' => 'Renamed'], array_diff_key($request->data(), ['auth' => true]));
         // on_hold has no Bitrix equivalent: kept here only.
-        $this->assertSame('on_hold', $project->fresh()->status);
+        $this->assertSame(ProjectStatus::OnHold, $project->fresh()->status);
     }
 
     public function test_only_local_status_change_sends_nothing(): void

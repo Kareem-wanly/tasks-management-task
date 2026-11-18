@@ -8,6 +8,7 @@ use App\DTOs\User\InviteUserDTO;
 use App\DTOs\User\SetUserActiveDTO;
 use App\DTOs\User\UpdateUserDTO;
 use App\DTOs\User\UserFiltersDTO;
+use App\Enums\SystemRole;
 use App\Exceptions\User\AdministratorChangeDeniedException;
 use App\Exceptions\User\CannotDeactivateOwnAccountException;
 use App\Integrations\Bitrix24\BitrixUserPusher;
@@ -88,7 +89,7 @@ final readonly class UserService implements UserServiceInterface
         if ($user->is($actor)) {
             throw new CannotDeactivateOwnAccountException;
         }
-        if ($user->hasRole('Administrator') && ! $actor->hasRole('Administrator')) {
+        if ($user->hasRole(SystemRole::Administrator) && ! $actor->hasRole(SystemRole::Administrator)) {
             throw new AdministratorChangeDeniedException;
         }
 

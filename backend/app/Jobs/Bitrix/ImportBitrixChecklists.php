@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Bitrix;
 
+use App\Enums\QueueName;
 use App\Integrations\Bitrix24\BitrixChecklistSync;
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
@@ -28,7 +29,7 @@ class ImportBitrixChecklists implements ShouldQueue
 
     public function __construct()
     {
-        $this->onQueue('bitrix');
+        $this->onQueue(QueueName::Bitrix);
     }
 
     public function handle(BitrixClient $bitrix, BitrixChecklistSync $checklists, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $taskRepository): void

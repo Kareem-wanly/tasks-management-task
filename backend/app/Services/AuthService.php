@@ -8,6 +8,7 @@ use App\DTOs\Auth\LoginDTO;
 use App\DTOs\Auth\RegisterDTO;
 use App\DTOs\Auth\UpdatePasswordDTO;
 use App\DTOs\Auth\UpdateProfileDTO;
+use App\Enums\SystemRole;
 use App\Exceptions\Auth\AccountDeactivatedException;
 use App\Exceptions\Auth\InvalidCredentialsException;
 use App\Models\User;
@@ -38,7 +39,7 @@ final readonly class AuthService implements AuthServiceInterface
         $user = DB::transaction(function () use ($data): User {
             $user = $this->users->create(['name' => $data->name, 'email' => $data->email, 'password' => $data->password]);
 
-            if (($member = $this->roles->findByName('Member')) instanceof \App\Models\Role) {
+            if (($member = $this->roles->findByName(SystemRole::Member->value)) instanceof \App\Models\Role) {
                 $this->users->attachRole($user, $member->id);
             }
 

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Repositories\Eloquent;
 
 use App\DTOs\Task\TaskFiltersDTO;
+use App\Enums\SystemRole;
+use App\Enums\TaskMemberRole;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskPriority;
@@ -121,12 +123,12 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
 
     public function memberBitrixIds(Task $task): array
     {
-        $members = ['accomplice' => [], 'auditor' => []];
+        $members = [TaskMemberRole::Accomplice->value => [], TaskMemberRole::Auditor->value => []];
         if (! $task->exists) {
             return $members;
         }
 
-        foreach (['accomplice' => $task->accomplices(), 'auditor' => $task->auditors()] as $role => $relation) {
+        foreach ([TaskMemberRole::Accomplice->value => $task->accomplices(), TaskMemberRole::Auditor->value => $task->auditors()] as $role => $relation) {
             $members[$role] = $relation->whereNotNull('bitrix_user_id')->orderBy('bitrix_user_id')->pluck('bitrix_user_id')->map(fn ($id): int => (int) $id)->all();
         }
 
@@ -166,7 +168,7 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
         return [
             'project', 'assignee', 'accomplices', 'auditors', 'parent',
             'subtasks' => fn ($query) => $query->with('assignee')
-                ->when(! $viewer->hasRole('Administrator'), fn ($q) => $q->visibleTo($viewer))
+                ->when(! $viewer->hasRole(SystemRole::Administrator), fn ($q) => $q->visibleTo($viewer))
                 ->orderBy('id'),
         ];
     }

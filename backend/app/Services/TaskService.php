@@ -8,6 +8,7 @@ use App\DTOs\Task\ChangeTaskStatusDTO;
 use App\DTOs\Task\CreateTaskDTO;
 use App\DTOs\Task\TaskFiltersDTO;
 use App\DTOs\Task\UpdateTaskDTO;
+use App\Enums\SystemRole;
 use App\Integrations\Bitrix24\BitrixTaskPusher;
 use App\Models\Project;
 use App\Models\Task;
@@ -31,7 +32,7 @@ final readonly class TaskService implements TaskServiceInterface
     public function list(User $viewer, TaskFiltersDTO $filters, int $perPage): LengthAwarePaginator
     {
         // Administrators see every task; everyone else what they may see.
-        return $this->tasks->paginate($viewer->hasRole('Administrator') ? null : $viewer, $filters, $perPage);
+        return $this->tasks->paginate($viewer->hasRole(SystemRole::Administrator) ? null : $viewer, $filters, $perPage);
     }
 
     public function listForProject(Project $project, int $perPage): LengthAwarePaginator

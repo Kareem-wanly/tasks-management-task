@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24;
 
+use App\Enums\TaskMemberRole;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
 use App\Models\BitrixOutboundOp;
@@ -93,7 +94,7 @@ class BitrixTaskMemberPusher
             ?? throw BitrixException::cannotSync('The task is no longer in Bitrix24.');
 
         $members = $this->mapper->members($row);
-        $this->fetch->importMissingUsers([...$members['accomplice'] ?? [], ...$members['auditor'] ?? []]);
+        $this->fetch->importMissingUsers([...$members[TaskMemberRole::Accomplice->value] ?? [], ...$members[TaskMemberRole::Auditor->value] ?? []]);
         $this->sync->upsert($row);
 
         $this->taskRepository->reload($task);

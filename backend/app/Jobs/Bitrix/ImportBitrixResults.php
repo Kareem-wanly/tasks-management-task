@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Bitrix;
 
+use App\Enums\QueueName;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixResultPusher;
 use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
@@ -27,7 +28,7 @@ class ImportBitrixResults implements ShouldQueue
 
     public function __construct()
     {
-        $this->onQueue('bitrix');
+        $this->onQueue(QueueName::Bitrix);
     }
 
     public function handle(BitrixResultPusher $results, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $tasks): void

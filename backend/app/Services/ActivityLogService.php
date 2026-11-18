@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\SystemRole;
 use App\Models\Project;
 use App\Models\User;
 use App\Repositories\Contracts\ActivityLogRepositoryInterface;
@@ -25,6 +26,6 @@ final readonly class ActivityLogService implements ActivityLogServiceInterface
     /** Administrators see everything; others see the projects they own or belong to. */
     public function forUser(User $user, int $perPage): LengthAwarePaginator
     {
-        return $this->activities->paginateForUser($user, ! $user->hasRole('Administrator'), $perPage);
+        return $this->activities->paginateForUser($user, ! $user->hasRole(SystemRole::Administrator), $perPage);
     }
 }

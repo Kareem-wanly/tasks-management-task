@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24\Mappers;
 
+use App\Enums\ProjectMemberRole;
+
 /**
  * Turns a Bitrix24 workgroup (socialnetwork.api.workgroup.list, camelCase
  * keys) and its members (sonet_group.user.get) into our projects columns.
@@ -12,9 +14,9 @@ class BitrixProjectMapper
 {
     /** Bitrix member role => project_user.role. Other roles (e.g. pending requests) are not members. */
     public const ROLES = [
-        'A' => 'owner',
-        'E' => 'moderator',
-        'K' => 'member',
+        'A' => ProjectMemberRole::Owner->value,
+        'E' => ProjectMemberRole::Moderator->value,
+        'K' => ProjectMemberRole::Member->value,
     ];
 
     /**

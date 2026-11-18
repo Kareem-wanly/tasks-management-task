@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Repositories\Eloquent;
 
 use App\DTOs\Project\ProjectFiltersDTO;
+use App\Enums\ProjectMemberRole;
+use App\Enums\ProjectStatus;
 use App\Models\Project;
 use App\Models\User;
 use App\Repositories\Contracts\ProjectRepositoryInterface;
@@ -60,7 +62,7 @@ final class EloquentProjectRepository implements ProjectRepositoryInterface
     {
         return Project::query()
             ->accessibleBy($user)
-            ->when(! $includeArchived, fn ($q) => $q->where('status', '!=', 'archived'))
+            ->when(! $includeArchived, fn ($q) => $q->where('status', '!=', ProjectStatus::Archived->value))
             ->orderBy('title')
             ->limit($limit)
             ->get(['id', 'title', 'status']);
@@ -91,9 +93,9 @@ final class EloquentProjectRepository implements ProjectRepositoryInterface
         return $project->members()->where('users.id', $userId)->exists();
     }
 
-    public function attachMember(Project $project, int $userId, string $role): void
+    public function attachMember(Project $project, int $userId, ProjectMemberRole $role): void
     {
-        $project->members()->attach($userId, ['role' => $role]);
+        $project->members()->attach($userId, ['role' => $role->value]);
     }
 
     public function detachMember(Project $project, int $userId): void

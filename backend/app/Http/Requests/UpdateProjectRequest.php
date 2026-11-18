@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\DTOs\Project\UpdateProjectDTO;
+use App\Enums\ProjectStatus;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class UpdateProjectRequest extends FormRequest
@@ -20,7 +22,7 @@ class UpdateProjectRequest extends FormRequest
         return [
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'status' => ['sometimes', 'string', 'in:active,in_progress,on_hold,completed'],
+            'status' => ['sometimes', 'string', Rule::in(ProjectStatus::choosable())],
             'start_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date', 'after_or_equal:start_date'],
         ];

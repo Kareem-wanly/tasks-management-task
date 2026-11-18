@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\User\SyncUserRolesDTO;
+use App\Enums\SystemRole;
 use App\Exceptions\User\AdministratorRoleChangeDeniedException;
 use App\Exceptions\User\LastAdministratorException;
 use App\Exceptions\User\RoleAssignmentDeniedException;
@@ -38,14 +39,14 @@ final readonly class UserRoleService implements UserRoleServiceInterface
     {
         $roleIds = $roles->roleIds;
 
-        $actorIsAdmin = $actor->hasRole('Administrator');
+        $actorIsAdmin = $actor->hasRole(SystemRole::Administrator);
 
         if (! $actorIsAdmin && $this->permissions->idsGrantedByRoles($roleIds)->diff($actor->permissionIds())->isNotEmpty()) {
             throw new RoleAssignmentDeniedException;
         }
 
         return DB::transaction(function () use ($actorIsAdmin, $user, $roleIds): User {
-            $adminRole = $this->roles->findByName('Administrator');
+            $adminRole = $this->roles->findByName(SystemRole::Administrator->value);
 
             if ($adminRole instanceof \App\Models\Role) {
                 $hasAdmin = $this->users->hasRoleId($user, $adminRole->id);

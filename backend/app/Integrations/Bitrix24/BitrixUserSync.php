@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24;
 
+use App\Enums\SystemRole;
 use App\Integrations\Bitrix24\Mappers\BitrixUserMapper;
 use App\Models\User;
 use App\Repositories\Contracts\RoleRepositoryInterface;
@@ -72,7 +73,7 @@ class BitrixUserSync
                 'password' => null,
             ]);
 
-            if (($member = $this->roles->findByName('Member')) instanceof \App\Models\Role) {
+            if (($member = $this->roles->findByName(SystemRole::Member->value)) instanceof \App\Models\Role) {
                 $this->users->attachRole($user, $member->id);
             }
 

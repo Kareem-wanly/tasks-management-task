@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Jobs\Bitrix;
 
+use App\Enums\QueueName;
+use App\Enums\TaskMemberRole;
 use App\Integrations\Bitrix24\BitrixDeletionGuard;
 use App\Integrations\Bitrix24\BitrixEchoGuard;
 use App\Integrations\Bitrix24\BitrixRecordFetcher;
@@ -35,7 +37,7 @@ class SyncBitrixTask implements ShouldBeUniqueUntilProcessing, ShouldQueue
 
     public function __construct(public readonly int $bitrixTaskId)
     {
-        $this->onQueue('bitrix');
+        $this->onQueue(QueueName::Bitrix);
     }
 
     public function uniqueId(): string
@@ -64,7 +66,7 @@ class SyncBitrixTask implements ShouldBeUniqueUntilProcessing, ShouldQueue
         $members = $mapper->members($row);
         $fetch->importMissingUsers([
             $mapper->creatorBitrixId($row), $mapper->responsibleBitrixId($row),
-            ...$members['accomplice'] ?? [], ...$members['auditor'] ?? [],
+            ...$members[TaskMemberRole::Accomplice->value] ?? [], ...$members[TaskMemberRole::Auditor->value] ?? [],
         ]);
 
         $groupId = $mapper->groupBitrixId($row);

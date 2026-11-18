@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
 
+use App\Enums\SystemRole;
 use App\Models\Role;
 use App\Repositories\Contracts\RoleRepositoryInterface;
 use Illuminate\Support\Collection;
@@ -49,8 +50,8 @@ final class EloquentRoleRepository implements RoleRepositoryInterface
 
     public function memberRole(): Role
     {
-        return Role::firstOrCreate(['name' => 'Member'], [
-            'display_name' => 'Member',
+        return Role::firstOrCreate(['name' => SystemRole::Member->value], [
+            'display_name' => SystemRole::Member->value,
             'description' => 'Standard team member with basic access',
         ]);
     }

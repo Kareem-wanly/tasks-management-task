@@ -7,6 +7,7 @@ namespace App\Services;
 use App\DTOs\Role\CreateRoleDTO;
 use App\DTOs\Role\SyncRolePermissionsDTO;
 use App\DTOs\Role\UpdateRoleDTO;
+use App\Enums\SystemRole;
 use App\Exceptions\Role\PermissionGrantDeniedException;
 use App\Exceptions\Role\ReservedRoleNameException;
 use App\Exceptions\Role\RolePermissionsChangeDeniedException;
@@ -26,8 +27,6 @@ use Illuminate\Support\Collection;
 final readonly class RoleService implements RoleServiceInterface
 {
     /** Seeded roles: never deleted, never renamed, their names never reused. */
-    public const SYSTEM_ROLES = ['Administrator', 'Project Manager', 'Member'];
-
     public function __construct(
         private RoleRepositoryInterface $roles,
         private ConnectionInterface $database,
@@ -67,13 +66,13 @@ final readonly class RoleService implements RoleServiceInterface
     public function update(User $actor, Role $role, UpdateRoleDTO $data): Role
     {
         $newName = $data->name;
-        $isSystem = in_array($role->name, self::SYSTEM_ROLES, true);
+        $isSystem = in_array($role->name, SystemRole::names(), true);
 
         // System roles keep their names, so the app can rely on them.
         if ($isSystem && $newName !== null && $newName !== $role->name) {
             throw new SystemRoleCannotBeRenamedException;
         }
-        if (! $isSystem && $newName !== null && in_array($newName, self::SYSTEM_ROLES, true)) {
+        if (! $isSystem && $newName !== null && in_array($newName, SystemRole::names(), true)) {
             throw new ReservedRoleNameException;
         }
 
@@ -99,7 +98,7 @@ final readonly class RoleService implements RoleServiceInterface
 
     public function delete(Role $role): void
     {
-        if (in_array($role->name, self::SYSTEM_ROLES, true)) {
+        if (in_array($role->name, SystemRole::names(), true)) {
             throw SystemRoleCannotBeDeletedException::forRole($role->name);
         }
 
@@ -109,11 +108,11 @@ final readonly class RoleService implements RoleServiceInterface
     /** @param  list<int>  $permissionIds */
     private function guardPermissionGrant(User $actor, Role $role, array $permissionIds): void
     {
-        if ($actor->hasRole('Administrator')) {
+        if ($actor->hasRole(SystemRole::Administrator)) {
             return;
         }
 
-        if ($role->name === 'Administrator') {
+        if ($role->name === SystemRole::Administrator->value) {
             throw new RolePermissionsChangeDeniedException;
         }
 

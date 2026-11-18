@@ -90,7 +90,7 @@ class ProjectController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "Project status changed to {$project->status} successfully",
+            'message' => "Project status changed to {$project->status->value} successfully",
             'data' => $project,
         ]);
     }

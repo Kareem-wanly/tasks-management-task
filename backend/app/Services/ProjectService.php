@@ -8,6 +8,8 @@ use App\DTOs\Project\AddProjectMemberDTO;
 use App\DTOs\Project\CreateProjectDTO;
 use App\DTOs\Project\ProjectFiltersDTO;
 use App\DTOs\Project\UpdateProjectDTO;
+use App\Enums\ProjectMemberRole;
+use App\Enums\ProjectStatus;
 use App\Exceptions\Project\ProjectHasUnfinishedTasksException;
 use App\Exceptions\Project\ProjectMemberAlreadyAddedException;
 use App\Exceptions\Project\ProjectMemberNotFoundException;
@@ -74,7 +76,7 @@ final readonly class ProjectService implements ProjectServiceInterface
         DB::transaction(function () use ($actor, $project): void {
             $this->projects->save($project);
             // The same role the Bitrix import gives the group owner.
-            $this->projects->attachMember($project, $actor->id, 'owner');
+            $this->projects->attachMember($project, $actor->id, ProjectMemberRole::Owner);
         });
 
         return $this->projects->freshWithMembers($project);
@@ -82,7 +84,7 @@ final readonly class ProjectService implements ProjectServiceInterface
 
     public function update(User $actor, Project $project, UpdateProjectDTO $data): Project
     {
-        if ($data->status === 'completed' && $this->projects->hasUnfinishedTasks($project)) {
+        if ($data->status === ProjectStatus::Completed && $this->projects->hasUnfinishedTasks($project)) {
             throw new ProjectHasUnfinishedTasksException;
         }
 
@@ -103,7 +105,7 @@ final readonly class ProjectService implements ProjectServiceInterface
     /** Archives an active project, or reopens an archived one. */
     public function toggleArchive(User $actor, Project $project): Project
     {
-        $project->status = $project->status === 'archived' ? 'active' : 'archived';
+        $project->status = $project->status === ProjectStatus::Archived ? ProjectStatus::Active : ProjectStatus::Archived;
         $this->bitrix->update($actor, $project);
         $this->projects->save($project);
 
