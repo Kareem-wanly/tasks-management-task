@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Exceptions\BitrixSignInException;
+use App\Exceptions\Bitrix\BitrixSignInException;
 use App\Http\Requests\BitrixAppSessionRequest;
 use App\Http\Requests\BitrixSignInRequest;
 use App\Http\Requests\ExchangeBitrixLoginCodeRequest;
@@ -90,11 +90,8 @@ class BitrixAuthController extends Controller
      */
     public function appSession(BitrixAppSessionRequest $request): JsonResponse
     {
-        try {
-            return response()->json(['token' => $this->auth->signInFromFrame($request->frameAuth())]);
-        } catch (BitrixSignInException $e) {
-            return response()->json(['message' => 'Sign-in with Bitrix24 was refused.', 'reason' => $e->reason], 422);
-        }
+        // A refusal is a BitrixSignInException, rendered as {message, reason} with 422.
+        return response()->json(['token' => $this->auth->signInFromFrame($request->frameAuth())]);
     }
 
     private function fromOAuth(BitrixSignInRequest $request): string

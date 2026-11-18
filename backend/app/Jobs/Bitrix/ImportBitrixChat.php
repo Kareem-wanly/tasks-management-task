@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Jobs\Bitrix;
 
+use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixChatPusher;
-use App\Integrations\Bitrix24\BitrixException;
 use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
 use App\Repositories\Contracts\TaskRepositoryInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;

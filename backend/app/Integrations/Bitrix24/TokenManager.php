@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24;
 
+use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Model;

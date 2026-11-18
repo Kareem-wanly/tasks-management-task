@@ -7,8 +7,9 @@ namespace App\Services;
 use App\DTOs\Task\StopTimerDTO;
 use App\DTOs\Task\TimeEntryDTO;
 use App\DTOs\Task\TimeLogDTO;
-use App\Exceptions\BusinessRuleException;
-use App\Integrations\Bitrix24\BitrixException;
+use App\Exceptions\Bitrix\BitrixException;
+use App\Exceptions\Task\TimerRunningOnAnotherTaskException;
+use App\Exceptions\Task\TimerStartedElsewhereException;
 use App\Integrations\Bitrix24\BitrixTimePusher;
 use App\Models\RunningTimer;
 use App\Models\Task;
@@ -108,7 +109,7 @@ class TaskTimeService
                 $this->entries->startTimer($actor, $task);
             } catch (UniqueConstraintViolationException) {
                 // Another request (a second click or tab) started a timer at the same moment.
-                throw new BusinessRuleException('Your timer was just started from another tab. Refresh to see it.', 409);
+                throw new TimerStartedElsewhereException;
             }
         }
 
@@ -122,7 +123,7 @@ class TaskTimeService
         $timer = $this->entries->runningTimer($actor);
 
         if ($timer instanceof RunningTimer && $timer->task_id !== $task->id) {
-            throw new BusinessRuleException('Your timer is running on another task. Stop it there.');
+            throw new TimerRunningOnAnotherTaskException;
         }
 
         if ($timer instanceof RunningTimer) {

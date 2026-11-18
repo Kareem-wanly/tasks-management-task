@@ -6,7 +6,7 @@ namespace App\Services;
 
 use App\DTOs\Task\TaskResultDTO;
 use App\DTOs\Task\TaskResultsDTO;
-use App\Integrations\Bitrix24\BitrixException;
+use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixResultPusher;
 use App\Models\Task;
 use App\Models\TaskResult;

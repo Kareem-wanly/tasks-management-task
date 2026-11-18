@@ -8,7 +8,8 @@ use App\DTOs\User\InviteUserDTO;
 use App\DTOs\User\SetUserActiveDTO;
 use App\DTOs\User\UpdateUserDTO;
 use App\DTOs\User\UserFiltersDTO;
-use App\Exceptions\BusinessRuleException;
+use App\Exceptions\User\AdministratorChangeDeniedException;
+use App\Exceptions\User\CannotDeactivateOwnAccountException;
 use App\Integrations\Bitrix24\BitrixUserPusher;
 use App\Models\User;
 use App\Repositories\Contracts\RoleRepositoryInterface;
@@ -84,10 +85,10 @@ class UserService
         $active = $data->active;
 
         if ($user->is($actor)) {
-            throw BusinessRuleException::forbidden('You cannot deactivate your own account.');
+            throw new CannotDeactivateOwnAccountException;
         }
         if ($user->hasRole('Administrator') && ! $actor->hasRole('Administrator')) {
-            throw BusinessRuleException::forbidden('Only an Administrator can change another Administrator.');
+            throw new AdministratorChangeDeniedException;
         }
 
         $this->bitrix->setActive($actor, $user, $active);

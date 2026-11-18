@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\TaskLookup\SaveTaskLookupDTO;
-use App\Exceptions\BusinessRuleException;
+use App\Exceptions\TaskLookup\LookupFromBitrixException;
+use App\Exceptions\TaskLookup\LookupInUseException;
 use App\Models\TaskLookup;
 use App\Repositories\Contracts\TaskLookupRepositoryInterface;
 use Illuminate\Support\Collection;
@@ -47,11 +48,11 @@ class TaskLookupService
     public function delete(TaskLookup $lookup): void
     {
         if ($lookup->is_system) {
-            throw new BusinessRuleException('Values that come from Bitrix24 cannot be deleted.');
+            throw new LookupFromBitrixException;
         }
 
         if ($this->lookups->isUsed($lookup)) {
-            throw new BusinessRuleException('This value is used by tasks and cannot be deleted.');
+            throw new LookupInUseException;
         }
 
         $this->lookups->delete($lookup);
