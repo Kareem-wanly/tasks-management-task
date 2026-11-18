@@ -4,7 +4,8 @@ namespace App\Integrations\Bitrix24;
 
 use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;
 use App\Models\Project;
-use App\Models\User;
+use App\Repositories\Contracts\ProjectRepositoryInterface;
+use App\Repositories\Contracts\UserRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -14,7 +15,11 @@ use Illuminate\Support\Facades\Log;
  */
 class BitrixProjectSync
 {
-    public function __construct(private readonly BitrixProjectMapper $mapper) {}
+    public function __construct(
+        private readonly BitrixProjectMapper $mapper,
+        private readonly ProjectRepositoryInterface $projects,
+        private readonly UserRepositoryInterface $users,
+    ) {}
 
     /**
      * @param  array  $group  A workgroup.list row.
@@ -25,7 +30,7 @@ class BitrixProjectSync
     {
         $attributes = $this->mapper->attributes($group);
         $ownerBitrixId = $this->mapper->ownerBitrixId($group);
-        $ownerId = User::where('bitrix_user_id', $ownerBitrixId)->value('id');
+        $ownerId = $this->users->idByBitrixId($ownerBitrixId);
 
         if ($ownerId === null) {
             Log::warning('Bitrix24 group skipped: its owner is not imported.', [
@@ -37,8 +42,7 @@ class BitrixProjectSync
         }
 
         return DB::transaction(function () use ($group, $members, $attributes, $ownerId) {
-            $project = Project::withTrashed()->where('bitrix_group_id', $attributes['bitrix_group_id'])->first()
-                ?? new Project;
+            $project = $this->projects->findByBitrixGroupId($attributes['bitrix_group_id'], withTrashed: true) ?? new Project;
 
             if ($project->trashed()) {
                 // Deleting here archives the Bitrix group (BitrixProjectPusher::delete),
@@ -47,7 +51,7 @@ class BitrixProjectSync
                 if ($this->mapper->isClosed($group)) {
                     return $project;
                 }
-                $project->restore();
+                $this->projects->restore($project);
             }
 
             $project->forceFill([...$attributes, 'owner_id' => $ownerId]);
@@ -56,11 +60,11 @@ class BitrixProjectSync
             // Save only real changes, so ProjectObserver doesn't log an
             // "updated" entry on every import.
             if (! $project->exists || $project->isDirty()) {
-                $project->save();
+                $this->projects->save($project);
             }
 
             // Bookkeeping, not a change: updated_at keeps the last real change.
-            Project::withoutTimestamps(fn () => $project->forceFill(['bitrix_synced_at' => now()])->saveQuietly());
+            $this->projects->markSynced($project);
 
             $this->syncMembers($project, $this->mapper->members($members));
 
@@ -86,9 +90,9 @@ class BitrixProjectSync
      */
     private function syncMembers(Project $project, array $roles): void
     {
-        $userIds = User::whereIn('bitrix_user_id', array_keys($roles))->pluck('id', 'bitrix_user_id');
+        $userIds = $this->users->idsByBitrixIds(array_keys($roles));
 
-        $missing = array_diff(array_keys($roles), $userIds->keys()->all());
+        $missing = array_diff(array_keys($roles), array_keys($userIds));
         if ($missing !== []) {
             Log::warning('Bitrix24 group members skipped: not imported.', [
                 'bitrix_group_id' => $project->bitrix_group_id,
@@ -102,6 +106,6 @@ class BitrixProjectSync
         }
 
         // Members removed in Bitrix are removed here too.
-        $project->members()->sync($pivot);
+        $this->projects->syncMembersWithRoles($project, $pivot);
     }
 }

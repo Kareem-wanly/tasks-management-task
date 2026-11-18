@@ -1,0 +1,61 @@
+<?php
+
+namespace App\Services;
+
+use App\Exceptions\BusinessRuleException;
+use App\Models\User;
+use App\Repositories\Contracts\PermissionRepositoryInterface;
+use App\Repositories\Contracts\RoleRepositoryInterface;
+use App\Repositories\Contracts\UserRepositoryInterface;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Which roles a user has. Nobody hands out permissions they don't hold,
+ * only an Administrator touches the Administrator role, and the last
+ * Administrator keeps it.
+ */
+class UserRoleService
+{
+    public function __construct(
+        private readonly UserRepositoryInterface $users,
+        private readonly RoleRepositoryInterface $roles,
+        private readonly PermissionRepositoryInterface $permissions,
+    ) {}
+
+    public function list(User $user): Collection
+    {
+        return $this->users->roles($user);
+    }
+
+    /** @param  list<int>  $roleIds */
+    public function sync(User $actor, User $user, array $roleIds): User
+    {
+        $actorIsAdmin = $actor->hasRole('Administrator');
+
+        if (! $actorIsAdmin && $this->permissions->idsGrantedByRoles($roleIds)->diff($actor->permissionIds())->isNotEmpty()) {
+            throw BusinessRuleException::forbidden('You cannot assign roles with permissions that you do not possess.');
+        }
+
+        return DB::transaction(function () use ($actorIsAdmin, $user, $roleIds) {
+            $adminRole = $this->roles->findByName('Administrator');
+
+            if ($adminRole) {
+                $hasAdmin = $this->users->hasRoleId($user, $adminRole->id);
+                $keepsAdmin = in_array($adminRole->id, $roleIds);
+
+                if (($keepsAdmin || $hasAdmin) && ! $actorIsAdmin) {
+                    throw BusinessRuleException::forbidden('Only an Administrator can assign or revoke the Administrator role.');
+                }
+
+                if ($hasAdmin && ! $keepsAdmin && $this->users->countWithRoleForUpdate($adminRole) <= 1) {
+                    throw new BusinessRuleException('Cannot revoke Administrator role from the final active administrator.');
+                }
+            }
+
+            $this->users->syncRoles($user, $roleIds);
+
+            return $this->users->withRoles($user);
+        });
+    }
+}

@@ -3,11 +3,13 @@
 namespace App\Integrations\Bitrix24;
 
 use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
-use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
-use App\Models\User;
+use App\Repositories\Contracts\ProjectRepositoryInterface;
+use App\Repositories\Contracts\TaskLookupRepositoryInterface;
+use App\Repositories\Contracts\TaskRepositoryInterface;
+use App\Repositories\Contracts\UserRepositoryInterface;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -16,7 +18,13 @@ use Illuminate\Support\Facades\Log;
  */
 class BitrixTaskSync
 {
-    public function __construct(private readonly BitrixTaskMapper $mapper) {}
+    public function __construct(
+        private readonly BitrixTaskMapper $mapper,
+        private readonly TaskRepositoryInterface $tasks,
+        private readonly ProjectRepositoryInterface $projects,
+        private readonly UserRepositoryInterface $users,
+        private readonly TaskLookupRepositoryInterface $lookups,
+    ) {}
 
     /**
      * @return Task|null Null when its creator or project isn't imported.
@@ -28,10 +36,10 @@ class BitrixTaskSync
             return null;
         }
 
-        $task = Task::withTrashed()->where('bitrix_task_id', $attributes['bitrix_task_id'])->first() ?? new Task;
+        $task = $this->tasks->findByBitrixId($attributes['bitrix_task_id'], withTrashed: true) ?? new Task;
 
         if ($task->trashed()) {
-            $task->restore();
+            $this->tasks->restore($task);
         }
 
         $task->forceFill($this->keepCustomLookups($task, $attributes));
@@ -39,11 +47,15 @@ class BitrixTaskSync
         // Save only real changes, so TaskObserver doesn't log an "updated"
         // entry on every import.
         if (! $task->exists || $task->isDirty()) {
-            $task->save();
+            $this->tasks->save($task);
+        }
+
+        if (($members = $this->mapper->members($row)) !== null) {
+            $this->syncMembers($task, $members);
         }
 
         // Bookkeeping, not a change: updated_at keeps the last real change.
-        Task::withoutTimestamps(fn () => $task->forceFill(['bitrix_synced_at' => now()])->saveQuietly());
+        $this->tasks->markSynced($task);
 
         return $task;
     }
@@ -59,7 +71,7 @@ class BitrixTaskSync
         $attributes = $this->mapper->attributes($row);
         $context = ['bitrix_task_id' => $attributes['bitrix_task_id']];
 
-        $creatorId = $this->userId($this->mapper->creatorBitrixId($row));
+        $creatorId = $this->users->idByBitrixId($this->mapper->creatorBitrixId($row));
         if ($creatorId === null) {
             Log::warning('Bitrix24 task skipped: its creator is not imported.', $context);
 
@@ -67,7 +79,7 @@ class BitrixTaskSync
         }
 
         $groupId = $this->mapper->groupBitrixId($row);
-        $projectId = $groupId === 0 ? null : Project::where('bitrix_group_id', $groupId)->value('id');
+        $projectId = $groupId === 0 ? null : $this->projects->idByBitrixGroupId($groupId);
         if ($groupId !== 0 && $projectId === null) {
             Log::warning('Bitrix24 task skipped: its project is not imported.', $context + ['bitrix_group_id' => $groupId]);
 
@@ -75,7 +87,7 @@ class BitrixTaskSync
         }
 
         $responsibleBitrixId = $this->mapper->responsibleBitrixId($row);
-        $assigneeId = $this->userId($responsibleBitrixId);
+        $assigneeId = $this->users->idByBitrixId($responsibleBitrixId);
         if ($responsibleBitrixId !== 0 && $assigneeId === null) {
             Log::warning('Bitrix24 task imported without assignee: responsible user is not imported.', $context);
         }
@@ -83,6 +95,7 @@ class BitrixTaskSync
         return [
             ...$attributes,
             'project_id' => $projectId,
+            'parent_id' => $this->parentId($row, $context),
             'created_by' => $creatorId,
             'assigned_to' => $assigneeId,
         ];
@@ -105,7 +118,7 @@ class BitrixTaskSync
         foreach (['status' => TaskStatus::class, 'priority' => TaskPriority::class] as $column => $lookup) {
             $current = $task->getRawOriginal($column);
             if ($current !== null && $current !== $attributes[$column]
-                && $lookup::where('key', $current)->value('bitrix_id') === $lookup::where('key', $attributes[$column])->value('bitrix_id')) {
+                && $this->lookups->bitrixIdForKey($lookup, $current) === $this->lookups->bitrixIdForKey($lookup, $attributes[$column])) {
                 $attributes[$column] = $current;
             }
         }
@@ -113,8 +126,41 @@ class BitrixTaskSync
         return $attributes;
     }
 
-    private function userId(int $bitrixId): ?int
+    /**
+     * Step 4.1: our accomplices and auditors become Bitrix's. People not
+     * imported yet are left out (the event job imports them first).
+     *
+     * @param  array{accomplice: list<int>, auditor: list<int>}  $members  Bitrix user IDs
+     */
+    private function syncMembers(Task $task, array $members): void
     {
-        return $bitrixId === 0 ? null : User::where('bitrix_user_id', $bitrixId)->value('id');
+        foreach ([Task::ACCOMPLICE, Task::AUDITOR] as $role) {
+            $userIds = array_values($this->users->idsByBitrixIds($members[$role]));
+
+            if (count($userIds) < count($members[$role])) {
+                Log::warning("Bitrix24 task {$role}s skipped: not imported.", ['bitrix_task_id' => $task->bitrix_task_id]);
+            }
+
+            $role === Task::ACCOMPLICE ? $this->tasks->syncAccomplices($task, $userIds) : $this->tasks->syncAuditors($task, $userIds);
+        }
+    }
+
+    /**
+     * Step 4.2. A parent we don't have yet (imported later in the same run)
+     * is left empty; the next sync of this task links it.
+     */
+    private function parentId(array $row, array $context): ?int
+    {
+        $bitrixId = $this->mapper->parentBitrixId($row);
+        if ($bitrixId === 0) {
+            return null;
+        }
+
+        $parentId = $this->tasks->idByBitrixId($bitrixId);
+        if ($parentId === null) {
+            Log::warning('Bitrix24 subtask imported without its parent: the parent is not imported yet.', $context + ['bitrix_parent_id' => $bitrixId]);
+        }
+
+        return $parentId;
     }
 }

@@ -2,29 +2,37 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\DeleteTaskLookupRequest;
+use App\Http\Requests\ListTaskLookupsRequest;
+use App\Http\Requests\StoreTaskPriorityLookupRequest;
+use App\Http\Requests\UpdateTaskPriorityLookupRequest;
 use App\Models\TaskPriority;
+use App\Services\TaskLookupService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
-class TaskPriorityController extends TaskLookupController
+class TaskPriorityController extends Controller
 {
-    protected function model(): string
+    public function __construct(private readonly TaskLookupService $lookups) {}
+
+    public function index(ListTaskLookupsRequest $request): JsonResponse
     {
-        return TaskPriority::class;
+        return response()->json(['data' => $this->lookups->list(TaskPriority::class)]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreTaskPriorityLookupRequest $request): JsonResponse
     {
-        return $this->storeLookup($request);
+        return response()->json(['data' => $this->lookups->create(TaskPriority::class, $request->validated())], 201);
     }
 
-    public function update(Request $request, TaskPriority $taskPriority): JsonResponse
+    public function update(UpdateTaskPriorityLookupRequest $request, TaskPriority $taskPriority): JsonResponse
     {
-        return $this->updateLookup($request, $taskPriority);
+        return response()->json(['data' => $this->lookups->update($taskPriority, $request->validated())]);
     }
 
-    public function destroy(TaskPriority $taskPriority): JsonResponse
+    public function destroy(DeleteTaskLookupRequest $request, TaskPriority $taskPriority): JsonResponse
     {
-        return $this->destroyLookup($taskPriority);
+        $this->lookups->delete($taskPriority);
+
+        return response()->json(['message' => 'Deleted successfully']);
     }
 }

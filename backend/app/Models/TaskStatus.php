@@ -19,9 +19,9 @@ class TaskStatus extends TaskLookup
         return 'status';
     }
 
-    public static function keyForBitrix(int $bitrixId): ?string
+    public static function normalizeBitrixId(int $bitrixId): int
     {
-        return parent::keyForBitrix($bitrixId === self::BITRIX_NEW ? self::BITRIX_PENDING : $bitrixId);
+        return $bitrixId === self::BITRIX_NEW ? self::BITRIX_PENDING : $bitrixId;
     }
 
     protected function casts(): array

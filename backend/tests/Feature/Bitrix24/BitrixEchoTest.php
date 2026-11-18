@@ -169,4 +169,32 @@ class BitrixEchoTest extends TestCase
 
         $this->assertSame(BitrixOutboundOp::CONFIRMED, BitrixOutboundOp::where('entity', 'project')->sole()->status);
     }
+
+    public function test_two_quick_changes_of_ours_are_both_echoes_not_a_conflict(): void
+    {
+        $this->putJson("/api/tasks/{$this->task->id}", ['title' => 'First'])->assertOk();
+        $this->putJson("/api/tasks/{$this->task->id}", ['title' => 'Second'])->assertOk();
+        // By the time the first event is handled, Bitrix already has the second change.
+        $this->bitrixTask['title'] = 'Second';
+
+        SyncBitrixTask::dispatchSync(15);
+        SyncBitrixTask::dispatchSync(15);
+
+        $this->assertSame([BitrixOutboundOp::CONFIRMED, BitrixOutboundOp::CONFIRMED], BitrixOutboundOp::orderBy('id')->pluck('status')->all());
+        $this->assertFalse(ActivityLog::where('action', 'bitrix_conflict')->exists());
+        $this->assertSame('Second', $this->task->fresh()->title);
+    }
+
+    public function test_an_event_answering_our_older_change_leaves_the_newer_one_waiting(): void
+    {
+        $this->putJson("/api/tasks/{$this->task->id}", ['title' => 'First'])->assertOk();
+        $this->putJson("/api/tasks/{$this->task->id}", ['title' => 'Second'])->assertOk();
+        // Fetched before our second change reached Bitrix.
+        $this->bitrixTask['title'] = 'First';
+
+        SyncBitrixTask::dispatchSync(15);
+
+        $this->assertSame([BitrixOutboundOp::CONFIRMED, BitrixOutboundOp::SENT], BitrixOutboundOp::orderBy('id')->pluck('status')->all());
+        $this->assertSame('Second', $this->task->fresh()->title);
+    }
 }

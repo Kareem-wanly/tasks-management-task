@@ -4,13 +4,18 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BitrixAuthController;
 use App\Http\Controllers\BitrixEventController;
 use App\Http\Controllers\BitrixInstallController;
-use App\Http\Controllers\CommentController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\TaskChatController;
+use App\Http\Controllers\TaskChecklistController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TaskFileController;
+use App\Http\Controllers\TaskMemberController;
 use App\Http\Controllers\TaskPriorityController;
+use App\Http\Controllers\TaskResultController;
 use App\Http\Controllers\TaskStatusController;
+use App\Http\Controllers\TaskTimeController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserRoleController;
 use Illuminate\Support\Facades\Route;
@@ -81,6 +86,29 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/tasks/{task}', [TaskController::class, 'update']);
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy']);
     Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus']);
+    Route::put('/tasks/{task}/members', [TaskMemberController::class, 'update']);
+    Route::post('/tasks/{task}/watch', [TaskMemberController::class, 'watch']);
+    Route::delete('/tasks/{task}/watch', [TaskMemberController::class, 'unwatch']);
+    Route::post('/tasks/{task}/delegate', [TaskMemberController::class, 'delegate']);
+    Route::get('/tasks/{task}/checklist', [TaskChecklistController::class, 'index']);
+    Route::post('/tasks/{task}/checklist', [TaskChecklistController::class, 'store']);
+    Route::patch('/checklist-items/{item}', [TaskChecklistController::class, 'update']);
+    Route::delete('/checklist-items/{item}', [TaskChecklistController::class, 'destroy']);
+    Route::post('/checklist-items/{item}/move', [TaskChecklistController::class, 'move']);
+    Route::get('/tasks/{task}/files', [TaskFileController::class, 'index']);
+    Route::post('/tasks/{task}/files', [TaskFileController::class, 'store']);
+    Route::delete('/task-files/{file}', [TaskFileController::class, 'destroy']);
+    Route::get('/task-files/{file}/download', [TaskFileController::class, 'download']);
+    Route::get('/tasks/{task}/results', [TaskResultController::class, 'index']);
+    Route::post('/tasks/{task}/results', [TaskResultController::class, 'store']);
+    Route::put('/task-results/{result}', [TaskResultController::class, 'update']);
+    Route::delete('/task-results/{result}', [TaskResultController::class, 'destroy']);
+    Route::get('/tasks/{task}/time', [TaskTimeController::class, 'index']);
+    Route::post('/tasks/{task}/time', [TaskTimeController::class, 'store']);
+    Route::put('/time-entries/{entry}', [TaskTimeController::class, 'update']);
+    Route::delete('/time-entries/{entry}', [TaskTimeController::class, 'destroy']);
+    Route::post('/tasks/{task}/timer', [TaskTimeController::class, 'start']);
+    Route::post('/tasks/{task}/timer/stop', [TaskTimeController::class, 'stop']);
 
     Route::get('/task-statuses', [TaskStatusController::class, 'index']);
     Route::post('/task-statuses', [TaskStatusController::class, 'store']);
@@ -92,11 +120,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/task-priorities/{taskPriority}', [TaskPriorityController::class, 'update']);
     Route::delete('/task-priorities/{taskPriority}', [TaskPriorityController::class, 'destroy']);
 
-    // 6. Comments Management
-    Route::get('/tasks/{task}/comments', [CommentController::class, 'index']);
-    Route::post('/tasks/{task}/comments', [CommentController::class, 'store']);
-    Route::put('/comments/{comment}', [CommentController::class, 'update']);
-    Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
+    // 6. Task chat (Bitrix24 step 4.7; replaced comments)
+    Route::get('/tasks/{task}/chat', [TaskChatController::class, 'index']);
+    Route::post('/tasks/{task}/chat', [TaskChatController::class, 'store']);
+    Route::put('/task-chat-messages/{message}', [TaskChatController::class, 'update']);
+    Route::delete('/task-chat-messages/{message}', [TaskChatController::class, 'destroy']);
+    Route::get('/task-chat-messages/{message}/files/{file}/download', [TaskChatController::class, 'download'])->whereNumber('file');
 
     // 7. Activity Logs
     Route::get('/activities', [ProjectController::class, 'allActivities']);

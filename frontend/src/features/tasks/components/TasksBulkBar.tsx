@@ -18,7 +18,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { TASK_DONE_STATUS } from '@/constants/statuses';
 import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { EASE } from '@/lib/motion';
@@ -35,7 +34,7 @@ const EXTEND_DAYS = [1, 3, 7, 14];
 /** Floating action bar for the selected tasks: status, priority, due date, assignee, delete. */
 export default function TasksBulkBar({ selected, onClear }: TasksBulkBarProps) {
   const { can, user } = useAuth();
-  const { statusOptions, priorityOptions } = useTaskLookups();
+  const { statusOptions, priorityOptions, doneStatus } = useTaskLookups();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const bulk = useBulkTaskActions(() => {
     setConfirmDelete(false);
@@ -59,7 +58,7 @@ export default function TasksBulkBar({ selected, onClear }: TasksBulkBarProps) {
 
         {(can('tasks.change_status') || canEdit) && (
           <>
-            <Button size="sm" variant="ghost" disabled={bulk.isPending} onClick={() => run({ kind: 'status', status: TASK_DONE_STATUS })}>
+            <Button size="sm" variant="ghost" disabled={bulk.isPending} onClick={() => run({ kind: 'status', status: doneStatus })}>
               <CheckIcon />
               Complete
             </Button>

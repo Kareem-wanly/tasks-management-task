@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\BusinessRuleException;
 use App\Integrations\Bitrix24\BitrixException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -41,6 +42,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], 403);
             }
         });
+
+        // Thrown by services when a valid request breaks a business rule.
+        $exceptions->render(fn (BusinessRuleException $e) => response()->json($e->body(), $e->status));
 
         // A change Bitrix24 didn't accept was not saved here either; say why.
         $exceptions->render(function (BitrixException $e, Request $request) {

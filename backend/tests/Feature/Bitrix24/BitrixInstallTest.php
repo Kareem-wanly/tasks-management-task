@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\Bitrix24;
 
-use App\Http\Controllers\BitrixInstallController;
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Models\BitrixPortal;
+use App\Services\BitrixInstallService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
@@ -109,7 +109,7 @@ class BitrixInstallTest extends TestCase
             }
 
             return Http::response(['result' => [
-                'result' => array_fill_keys(array_diff(BitrixInstallController::EVENTS, array_keys($bindErrors)), true),
+                'result' => array_fill_keys(array_diff(BitrixInstallService::EVENTS, array_keys($bindErrors)), true),
                 'result_error' => $bindErrors,
             ]]);
         });
@@ -128,7 +128,7 @@ class BitrixInstallTest extends TestCase
         $this->assertSame('install-access', $portal->access_token);
         $this->assertSame('install-refresh', $portal->refresh_token);
         $this->assertTrue($portal->token_expires_at->isFuture());
-        $this->assertSame(BitrixInstallController::REQUIRED_SCOPES, $portal->scopes);
+        $this->assertSame(BitrixInstallService::REQUIRED_SCOPES, $portal->scopes);
         $this->assertSame(40, $portal->app_info['ID']);
         $this->assertSame(['ID' => '1', 'NAME' => 'Admin', 'LAST_NAME' => 'User', 'EMAIL' => 'admin@portal.test'], $portal->installer);
         $this->assertTrue($portal->installer_is_admin);
@@ -137,7 +137,7 @@ class BitrixInstallTest extends TestCase
 
         Http::assertSent(fn (Request $r) => ($r['cmd']['OnTaskAdd'] ?? null)
             === 'event.bind?'.http_build_query(['event' => 'OnTaskAdd', 'handler' => 'https://public.test/api/bitrix/events']));
-        Http::assertSent(fn (Request $r) => count($r['cmd'] ?? []) === count(BitrixInstallController::EVENTS));
+        Http::assertSent(fn (Request $r) => count($r['cmd'] ?? []) === count(BitrixInstallService::EVENTS));
     }
 
     public function test_tokens_are_encrypted_at_rest(): void

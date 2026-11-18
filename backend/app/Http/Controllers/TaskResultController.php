@@ -1,0 +1,40 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Requests\DeleteTaskResultRequest;
+use App\Http\Requests\ShowTaskRequest;
+use App\Http\Requests\StoreTaskResultRequest;
+use App\Http\Requests\UpdateTaskResultRequest;
+use App\Http\Resources\TaskResultsResource;
+use App\Models\Task;
+use App\Models\TaskResult;
+use App\Services\TaskResultService;
+
+/**
+ * Step 4.6: a task's official results. Every answer is the whole list.
+ */
+class TaskResultController extends Controller
+{
+    public function __construct(private readonly TaskResultService $results) {}
+
+    public function index(ShowTaskRequest $request, Task $task): TaskResultsResource
+    {
+        return new TaskResultsResource($this->results->open($task));
+    }
+
+    public function store(StoreTaskResultRequest $request, Task $task): TaskResultsResource
+    {
+        return new TaskResultsResource($this->results->add($request->user(), $task, $request->text()));
+    }
+
+    public function update(UpdateTaskResultRequest $request, TaskResult $result): TaskResultsResource
+    {
+        return new TaskResultsResource($this->results->update($request->user(), $result, $request->text()));
+    }
+
+    public function destroy(DeleteTaskResultRequest $request, TaskResult $result): TaskResultsResource
+    {
+        return new TaskResultsResource($this->results->delete($request->user(), $result));
+    }
+}

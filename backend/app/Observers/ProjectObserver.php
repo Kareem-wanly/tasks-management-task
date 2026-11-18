@@ -2,15 +2,17 @@
 
 namespace App\Observers;
 
-use App\Models\ActivityLog;
 use App\Models\Project;
+use App\Repositories\Contracts\ActivityLogRepositoryInterface;
 use Illuminate\Support\Facades\Auth;
 
 class ProjectObserver
 {
+    public function __construct(private readonly ActivityLogRepositoryInterface $activities) {}
+
     public function created(Project $project): void
     {
-        ActivityLog::create([
+        $this->activities->create([
             'user_id' => Auth::id() ?? $project->owner_id,
             'project_id' => $project->id,
             'action' => 'created',
@@ -21,7 +23,7 @@ class ProjectObserver
 
     public function updated(Project $project): void
     {
-        ActivityLog::create([
+        $this->activities->create([
             'user_id' => Auth::id() ?? $project->owner_id,
             'project_id' => $project->id,
             'action' => 'updated',
@@ -32,7 +34,7 @@ class ProjectObserver
 
     public function deleted(Project $project): void
     {
-        ActivityLog::create([
+        $this->activities->create([
             'user_id' => Auth::id() ?? $project->owner_id,
             'project_id' => $project->id,
             'action' => 'deleted',

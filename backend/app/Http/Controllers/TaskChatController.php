@@ -1,0 +1,49 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Requests\DeleteTaskChatMessageRequest;
+use App\Http\Requests\DownloadTaskChatFileRequest;
+use App\Http\Requests\ShowTaskChatRequest;
+use App\Http\Requests\StoreTaskChatMessageRequest;
+use App\Http\Requests\UpdateTaskChatMessageRequest;
+use App\Http\Resources\TaskChatResource;
+use App\Models\Task;
+use App\Models\TaskChatMessage;
+use App\Services\TaskChatService;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
+/**
+ * Step 4.7: a task's chat. Every answer is the whole (newest) chat.
+ */
+class TaskChatController extends Controller
+{
+    public function __construct(private readonly TaskChatService $chat) {}
+
+    public function index(ShowTaskChatRequest $request, Task $task): TaskChatResource
+    {
+        return new TaskChatResource($this->chat->open($task));
+    }
+
+    public function store(StoreTaskChatMessageRequest $request, Task $task): TaskChatResource
+    {
+        return new TaskChatResource($this->chat->send($request->user(), $task, $request->text()));
+    }
+
+    public function update(UpdateTaskChatMessageRequest $request, TaskChatMessage $message): TaskChatResource
+    {
+        return new TaskChatResource($this->chat->update($request->user(), $message, $request->text()));
+    }
+
+    public function destroy(DeleteTaskChatMessageRequest $request, TaskChatMessage $message): TaskChatResource
+    {
+        return new TaskChatResource($this->chat->delete($request->user(), $message));
+    }
+
+    public function download(DownloadTaskChatFileRequest $request, TaskChatMessage $message): StreamedResponse
+    {
+        $download = $this->chat->download($message, $request->fileId());
+
+        return response()->streamDownload($download->send, $download->name, ['Content-Type' => 'application/octet-stream']);
+    }
+}

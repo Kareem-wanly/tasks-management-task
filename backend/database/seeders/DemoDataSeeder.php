@@ -3,11 +3,11 @@
 namespace Database\Seeders;
 
 use App\Models\ActivityLog;
-use App\Models\Comment;
 use App\Models\Permission;
 use App\Models\Project;
 use App\Models\Role;
 use App\Models\Task;
+use App\Models\TaskChatMessage;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
@@ -30,7 +30,7 @@ class DemoDataSeeder extends Seeder
             $users = $this->seedUsers();
             $projects = $this->seedProjects($users);
             $tasks = $this->seedTasks($projects);
-            $this->seedComments($tasks);
+            $this->seedChat($tasks);
         });
     }
 
@@ -137,9 +137,9 @@ class DemoDataSeeder extends Seeder
     }
 
     /** @param  Collection<int, Task>  $tasks */
-    private function seedComments(Collection $tasks): void
+    private function seedChat(Collection $tasks): void
     {
-        if (Comment::count() >= self::TARGET) {
+        if (TaskChatMessage::count() >= self::TARGET) {
             return;
         }
 
@@ -147,7 +147,7 @@ class DemoDataSeeder extends Seeder
             $memberIds = $task->project->members->pluck('id');
 
             for ($i = 0, $n = fake()->numberBetween(0, 3); $i < $n; $i++) {
-                Comment::factory()->create(['task_id' => $task->id, 'user_id' => $memberIds->random()]);
+                TaskChatMessage::create(['task_id' => $task->id, 'author_id' => $memberIds->random(), 'text' => fake()->sentence()]);
             }
         }
     }

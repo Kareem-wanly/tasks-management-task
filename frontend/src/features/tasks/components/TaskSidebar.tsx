@@ -124,6 +124,14 @@ export default function TaskSidebar({ task, members, status, quick }: TaskSideba
           )}
         </DetailRow>
 
+        {task.parent && (
+          <DetailRow label="Parent task">
+            <Link to={`/tasks/${task.parent.id}`} className="truncate font-medium transition-colors hover:text-brand">
+              {task.parent.title}
+            </Link>
+          </DetailRow>
+        )}
+
         <DetailRow label="Due date">
           <div className="flex flex-wrap items-center gap-2">
             <span className={cn('tabular-nums', isOverdue && 'font-medium text-danger')}>

@@ -3,7 +3,7 @@ import tasksApi from '@/api/tasksApi';
 import { queryKeys } from '@/api/queryKeys';
 import type { Task } from '@/types/api';
 
-/** One task with its project, assignee and comments. Shared by the task page and the top bar breadcrumb. */
+/** One task with its project and people. Shared by the task page and the top bar breadcrumb. */
 export default function useTask(id: number | string | null | undefined): UseQueryResult<Task> {
   const key = id ? String(id) : '';
   return useQuery({

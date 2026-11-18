@@ -5,7 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Progress of a Bitrix24 import per entity (users, projects, tasks).
+ * Progress of a Bitrix24 import per entity (users, projects, tasks, ...).
+ * Stored and queried through BitrixSyncCursorRepository.
  */
 class BitrixSyncCursor extends Model
 {
@@ -25,38 +26,5 @@ class BitrixSyncCursor extends Model
             'started_at' => 'datetime',
             'last_synced_at' => 'datetime',
         ];
-    }
-
-    public static function for(string $entity): self
-    {
-        return static::firstOrNew(['entity' => $entity]);
-    }
-
-    public static function start(string $entity): self
-    {
-        $cursor = static::for($entity);
-        $cursor->fill(['status' => self::RUNNING, 'processed' => 0, 'total' => 0, 'error' => null, 'started_at' => now()])->save();
-
-        return $cursor;
-    }
-
-    public function advance(int $processed, int $total): void
-    {
-        $this->update(['processed' => $this->processed + $processed, 'total' => $total]);
-    }
-
-    /**
-     * Synced as of when the run started: a change made in Bitrix while it
-     * ran may have been missed, so the next delta must still look at it.
-     */
-    public function complete(): void
-    {
-        $this->update(['status' => self::COMPLETED, 'last_synced_at' => $this->started_at ?? now()]);
-    }
-
-    /** Saves even a row that doesn't exist yet: the job may fail before it started. */
-    public function fail(string $error): void
-    {
-        $this->fill(['status' => self::FAILED, 'error' => $error])->save();
     }
 }

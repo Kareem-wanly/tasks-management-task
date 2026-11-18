@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import taskLookupsApi from '@/api/taskLookupsApi';
 import { queryKeys } from '@/api/queryKeys';
-import { TASK_DONE_STATUS, isTone, type Tone } from '@/constants/statuses';
+import { TASK_DONE_STATUS, TASK_REOPEN_STATUS, isTone, type Tone } from '@/constants/statuses';
 import type { TaskPriority, TaskPriorityOption, TaskStatus, TaskStatusOption } from '@/types/api';
 
 export interface LookupOption {
@@ -22,6 +22,10 @@ export interface TaskLookups {
   priorityOf: (key: TaskPriority) => TaskPriorityOption | undefined;
   /** Whether the status closes the task (is_final), not just "completed". */
   isFinal: (key: TaskStatus) => boolean;
+  /** What "Mark complete" sets: the first closing (is_final) status in the order. */
+  doneStatus: TaskStatus;
+  /** What "Reopen" sets: the first status in the order that doesn't close the task. */
+  reopenStatus: TaskStatus;
   /** Position in the priority order (higher = more important); -1 when unknown. */
   priorityRank: (key: TaskPriority) => number;
   isPending: boolean;
@@ -70,6 +74,9 @@ export default function useTaskLookups(): TaskLookups {
     priorityOf,
     // Before the list loads, fall back to the built-in closing status
     isFinal: (key) => (statusesQuery.data ? (status(key)?.is_final ?? false) : key === TASK_DONE_STATUS),
+    // The built-in keys only until the list loads (or if it has no such status).
+    doneStatus: statuses.find((s) => s.is_final)?.key ?? TASK_DONE_STATUS,
+    reopenStatus: statuses.find((s) => !s.is_final)?.key ?? TASK_REOPEN_STATUS,
     priorityRank: (key) => priorities.findIndex((p) => p.key === key),
     isPending: statusesQuery.isPending || prioritiesQuery.isPending,
   };

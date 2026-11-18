@@ -7,6 +7,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 use InvalidArgumentException;
+use Psr\Http\Message\StreamInterface;
 
 /**
  * The only place that talks to the Bitrix24 REST API.
@@ -14,6 +15,14 @@ use InvalidArgumentException;
 class BitrixClient
 {
     public const MAX_BATCH_COMMANDS = 50;
+
+    /** Classic REST, and REST 3.0 (newer methods such as task results). */
+    private const REST_PATH = '/rest/';
+
+    private const REST_V3_PATH = '/rest/api/';
+
+    /** Bytes per read when streaming a download. */
+    public const DOWNLOAD_CHUNK_BYTES = 1048576;
 
     /** List methods return fixed pages of 50 rows. */
     public const PAGE_SIZE = 50;
@@ -34,18 +43,113 @@ class BitrixClient
      *
      * @return array<string, mixed> The decoded body: result, plus next/total for list methods.
      */
-    public function callAsUser(HasBitrixToken $user, string $method, array $params = []): array
+    public function callAsUser(HasBitrixToken $user, string $method, array $params = [], ?int $timeout = null): array
+    {
+        return $this->callWithRefresh($user, $method, $params, $timeout, self::REST_PATH);
+    }
+
+    /**
+     * Call a REST 3.0 method (/rest/api/...) as a user, e.g. task results.
+     *
+     * @return array<string, mixed> The decoded body: result (with item or items).
+     */
+    public function callV3AsUser(HasBitrixToken $user, string $method, array $params = []): array
+    {
+        return $this->callWithRefresh($user, $method, $params, null, self::REST_V3_PATH);
+    }
+
+    /** @return array<string, mixed> */
+    public function callV3AsService(string $method, array $params = []): array
+    {
+        return $this->callV3AsUser($this->serviceAccount(), $method, $params);
+    }
+
+    /** @return array<string, mixed> */
+    private function callWithRefresh(HasBitrixToken $user, string $method, array $params, ?int $timeout, string $path): array
     {
         $token = $this->tokens->validTokenFor($user);
 
         try {
-            return $this->send($token->accessToken, $method, $params);
+            return $this->send($token->accessToken, $method, $params, $timeout, $path);
         } catch (BitrixException $e) {
             if (! $e->isExpiredToken()) {
                 throw $e;
             }
 
-            return $this->send($this->tokens->validTokenFor($user, force: true)->accessToken, $method, $params);
+            return $this->send($this->tokens->validTokenFor($user, force: true)->accessToken, $method, $params, $timeout, $path);
+        }
+    }
+
+    /**
+     * Opens a Bitrix download link (it carries the caller's token: never send
+     * it to the browser). Called before any response header is sent, so a
+     * failure is a normal API error, not an error page saved as the file.
+     */
+    public function openDownload(string $url): StreamInterface
+    {
+        if (parse_url($url, PHP_URL_HOST) !== config('bitrix.portal')) {
+            throw BitrixException::cannotSync('Bitrix24 returned a download link to another site.');
+        }
+
+        try {
+            $response = Http::withOptions(['stream' => true])->timeout(config('bitrix.timeout'))->get($url);
+        } catch (ConnectionException $e) {
+            throw BitrixException::unreachable($e->getMessage());
+        }
+
+        if ($response->failed()) {
+            throw BitrixException::cannotSync("Bitrix24 did not return the file (HTTP {$response->status()}).");
+        }
+
+        return $response->toPsrResponse()->getBody();
+    }
+
+    /**
+     * Sends a file to an upload URL Bitrix gave us (disk.folder.uploadfile
+     * without fileContent), as multipart streamed from disk: the file is
+     * never read into memory or base64-encoded.
+     *
+     * @return array<string, mixed>
+     */
+    public function uploadFile(string $uploadUrl, string $field, string $path, string $name, int $timeout): array
+    {
+        if (parse_url($uploadUrl, PHP_URL_HOST) !== config('bitrix.portal')) {
+            throw BitrixException::cannotSync('Bitrix24 returned an upload link to another site.');
+        }
+
+        $stream = fopen($path, 'r') ?: throw BitrixException::cannotSync('The uploaded file could not be read.');
+
+        try {
+            $response = Http::acceptJson()->timeout($timeout)->attach($field, $stream, $name)->post($uploadUrl);
+        } catch (ConnectionException $e) {
+            throw BitrixException::unreachable($e->getMessage());
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }
+
+        $body = $response->json();
+
+        if ($response->failed() || ! is_array($body) || isset($body['error'])) {
+            throw BitrixException::fromResponse(is_array($body) ? $body : null, $response->status());
+        }
+
+        return $body;
+    }
+
+    /**
+     * Opens the link and hands the file to $write in chunks, so a large file
+     * never sits in memory.
+     *
+     * @param  callable(string): void  $write
+     */
+    public function streamDownload(string $url, callable $write): void
+    {
+        $body = $this->openDownload($url);
+
+        while (! $body->eof()) {
+            $write($body->read(self::DOWNLOAD_CHUNK_BYTES));
         }
     }
 
@@ -182,14 +286,14 @@ class BitrixClient
     /**
      * @return array<string, mixed>
      */
-    private function send(string $accessToken, string $method, array $params): array
+    private function send(string $accessToken, string $method, array $params, ?int $timeout = null, string $path = self::REST_PATH): array
     {
-        $url = 'https://'.config('bitrix.portal')."/rest/{$method}.json";
+        $url = 'https://'.config('bitrix.portal').$path.($path === self::REST_PATH ? "{$method}.json" : $method);
 
         for ($attempt = 0; ; $attempt++) {
             try {
                 $response = Http::acceptJson()
-                    ->timeout(config('bitrix.timeout'))
+                    ->timeout($timeout ?? config('bitrix.timeout'))
                     ->post($url, [...$params, 'auth' => $accessToken]);
             } catch (ConnectionException $e) {
                 throw BitrixException::unreachable($e->getMessage());

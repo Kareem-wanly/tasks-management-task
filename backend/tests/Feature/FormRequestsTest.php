@@ -13,6 +13,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -70,22 +71,22 @@ class FormRequestsTest extends TestCase
         ]);
     }
 
-    public function test_comment_outsider_gets_403_not_422(): void
+    public function test_chat_outsider_gets_403_not_422(): void
     {
         $task = $this->task($this->project($this->member()));
         Sanctum::actingAs($this->member());
 
-        $this->postJson("/api/tasks/{$task->id}/comments", ['body' => ''])->assertStatus(403);
+        $this->postJson("/api/tasks/{$task->id}/chat", ['text' => ''])->assertStatus(403);
     }
 
-    public function test_comment_body_is_validated_for_members(): void
+    public function test_chat_message_is_validated_for_members(): void
     {
         $owner = $this->member();
         $task = $this->task($this->project($owner));
         Sanctum::actingAs($owner);
 
-        $this->postJson("/api/tasks/{$task->id}/comments", ['body' => str_repeat('a', 5001)])->assertStatus(422);
-        $this->postJson("/api/tasks/{$task->id}/comments", ['body' => 'ok'])->assertStatus(201);
+        $this->postJson("/api/tasks/{$task->id}/chat", ['text' => str_repeat('a', 5001)])->assertStatus(422);
+        $this->postJson("/api/tasks/{$task->id}/chat", ['text' => 'ok'])->assertOk()->assertJsonPath('data.0.text', 'ok');
     }
 
     public function test_update_status_authorizes_before_validating(): void
@@ -163,5 +164,37 @@ class FormRequestsTest extends TestCase
         $target = $this->member();
         Sanctum::actingAs($this->admin());
         $this->putJson("/api/users/{$target->id}/roles", [])->assertStatus(422);
+    }
+
+    public static function outOfRangePageSizes(): array
+    {
+        $endpoints = ['/api/tasks', '/api/projects', '/api/users'];
+        $sizes = ['zero' => '0', 'negative' => '-1', 'over the limit' => '101', 'not a number' => 'abc'];
+        $cases = [];
+        foreach ($endpoints as $endpoint) {
+            foreach ($sizes as $label => $size) {
+                $cases["{$endpoint} {$label}"] = [$endpoint, $size];
+            }
+        }
+
+        return $cases;
+    }
+
+    #[DataProvider('outOfRangePageSizes')]
+    public function test_page_size_outside_1_to_100_is_rejected(string $endpoint, string $perPage): void
+    {
+        Sanctum::actingAs($this->admin());
+
+        $this->getJson("{$endpoint}?per_page={$perPage}")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('per_page');
+    }
+
+    public function test_page_size_at_the_limits_is_accepted(): void
+    {
+        Sanctum::actingAs($this->admin());
+
+        $this->getJson('/api/tasks?per_page=1')->assertOk()->assertJsonPath('meta.per_page', 1);
+        $this->getJson('/api/tasks?per_page=100')->assertOk()->assertJsonPath('meta.per_page', 100);
     }
 }

@@ -5,8 +5,13 @@ namespace Tests\Feature\Bitrix24;
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
+use App\Jobs\Bitrix\ImportBitrixChat;
+use App\Jobs\Bitrix\ImportBitrixChecklists;
+use App\Jobs\Bitrix\ImportBitrixFiles;
 use App\Jobs\Bitrix\ImportBitrixProjects;
+use App\Jobs\Bitrix\ImportBitrixResults;
 use App\Jobs\Bitrix\ImportBitrixTasks;
+use App\Jobs\Bitrix\ImportBitrixTime;
 use App\Jobs\Bitrix\ImportBitrixUsers;
 use App\Models\BitrixSyncCursor;
 use App\Models\Project;
@@ -59,6 +64,8 @@ class ImportFromBitrixCommandTest extends TestCase
                 'result' => ['group_7' => [['USER_ID' => '1', 'ROLE' => 'A'], ['USER_ID' => '2', 'ROLE' => 'K']]],
                 'result_error' => [],
             ]]),
+            // REST 3.0 (task results): no results on this portal.
+            'https://portal.test/rest/api/*' => Http::response(['result' => ['items' => []]]),
             'https://portal.test/rest/tasks.task.list.json' => function (Request $request) {
                 if ($this->tasksFail) {
                     return Http::response(['error' => 'ACCESS_DENIED', 'error_description' => 'denied'], 403);
@@ -120,7 +127,7 @@ class ImportFromBitrixCommandTest extends TestCase
 
         $this->artisan('bitrix:import')->assertSuccessful();
 
-        Bus::assertChained([ImportBitrixUsers::class, ImportBitrixProjects::class, ImportBitrixTasks::class]);
+        Bus::assertChained([ImportBitrixUsers::class, ImportBitrixProjects::class, ImportBitrixTasks::class, ImportBitrixChecklists::class, ImportBitrixTime::class, ImportBitrixFiles::class, ImportBitrixResults::class, ImportBitrixChat::class]);
         Bus::assertDispatched(ImportBitrixUsers::class, fn (ImportBitrixUsers $job) => $job->queue === 'bitrix' && ! $job->linkByEmail);
     }
 
@@ -162,6 +169,10 @@ class ImportFromBitrixCommandTest extends TestCase
                 ['users', 'never run', 0, 0, '-', ''],
                 ['projects', 'never run', 0, 0, '-', ''],
                 ['tasks', 'never run', 0, 0, '-', ''],
+                ['checklists', 'never run', 0, 0, '-', ''],
+                ['time', 'never run', 0, 0, '-', ''],
+                ['files', 'never run', 0, 0, '-', ''],
+                ['results', 'never run', 0, 0, '-', ''],
             ])
             ->assertSuccessful();
     }

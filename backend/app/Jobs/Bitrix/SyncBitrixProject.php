@@ -7,7 +7,7 @@ use App\Integrations\Bitrix24\BitrixEchoGuard;
 use App\Integrations\Bitrix24\BitrixProjectSync;
 use App\Integrations\Bitrix24\BitrixRecordFetcher;
 use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;
-use App\Models\Project;
+use App\Repositories\Contracts\ProjectRepositoryInterface;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -39,7 +39,7 @@ class SyncBitrixProject implements ShouldBeUniqueUntilProcessing, ShouldQueue
         return (string) $this->bitrixGroupId;
     }
 
-    public function handle(BitrixRecordFetcher $fetch, BitrixProjectSync $projects, BitrixProjectMapper $mapper, BitrixEchoGuard $echo, BitrixDeletionGuard $guard): void
+    public function handle(BitrixRecordFetcher $fetch, BitrixProjectSync $projects, BitrixProjectMapper $mapper, BitrixEchoGuard $echo, ProjectRepositoryInterface $projectRepository, BitrixDeletionGuard $guard): void
     {
         $group = $fetch->group($this->bitrixGroupId);
 
@@ -47,8 +47,8 @@ class SyncBitrixProject implements ShouldBeUniqueUntilProcessing, ShouldQueue
         // service account sees every group, so "not found" proves nothing otherwise.
         if ($group === null) {
             if (! $echo->isProjectEcho($this->bitrixGroupId, null, false) && $guard->serviceAccountIsAdmin()) {
-                if ($project = Project::where('bitrix_group_id', $this->bitrixGroupId)->first()) {
-                    $project->delete();
+                if ($project = $projectRepository->findByBitrixGroupId($this->bitrixGroupId)) {
+                    $projectRepository->delete($project);
                     $guard->recordDeleted('groups', [$this->bitrixGroupId], 'event');
                 }
             }

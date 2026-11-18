@@ -3,332 +3,108 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\AddProjectMemberRequest;
+use App\Http\Requests\DeleteProjectRequest;
+use App\Http\Requests\ListActivitiesRequest;
+use App\Http\Requests\ListProjectActivitiesRequest;
+use App\Http\Requests\ListProjectsRequest;
+use App\Http\Requests\ProjectOptionsRequest;
+use App\Http\Requests\RemoveProjectMemberRequest;
+use App\Http\Requests\ShowProjectRequest;
 use App\Http\Requests\StoreProjectRequest;
+use App\Http\Requests\ToggleProjectArchiveRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Http\Resources\ProjectResource;
-use App\Integrations\Bitrix24\BitrixProjectPusher;
-use App\Models\ActivityLog;
 use App\Models\Project;
 use App\Models\User;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Services\ActivityLogService;
+use App\Services\ProjectService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
-/*
- * Changes to a project linked to Bitrix24 go to Bitrix first (see
- * BitrixProjectPusher) and are saved here only when Bitrix accepts them.
- */
 class ProjectController extends Controller
 {
-    use AuthorizesRequests;
+    public function __construct(
+        private readonly ProjectService $projects,
+        private readonly ActivityLogService $activityLog,
+    ) {}
 
-    public function __construct(private readonly BitrixProjectPusher $bitrix) {}
-
-    public function index(Request $request)
+    public function index(ListProjectsRequest $request): AnonymousResourceCollection
     {
-        $this->authorize('viewAny', Project::class);
-
-        $user = $request->user();
-        $query = Project::query();
-
-        $query->accessibleBy($user);
-
-        if ($request->filled('search')) {
-            $search = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $request->query('search'));
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->query('status'));
-        }
-
-        if ($request->filled('member_id')) {
-            $memberId = $request->query('member_id');
-            $query->whereHas('members', fn ($q) => $q->where('users.id', $memberId));
-        }
-
-        $sortBy = $request->query('sort', 'created_at');
-        $direction = strtolower($request->query('direction', 'desc')) === 'asc' ? 'asc' : 'desc';
-
-        $allowedSorts = ['created_at', 'updated_at', 'start_date', 'due_date', 'title'];
-        if (in_array($sortBy, $allowedSorts)) {
-            $query->orderBy($sortBy, $direction);
-        }
-
-        if ($request->has('per_page') && ! is_numeric($request->query('per_page'))) {
-            return response()->json([
-                'message' => 'The per_page parameter must be an integer.',
-            ], 422);
-        }
-
-        $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
-        // Same counts as show(), so list rows and cards can draw the progress bar
-        $projects = $query->with('owner:id,name,email')
-            ->withCount([
-                'members',
-                'tasks',
-                'tasks as completed_tasks_count' => fn ($q) => $q->finished(),
-                'tasks as in_progress_tasks_count' => fn ($q) => $q->where('status', 'in_progress'),
-            ])
-            ->paginate($perPage);
-
-        return ProjectResource::collection($projects);
+        return ProjectResource::collection($this->projects->list($request->user(), $request->filters(), $request->perPage()));
     }
 
-    public function show(Project $project): ProjectResource
+    public function show(ShowProjectRequest $request, Project $project): ProjectResource
     {
-        $this->authorize('view', $project);
-
-        $project->load(['owner:id,name,email', 'members:id,name,email'])
-            ->loadCount([
-                'tasks',
-                'tasks as completed_tasks_count' => fn ($q) => $q->finished(),
-                'tasks as in_progress_tasks_count' => fn ($q) => $q->where('status', 'in_progress'),
-            ]);
-
-        return new ProjectResource($project);
+        return new ProjectResource($this->projects->show($project));
     }
 
     public function store(StoreProjectRequest $request): JsonResponse
     {
-        $this->authorize('create', Project::class);
-
-        $validated = $request->validated();
-        $title = $validated['title'] ?? null;
-
-        $project = new Project([
-            'title' => $title,
-            'description' => $validated['description'] ?? null,
-            'start_date' => $validated['start_date'] ?? null,
-            'due_date' => $validated['due_date'] ?? null,
-            'owner_id' => $request->user()->id,
-            'status' => $validated['status'] ?? 'active',
-        ]);
-
-        $this->bitrix->create($request->user(), $project);
-
-        DB::transaction(function () use ($request, $project) {
-            $project->save();
-            // Same role the Bitrix import gives the group owner.
-            $project->members()->attach($request->user()->id, ['role' => 'owner']);
-        });
-
-        return (new ProjectResource($project->load(['owner:id,name,email', 'members:id,name,email'])))
+        return (new ProjectResource($this->projects->create($request->user(), $request->validated())))
             ->response()
             ->setStatusCode(201);
     }
 
-    public function update(UpdateProjectRequest $request, Project $project): ProjectResource|JsonResponse
+    public function update(UpdateProjectRequest $request, Project $project): ProjectResource
     {
-        $this->authorize('update', $project);
-
-        $validated = $request->validated();
-
-        if (isset($validated['status']) && $validated['status'] === 'completed') {
-            $hasUnfinishedTasks = $project->tasks()->unfinished()->exists();
-
-            if ($hasUnfinishedTasks) {
-                return response()->json([
-                    'message' => 'Cannot complete project with unfinished tasks.',
-                    'errors' => [
-                        'status' => ['Project has pending or in-progress tasks that must be completed first.'],
-                    ],
-                ], 422);
-            }
-        }
-
-        $project->fill($validated);
-        $this->bitrix->update($request->user(), $project);
-        $project->save();
-
-        return new ProjectResource($project->fresh(['owner:id,name,email', 'members:id,name,email']));
+        return new ProjectResource($this->projects->update($request->user(), $project, $request->validated()));
     }
 
-    public function destroy(Request $request, Project $project): JsonResponse
+    public function destroy(DeleteProjectRequest $request, Project $project): JsonResponse
     {
-        $this->authorize('delete', $project);
+        $this->projects->delete($request->user(), $project);
 
-        $this->bitrix->delete($request->user(), $project);
-        $project->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Project deleted successfully',
-            'data' => null,
-        ]);
+        return response()->json(['success' => true, 'message' => 'Project deleted successfully', 'data' => null]);
     }
 
-    public function members(Project $project): JsonResponse
+    public function members(ShowProjectRequest $request, Project $project): JsonResponse
     {
-        $this->authorize('view', $project);
-
-        $members = $project->members()->get(['users.id', 'name', 'email']);
-
         return response()->json([
             'success' => true,
             'message' => 'Project members retrieved successfully',
-            'data' => $members,
+            'data' => $this->projects->members($project),
         ]);
     }
 
     public function addMember(AddProjectMemberRequest $request, Project $project): JsonResponse
     {
-        $validated = $request->validated();
+        $project = $this->projects->addMember($request->user(), $project, (int) $request->validated('user_id'), $request->validated('role') ?? 'member');
 
-        $userId = (int) $validated['user_id'];
-        $role = $validated['role'] ?? 'member';
-
-        if ($project->members()->where('users.id', $userId)->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'User is already a member of this project.',
-                'errors' => [
-                    'user_id' => ['The specified user is already attached to this project.'],
-                ],
-            ], 422);
-        }
-
-        $this->bitrix->addMember($request->user(), $project, User::findOrFail($userId), $role);
-        $project->members()->attach($userId, ['role' => $role]);
-
-        ActivityLog::create([
-            'user_id' => $request->user()->id,
-            'project_id' => $project->id,
-            'action' => 'member_added',
-            'description' => "User ID {$userId} was added to project '{$project->title}'.",
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Member added to project successfully',
-            'data' => $project->load(['owner:id,name,email', 'members:id,name,email']),
-        ], 200);
+        return response()->json(['success' => true, 'message' => 'Member added to project successfully', 'data' => $project]);
     }
 
-    public function removeMember(Request $request, Project $project, User $user): JsonResponse
+    public function removeMember(RemoveProjectMemberRequest $request, Project $project, User $user): JsonResponse
     {
-        $this->authorize('manageMembers', $project);
-
-        if (! $project->members()->where('users.id', $user->id)->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'User is not a member of this project.',
-                'errors' => [
-                    'user_id' => ['The specified user is not attached to this project.'],
-                ],
-            ], 404);
-        }
-
-        $this->bitrix->removeMember($request->user(), $project, $user);
-        $project->members()->detach($user->id);
-
-        ActivityLog::create([
-            'user_id' => $request->user()->id,
-            'project_id' => $project->id,
-            'action' => 'member_removed',
-            'description' => "{$user->name} was removed from project '{$project->title}'.",
-        ]);
-
         return response()->json([
             'success' => true,
             'message' => 'Member removed from project successfully',
-            'data' => $project->load(['owner:id,name,email', 'members:id,name,email']),
+            'data' => $this->projects->removeMember($request->user(), $project, $user),
         ]);
     }
 
-    public function toggleArchive(Request $request, Project $project): JsonResponse
+    public function toggleArchive(ToggleProjectArchiveRequest $request, Project $project): JsonResponse
     {
-        $this->authorize('archive', $project);
-
-        $newStatus = $project->status === 'archived' ? 'active' : 'archived';
-
-        $project->status = $newStatus;
-        $this->bitrix->update($request->user(), $project);
-        $project->save();
+        $project = $this->projects->toggleArchive($request->user(), $project);
 
         return response()->json([
             'success' => true,
-            'message' => "Project status changed to {$newStatus} successfully",
-            'data' => $project->fresh(['owner:id,name,email', 'members:id,name,email']),
+            'message' => "Project status changed to {$project->status} successfully",
+            'data' => $project,
         ]);
     }
 
-    public function activities(Request $request, Project $project): JsonResponse
+    public function activities(ListProjectActivitiesRequest $request, Project $project): JsonResponse
     {
-        $this->authorize('view', $project);
-
-        $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
-
-        $activities = ActivityLog::where('project_id', $project->id)
-            ->with('user:id,name,email')
-            ->latest()
-            ->paginate($perPage);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Project activity logs retrieved successfully',
-            'data' => $activities->items(),
-            'meta' => [
-                'current_page' => $activities->currentPage(),
-                'last_page' => $activities->lastPage(),
-                'per_page' => $activities->perPage(),
-                'total' => $activities->total(),
-            ],
-        ]);
+        return $this->paginated($this->activityLog->forProject($project, $request->perPage()), 'Project activity logs retrieved successfully');
     }
 
-    public function allActivities(Request $request): JsonResponse
+    public function allActivities(ListActivitiesRequest $request): JsonResponse
     {
-        $this->authorize('viewAny', ActivityLog::class);
-
-        $query = ActivityLog::with('user:id,name,email')->latest();
-
-        if (! $request->user()->hasRole('Administrator')) {
-            $query->whereHas('project', function ($q) use ($request) {
-                $q->where('owner_id', $request->user()->id)
-                    ->orWhereHas('members', fn ($m) => $m->where('users.id', $request->user()->id));
-            });
-        }
-
-        $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
-        $activities = $query->paginate($perPage);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'All activity logs retrieved successfully',
-            'data' => $activities->items(),
-            'meta' => [
-                'current_page' => $activities->currentPage(),
-                'last_page' => $activities->lastPage(),
-                'per_page' => $activities->perPage(),
-                'total' => $activities->total(),
-            ],
-        ]);
+        return $this->paginated($this->activityLog->forUser($request->user(), $request->perPage()), 'All activity logs retrieved successfully');
     }
 
-    public function options(Request $request): JsonResponse
+    public function options(ProjectOptionsRequest $request): JsonResponse
     {
-        $this->authorize('viewAny', Project::class);
-
-        $query = Project::query();
-
-        $query->accessibleBy($request->user());
-
-        // Forms only offer active projects; list filters pass include_archived=1
-        if (! $request->boolean('include_archived')) {
-            $query->where('status', '!=', 'archived');
-        }
-
-        $projects = $query->orderBy('title')
-            ->limit(1000)
-            ->get(['id', 'title', 'status']);
-
-        return response()->json([
-            'data' => $projects,
-        ]);
+        return response()->json(['data' => $this->projects->options($request->user(), $request->includeArchived())]);
     }
 }

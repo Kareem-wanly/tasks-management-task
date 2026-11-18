@@ -36,19 +36,11 @@ abstract class TaskLookup extends Model
     }
 
     /**
-     * Our key for a Bitrix value. The Bitrix-imported row wins over a custom
-     * value that only sends that Bitrix value (e.g. urgent → high).
+     * The Bitrix value to look a row up by. Statuses map Bitrix's legacy
+     * "New" to Pending (TaskStatus); priorities use the value as it is.
      */
-    public static function keyForBitrix(int $bitrixId): ?string
+    public static function normalizeBitrixId(int $bitrixId): int
     {
-        return static::where('bitrix_id', $bitrixId)
-            ->orderByDesc('is_system')
-            ->ordered()
-            ->value('key');
-    }
-
-    public function isUsed(): bool
-    {
-        return Task::withTrashed()->where(static::taskColumn(), $this->key)->exists();
+        return $bitrixId;
     }
 }

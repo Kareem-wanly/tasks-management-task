@@ -2,7 +2,7 @@
 
 namespace App\Jobs\Bitrix;
 
-use App\Models\BitrixSyncCursor;
+use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
 use Throwable;
 
 /**
@@ -19,6 +19,6 @@ trait TracksSyncProgress
 
     public function failed(?Throwable $exception): void
     {
-        BitrixSyncCursor::for(self::ENTITY)->fail($exception?->getMessage() ?: 'Unknown error');
+        app(BitrixSyncCursorRepositoryInterface::class)->fail(self::ENTITY, $exception?->getMessage() ?: 'Unknown error');
     }
 }

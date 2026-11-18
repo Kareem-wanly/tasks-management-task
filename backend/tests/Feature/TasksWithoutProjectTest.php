@@ -88,17 +88,17 @@ class TasksWithoutProjectTest extends TestCase
         $this->deleteJson("/api/tasks/{$this->task->id}")->assertSuccessful();
     }
 
-    public function test_assignee_can_comment_and_others_cannot(): void
+    public function test_assignee_can_chat_and_others_cannot(): void
     {
         Sanctum::actingAs($this->assignee);
-        $this->postJson("/api/tasks/{$this->task->id}/comments", ['body' => 'On it'])->assertCreated();
-        $this->getJson("/api/tasks/{$this->task->id}/comments")->assertOk();
+        $this->postJson("/api/tasks/{$this->task->id}/chat", ['text' => 'On it'])->assertOk();
+        $this->getJson("/api/tasks/{$this->task->id}/chat")->assertOk()->assertJsonPath('data.0.text', 'On it');
 
         Sanctum::actingAs($this->outsider);
-        $this->getJson("/api/tasks/{$this->task->id}/comments")->assertForbidden();
+        $this->getJson("/api/tasks/{$this->task->id}/chat")->assertForbidden();
     }
 
-    public function test_project_tasks_still_follow_project_membership(): void
+    public function test_the_assignee_sees_a_project_task_outside_its_project_as_in_bitrix(): void
     {
         $project = Project::forceCreate(['title' => 'P', 'status' => 'active', 'owner_id' => $this->creator->id]);
         $projectTask = Task::forceCreate([
@@ -109,9 +109,12 @@ class TasksWithoutProjectTest extends TestCase
             'created_by' => $this->creator->id,
             'assigned_to' => $this->outsider->id,
         ]);
+        $otherTask = Task::forceCreate([...$projectTask->only('status', 'priority', 'project_id', 'created_by'), 'title' => 'Not theirs']);
         Sanctum::actingAs($this->outsider);
 
-        // Being the assignee is not enough inside a project; membership is.
-        $this->getJson("/api/tasks/{$projectTask->id}")->assertForbidden();
+        $this->getJson("/api/tasks/{$projectTask->id}")->assertOk();
+        $this->getJson('/api/tasks')->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $projectTask->id);
+        // The rest of the project stays hidden: membership still decides that.
+        $this->getJson("/api/tasks/{$otherTask->id}")->assertForbidden();
     }
 }

@@ -4,7 +4,7 @@ namespace App\Jobs\Bitrix;
 
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixUserSync;
-use App\Models\BitrixSyncCursor;
+use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -26,23 +26,23 @@ class ImportBitrixUsers implements ShouldQueue
         $this->onQueue('bitrix');
     }
 
-    public function handle(BitrixClient $bitrix, BitrixUserSync $users): void
+    public function handle(BitrixClient $bitrix, BitrixUserSync $users, BitrixSyncCursorRepositoryInterface $cursors): void
     {
-        $cursor = BitrixSyncCursor::start(self::ENTITY);
+        $cursor = $cursors->start(self::ENTITY);
         $notLinked = 0;
 
         // No ACTIVE filter: ACTIVE=true would drop deactivated users, and we
         // need them to block their access here too.
-        $total = $bitrix->eachPageAsService('user.get', ['sort' => 'ID', 'order' => 'ASC'], function (array $rows, int $total) use ($users, $cursor, &$notLinked) {
+        $total = $bitrix->eachPageAsService('user.get', ['sort' => 'ID', 'order' => 'ASC'], function (array $rows, int $total) use ($users, $cursor, $cursors, &$notLinked) {
             foreach ($rows as $row) {
                 if ($users->upsert($row, $this->linkByEmail) === null) {
                     $notLinked++;
                 }
             }
-            $cursor->advance(count($rows), $total);
+            $cursors->advance($cursor, count($rows), $total);
         });
 
-        $cursor->complete();
+        $cursors->complete($cursor);
         Log::info('Bitrix24 users imported.', ['imported' => $cursor->processed, 'not_linked' => $notLinked, 'portal_total' => $total]);
     }
 }

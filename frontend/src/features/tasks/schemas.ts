@@ -42,11 +42,36 @@ export type TitleFormValues = z.infer<typeof titleSchema>;
 export const descriptionSchema = taskFormSchema.pick({ description: true });
 export type DescriptionFormValues = z.infer<typeof descriptionSchema>;
 
-/** A comment on a task (StoreCommentRequest / UpdateCommentRequest: required, max 5000). */
-export const commentSchema = z.object({
-  body: z.string().trim().min(1, 'Write something first.').max(5000, 'Keep comments under 5000 characters.'),
+/** A message in the task chat (StoreTaskChatMessageRequest / UpdateTaskChatMessageRequest: required, max 5000). */
+export const chatMessageSchema = z.object({
+  text: z.string().trim().min(1, 'Write something first.').max(5000, 'Keep messages under 5000 characters.'),
 });
-export type CommentFormValues = z.infer<typeof commentSchema>;
+export type ChatMessageFormValues = z.infer<typeof chatMessageSchema>;
+
+export const subtaskSchema = z.object({
+  title: z.string().trim().min(1, 'Give the subtask a title.').max(255, 'Keep titles under 255 characters.'),
+});
+export type SubtaskFormValues = z.infer<typeof subtaskSchema>;
+
+export const checklistItemSchema = z.object({
+  title: z.string().trim().min(1, 'Write the item first.').max(2000, 'Keep items under 2000 characters.'),
+});
+export type ChecklistItemFormValues = z.infer<typeof checklistItemSchema>;
+
+export const taskResultSchema = z.object({
+  text: z.string().trim().min(1, 'Describe the result first.').max(10000, 'Keep results under 10000 characters.'),
+});
+export type TaskResultFormValues = z.infer<typeof taskResultSchema>;
+
+/** Hours and minutes stay strings in the form (inputs); converted when sent. */
+export const timeEntrySchema = z
+  .object({
+    hours: z.string().regex(/^\d{0,3}$/, 'Whole hours only.'),
+    minutes: z.string().regex(/^([0-5]?\d)?$/, '0 to 59 minutes.'),
+    comment: z.string().trim().max(2000, 'Keep comments under 2000 characters.'),
+  })
+  .refine((v) => Number(v.hours || 0) * 60 + Number(v.minutes || 0) > 0, { message: 'Enter some time.', path: ['minutes'] });
+export type TimeEntryFormValues = z.infer<typeof timeEntrySchema>;
 
 export const emptyTaskForm: TaskFormValues = {
   project_id: '',

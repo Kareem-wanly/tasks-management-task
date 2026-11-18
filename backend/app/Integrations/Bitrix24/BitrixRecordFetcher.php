@@ -4,7 +4,7 @@ namespace App\Integrations\Bitrix24;
 
 use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;
 use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
-use App\Models\User;
+use App\Repositories\Contracts\UserRepositoryInterface;
 
 /**
  * Fetches single Bitrix24 records with the service account, in the shapes
@@ -15,6 +15,7 @@ class BitrixRecordFetcher
     public function __construct(
         private readonly BitrixClient $bitrix,
         private readonly BitrixUserSync $users,
+        private readonly UserRepositoryInterface $userRepository,
     ) {}
 
     /**
@@ -55,7 +56,7 @@ class BitrixRecordFetcher
     public function importMissingUsers(array $bitrixIds): void
     {
         $bitrixIds = array_values(array_filter(array_unique($bitrixIds)));
-        $known = User::whereIn('bitrix_user_id', $bitrixIds)->pluck('bitrix_user_id')->all();
+        $known = array_keys($this->userRepository->idsByBitrixIds($bitrixIds));
 
         foreach (array_diff($bitrixIds, $known) as $bitrixId) {
             foreach ($this->bitrix->callAsService('user.get', ['FILTER' => ['ID' => $bitrixId]])['result'] ?? [] as $row) {

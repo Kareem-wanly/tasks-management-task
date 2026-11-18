@@ -7,6 +7,10 @@ use App\Models\Task;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
 use App\Models\User;
+use App\Repositories\Contracts\BitrixOutboundOpRepositoryInterface;
+use App\Repositories\Contracts\TaskLookupRepositoryInterface;
+use App\Repositories\Contracts\TaskRepositoryInterface;
+use App\Repositories\Contracts\UserRepositoryInterface;
 
 /**
  * Step 3.1: sends a task change made in our app to Bitrix24 with the
@@ -41,9 +45,19 @@ class BitrixTaskPusher
         'priority' => 'PRIORITY',
         'due_date' => 'DEADLINE',
         'assigned_to' => 'RESPONSIBLE_ID',
+        'parent_id' => 'PARENT_ID',
+        'allow_time_tracking' => 'ALLOW_TIME_TRACKING',
+        'time_estimate' => 'TIME_ESTIMATE',
     ];
 
-    public function __construct(private readonly BitrixClient $bitrix) {}
+    public function __construct(
+        private readonly BitrixClient $bitrix,
+        private readonly BitrixOutboundOpRepositoryInterface $ops,
+        private readonly BitrixFingerprint $fingerprints,
+        private readonly TaskLookupRepositoryInterface $lookups,
+        private readonly TaskRepositoryInterface $tasks,
+        private readonly UserRepositoryInterface $users,
+    ) {}
 
     /**
      * Tasks of a project linked to a Bitrix group, and tasks without a
@@ -69,8 +83,8 @@ class BitrixTaskPusher
         // A Bitrix task always has a responsible person: default to the creator.
         $task->assigned_to ??= $actor->id;
         // Values the request left out get Bitrix's defaults (Pending, Normal).
-        $task->status ??= TaskStatus::keyForBitrix(self::PENDING);
-        $task->priority ??= TaskPriority::keyForBitrix(self::DEFAULT_PRIORITY);
+        $task->status ??= $this->lookups->keyForBitrix(TaskStatus::class, self::PENDING);
+        $task->priority ??= $this->lookups->keyForBitrix(TaskPriority::class, self::DEFAULT_PRIORITY);
 
         $fields = $this->fields($task, array_keys(self::FIELDS));
         $fields['GROUP_ID'] = $task->project?->bitrix_group_id ?? 0;
@@ -80,7 +94,7 @@ class BitrixTaskPusher
 
         $this->applyStatus($actor, $task, (int) ($created['status'] ?? self::PENDING));
         $task->bitrix_synced_at = now();
-        BitrixOutboundOp::record(BitrixOutboundOp::TASK, $task->bitrix_task_id, 'create', BitrixFingerprint::task($task), $actor);
+        $this->ops->record(BitrixOutboundOp::TASK, $task->bitrix_task_id, 'create', $this->fingerprints->task($task), $actor);
     }
 
     /**
@@ -108,7 +122,7 @@ class BitrixTaskPusher
 
         if ($changed !== [] || $task->isDirty('status')) {
             $task->bitrix_synced_at = now();
-            BitrixOutboundOp::record(BitrixOutboundOp::TASK, $task->bitrix_task_id, 'update', BitrixFingerprint::task($task), $actor);
+            $this->ops->record(BitrixOutboundOp::TASK, $task->bitrix_task_id, 'update', $this->fingerprints->task($task), $actor);
         }
     }
 
@@ -117,7 +131,7 @@ class BitrixTaskPusher
         if ($task->bitrix_task_id && $this->syncs($task)) {
             $this->ensureLinked($actor);
             $this->bitrix->callAsUser($actor, 'tasks.task.delete', ['taskId' => $task->bitrix_task_id]);
-            BitrixOutboundOp::record(BitrixOutboundOp::TASK, $task->bitrix_task_id, 'delete', null, $actor);
+            $this->ops->record(BitrixOutboundOp::TASK, $task->bitrix_task_id, 'delete', null, $actor);
         }
     }
 
@@ -155,7 +169,7 @@ class BitrixTaskPusher
 
         // A custom status of ours that sends the same Bitrix value stays as chosen.
         if ($this->normalize($current) !== $target) {
-            $task->status = TaskStatus::keyForBitrix($current) ?? $task->status;
+            $task->status = $this->lookups->keyForBitrix(TaskStatus::class, $current) ?? $task->status;
         }
     }
 
@@ -185,7 +199,7 @@ class BitrixTaskPusher
 
     private function bitrixStatus(?string $key): int
     {
-        $bitrixId = TaskStatus::where('key', $key)->value('bitrix_id');
+        $bitrixId = $this->lookups->bitrixIdForKey(TaskStatus::class, $key);
 
         return $this->normalize((int) ($bitrixId ?? throw BitrixException::cannotSync("Status \"{$key}\" has no Bitrix24 value.")));
     }
@@ -202,15 +216,29 @@ class BitrixTaskPusher
             $fields[self::FIELDS[$column]] = match ($column) {
                 'title' => $task->title,
                 'description' => $task->description ?? '',
-                'priority' => TaskPriority::where('key', $task->priority)->value('bitrix_id')
+                'priority' => $this->lookups->bitrixIdForKey(TaskPriority::class, $task->priority)
                     ?? throw BitrixException::cannotSync("Priority \"{$task->priority}\" has no Bitrix24 value."),
                 // An empty value clears the deadline.
                 'due_date' => $task->due_date?->toIso8601String() ?? '',
                 'assigned_to' => $this->responsibleId($task->assigned_to),
+                // 0 detaches it from its parent.
+                'parent_id' => $this->parentBitrixId($task->parent_id),
+                'allow_time_tracking' => $task->allow_time_tracking ? 'Y' : 'N',
+                'time_estimate' => (int) $task->time_estimate,
             };
         }
 
         return $fields;
+    }
+
+    private function parentBitrixId(?int $parentId): int
+    {
+        if ($parentId === null) {
+            return 0;
+        }
+
+        return $this->tasks->bitrixTaskIdOf($parentId)
+            ?? throw BitrixException::cannotSync('The parent task is not in Bitrix24, so this task cannot be its subtask there.');
     }
 
     private function responsibleId(?int $userId): int
@@ -219,7 +247,7 @@ class BitrixTaskPusher
             throw BitrixException::cannotSync('A Bitrix24 task always has a responsible person; choose an assignee.');
         }
 
-        $user = User::find($userId);
+        $user = $this->users->findMany([$userId])->first();
 
         return $user?->bitrix_user_id
             ?? throw BitrixException::cannotSync(($user->name ?? 'This user').' is not a Bitrix24 user, so the task cannot be assigned to them.');

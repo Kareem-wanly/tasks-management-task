@@ -1,0 +1,19 @@
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+/** A user's roles. */
+class ShowUserRolesRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()->can('viewRoles', $this->route('user'));
+    }
+
+    public function rules(): array
+    {
+        return [];
+    }
+}

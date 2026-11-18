@@ -2,10 +2,14 @@
 
 namespace App\Integrations\Bitrix24;
 
-use App\Models\ActivityLog;
 use App\Models\BitrixOutboundOp;
 use App\Models\Project;
 use App\Models\Task;
+use App\Repositories\Contracts\ActivityLogRepositoryInterface;
+use App\Repositories\Contracts\BitrixOutboundOpRepositoryInterface;
+use App\Repositories\Contracts\ProjectRepositoryInterface;
+use App\Repositories\Contracts\TaskRepositoryInterface;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -17,20 +21,31 @@ use Illuminate\Support\Facades\Log;
  */
 class BitrixEchoGuard
 {
+    public function __construct(
+        private readonly BitrixOutboundOpRepositoryInterface $ops,
+        private readonly TaskRepositoryInterface $tasks,
+        private readonly ProjectRepositoryInterface $projects,
+        private readonly ActivityLogRepositoryInterface $activities,
+        private readonly BitrixFingerprint $fingerprints,
+    ) {}
+
     /**
      * @param  array<string, mixed>|null  $attributes  Our columns for the fetched task; null when it is gone from Bitrix.
+     * @param  array{accomplice: list<int>, auditor: list<int>}|null  $members  Its accomplices and auditors (Bitrix IDs).
      * @return bool True when the event is the echo of our change: nothing to apply.
      */
-    public function isTaskEcho(int $bitrixTaskId, ?array $attributes): bool
+    public function isTaskEcho(int $bitrixTaskId, ?array $attributes, ?array $members = null): bool
     {
-        $op = BitrixOutboundOp::pending(BitrixOutboundOp::TASK, $bitrixTaskId);
-        if (! $op) {
+        $ops = $this->ops->pending(BitrixOutboundOp::TASK, $bitrixTaskId);
+        if ($ops->isEmpty()) {
             return false;
         }
 
-        $fingerprint = $attributes === null ? null : BitrixFingerprint::task((new Task)->forceFill($attributes));
+        $fingerprint = $attributes === null
+            ? null
+            : $this->fingerprints->task((new Task)->forceFill($attributes), $members ?? ['accomplice' => [], 'auditor' => []]);
 
-        return $this->settle($op, $fingerprint, Task::withTrashed()->where('bitrix_task_id', $bitrixTaskId)->first());
+        return $this->settle($ops, $fingerprint, $this->tasks->findByBitrixId($bitrixTaskId, withTrashed: true));
     }
 
     /**
@@ -38,36 +53,44 @@ class BitrixEchoGuard
      */
     public function isProjectEcho(int $bitrixGroupId, ?array $attributes, bool $closed): bool
     {
-        $op = BitrixOutboundOp::pending(BitrixOutboundOp::PROJECT, $bitrixGroupId);
-        if (! $op) {
+        $ops = $this->ops->pending(BitrixOutboundOp::PROJECT, $bitrixGroupId);
+        if ($ops->isEmpty()) {
             return false;
-        }
-
-        // Deleting here archives the group, so a closed group answers our delete.
-        if ($op->isDelete() && $closed) {
-            $op->confirm();
-
-            return true;
         }
 
         $fingerprint = $attributes === null
             ? null
-            : BitrixFingerprint::project((new Project)->forceFill([...$attributes, 'status' => $closed ? 'archived' : 'active']));
+            : $this->fingerprints->project((new Project)->forceFill([...$attributes, 'status' => $closed ? 'archived' : 'active']));
 
-        return $this->settle($op, $fingerprint, Project::withTrashed()->where('bitrix_group_id', $bitrixGroupId)->first());
+        // Deleting here archives the group, so a closed group answers our delete.
+        $answers = fn (BitrixOutboundOp $op) => $op->isDelete() && $closed;
+
+        return $this->settle($ops, $fingerprint, $this->projects->findByBitrixGroupId($bitrixGroupId, withTrashed: true), $answers);
     }
 
-    private function settle(BitrixOutboundOp $op, ?string $fingerprint, Task|Project|null $record): bool
+    /**
+     * The record as Bitrix has it is our echo when it matches one of our
+     * waiting changes (it and the earlier ones are then confirmed); when it
+     * matches none, someone changed it in Bitrix: a conflict.
+     *
+     * @param  Collection<int, BitrixOutboundOp>  $ops  Newest first.
+     * @param  (callable(BitrixOutboundOp): bool)|null  $alsoAnswers  Another way a record can answer an op.
+     */
+    private function settle(Collection $ops, ?string $fingerprint, Task|Project|null $record, ?callable $alsoAnswers = null): bool
     {
         // A delete is confirmed by the record being gone; anything else by an identical record.
-        if ($op->isDelete() ? $fingerprint === null : $fingerprint === $op->fingerprint) {
-            $op->confirm();
+        $answered = $ops->first(fn (BitrixOutboundOp $op) => ($op->isDelete() ? $fingerprint === null : $fingerprint === $op->fingerprint)
+            || ($alsoAnswers && $alsoAnswers($op)));
+
+        if ($answered) {
+            $this->ops->settle($answered, BitrixOutboundOp::CONFIRMED);
 
             return true;
         }
 
-        $op->markConflict();
-        $this->logConflict($op, $record);
+        $newest = $ops->first();
+        $this->ops->settle($newest, BitrixOutboundOp::CONFLICT);
+        $this->logConflict($newest, $record);
 
         return false;
     }
@@ -82,7 +105,7 @@ class BitrixEchoGuard
         }
 
         $isTask = $record instanceof Task;
-        ActivityLog::create([
+        $this->activities->create([
             'user_id' => $op->user_id,
             'project_id' => $isTask ? $record->project_id : $record->id,
             'task_id' => $isTask ? $record->id : null,

@@ -175,6 +175,21 @@ class BitrixProjectPushTest extends TestCase
             ->assertJsonPath('message', 'tester is not a Bitrix24 user, so they cannot be added to this project.');
 
         $this->assertSame(0, $project->members()->count());
+        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'sonet_group.user.add'));
+    }
+
+    public function test_inactive_user_is_refused_before_bitrix_is_called(): void
+    {
+        $project = $this->linkedProject();
+        $this->colleague->forceFill(['is_active' => false])->save();
+        Sanctum::actingAs($this->actor);
+
+        $this->postJson("/api/projects/{$project->id}/members", ['user_id' => $this->colleague->id])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('user_id');
+
+        $this->assertSame(0, $project->members()->count());
+        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'sonet_group.user.add'));
     }
 
     public function test_bitrix_refusal_saves_nothing(): void

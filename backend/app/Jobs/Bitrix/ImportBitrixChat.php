@@ -1,0 +1,56 @@
+<?php
+
+namespace App\Jobs\Bitrix;
+
+use App\Integrations\Bitrix24\BitrixChatPusher;
+use App\Integrations\Bitrix24\BitrixException;
+use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
+use App\Repositories\Contracts\TaskRepositoryInterface;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * Step 4.7: brings every Bitrix task's whole chat up to date. Edits and
+ * deletes in Bitrix send no events, so this nightly pass (and opening a
+ * task, for its newest messages) is how they reach us.
+ */
+class ImportBitrixChat implements ShouldQueue
+{
+    use Queueable, TracksSyncProgress;
+
+    public const ENTITY = 'chat';
+
+    private const CHUNK = 50;
+
+    public function __construct()
+    {
+        $this->onQueue('bitrix');
+    }
+
+    public function handle(BitrixChatPusher $chat, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $tasks): void
+    {
+        $cursor = $cursors->start(self::ENTITY);
+        $total = $tasks->countInBitrix();
+        $failed = 0;
+
+        $tasks->chunkInBitrix(self::CHUNK, function ($chunk) use ($chat, $cursor, $cursors, $total, &$failed) {
+            foreach ($chunk as $task) {
+                try {
+                    $chat->refresh($task, complete: true);
+                } catch (BitrixException $e) {
+                    // One chat Bitrix refuses must not stop the rest, nor wipe its messages.
+                    if ($e->errorCode === BitrixException::UNREACHABLE) {
+                        throw $e;
+                    }
+                    $failed++;
+                }
+            }
+
+            $cursors->advance($cursor, $chunk->count(), $total);
+        });
+
+        $cursors->complete($cursor);
+        Log::info('Bitrix24 task chats imported.', ['tasks' => $cursor->processed, 'failed' => $failed]);
+    }
+}

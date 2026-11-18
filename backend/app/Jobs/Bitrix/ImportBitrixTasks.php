@@ -7,8 +7,8 @@ use App\Integrations\Bitrix24\BitrixDeletionGuard;
 use App\Integrations\Bitrix24\BitrixRecordFetcher;
 use App\Integrations\Bitrix24\BitrixTaskSync;
 use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
-use App\Models\BitrixSyncCursor;
-use App\Models\Task;
+use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
+use App\Repositories\Contracts\TaskRepositoryInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -37,9 +37,9 @@ class ImportBitrixTasks implements ShouldQueue
         $this->onQueue('bitrix');
     }
 
-    public function handle(BitrixClient $bitrix, BitrixTaskSync $tasks, BitrixTaskMapper $mapper, BitrixRecordFetcher $fetch, BitrixDeletionGuard $guard): void
+    public function handle(BitrixClient $bitrix, BitrixTaskSync $tasks, BitrixTaskMapper $mapper, BitrixRecordFetcher $fetch, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $taskRepository, BitrixDeletionGuard $guard): void
     {
-        $cursor = BitrixSyncCursor::start(self::ENTITY);
+        $cursor = $cursors->start(self::ENTITY);
         $skipped = 0;
         $seen = [];
         // Totals of the passes already finished; the closed pass's own total
@@ -51,14 +51,15 @@ class ImportBitrixTasks implements ShouldQueue
                 'select' => BitrixTaskMapper::SELECT,
                 'filter' => $filter,
                 'order' => ['ID' => 'ASC'],
-            ], function (array $page, int $total) use ($tasks, $mapper, $fetch, $cursor, $earlierTotal, &$skipped, &$seen) {
+            ], function (array $page, int $total) use ($tasks, $mapper, $fetch, $cursor, $cursors, $earlierTotal, &$skipped, &$seen) {
                 $rows = $page['tasks'] ?? [];
 
                 // A full import runs after the users; a delta may meet someone new.
                 if ($this->changedSince) {
                     $people = [];
                     foreach ($rows as $row) {
-                        array_push($people, $mapper->creatorBitrixId($row), $mapper->responsibleBitrixId($row));
+                        $members = $mapper->members($row);
+                        array_push($people, $mapper->creatorBitrixId($row), $mapper->responsibleBitrixId($row), ...$members['accomplice'] ?? [], ...$members['auditor'] ?? []);
                     }
                     $fetch->importMissingUsers($people);
                 }
@@ -70,13 +71,13 @@ class ImportBitrixTasks implements ShouldQueue
                     }
                 }
 
-                $cursor->advance(count($rows), $earlierTotal + $total);
+                $cursors->advance($cursor, count($rows), $earlierTotal + $total);
             });
         }
 
-        $deleted = $this->changedSince ? 0 : $this->deleteMissing($seen, $fetch, $guard);
+        $deleted = $this->changedSince ? 0 : $this->deleteMissing($taskRepository, $seen, $fetch, $guard);
 
-        $cursor->complete();
+        $cursors->complete($cursor);
         Log::info($this->changedSince ? 'Bitrix24 task changes synced.' : 'Bitrix24 tasks imported.', [
             'processed' => $cursor->processed, 'skipped' => $skipped, 'deleted' => $deleted, 'portal_total' => $earlierTotal,
         ]);
@@ -98,7 +99,7 @@ class ImportBitrixTasks implements ShouldQueue
      *
      * @param  list<int>  $seen
      */
-    private function deleteMissing(array $seen, BitrixRecordFetcher $fetch, BitrixDeletionGuard $guard): int
+    private function deleteMissing(TaskRepositoryInterface $tasks, array $seen, BitrixRecordFetcher $fetch, BitrixDeletionGuard $guard): int
     {
         // An empty listing is more likely a Bitrix hiccup than an empty portal.
         if ($seen === []) {
@@ -106,13 +107,12 @@ class ImportBitrixTasks implements ShouldQueue
         }
 
         // Compared here, not in SQL: a NOT IN with every Bitrix ID outgrows the placeholder limit.
-        $missing = array_values(array_diff(Task::whereNotNull('bitrix_task_id')->pluck('bitrix_task_id')->all(), $seen));
+        $missing = array_values(array_diff($tasks->allBitrixIds(), $seen));
+
         $gone = $guard->confirmedGone($missing, fn (int $id) => $fetch->task($id) !== null, 'tasks');
+        $deleted = $tasks->deleteByBitrixIds($gone);
+        $guard->recordDeleted('tasks', $gone, 'import');
 
-        $tasks = Task::whereIn('bitrix_task_id', $gone)->get();
-        $tasks->each->delete();
-        $guard->recordDeleted('tasks', $tasks->pluck('bitrix_task_id')->map(fn ($id) => (int) $id)->all(), 'import');
-
-        return $tasks->count();
+        return $deleted;
     }
 }

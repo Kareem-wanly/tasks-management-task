@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon } from 'lucide-react';
 import tasksApi from '@/api/tasksApi';
 import { queryKeys } from '@/api/queryKeys';
@@ -8,19 +7,25 @@ import { Button } from '@/components/ui/button';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import ErrorState from '@/components/ui/ErrorState';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { TASK_DONE_STATUS, TASK_REOPEN_STATUS } from '@/constants/statuses';
 import useApiMutation from '@/hooks/useApiMutation';
 import useHotkeys from '@/hooks/useHotkeys';
 import useProject from '@/hooks/queries/useProject';
 import useTask from '@/hooks/queries/useTask';
 import useTaskLookups from '@/hooks/queries/useTaskLookups';
+import useUserOptions from '@/hooks/queries/useUserOptions';
 import { useAuth } from '@/lib/auth/AuthContext';
-import type { Comment, Task, User } from '@/types/api';
-import TaskComments from './components/TaskComments';
+import type { Task, User, UserOption } from '@/types/api';
+import TaskChatPanel from './components/TaskChatPanel';
+import TaskChecklist from './components/TaskChecklist';
 import TaskDescription from './components/TaskDescription';
 import TaskDetailsHeader from './components/TaskDetailsHeader';
+import TaskFilesPanel from './components/TaskFilesPanel';
 import TaskFormDialog from './components/TaskFormDialog';
+import TaskPeoplePanel from './components/TaskPeoplePanel';
+import TaskResultsPanel from './components/TaskResultsPanel';
 import TaskSidebar from './components/TaskSidebar';
+import TaskSubtasks from './components/TaskSubtasks';
+import TaskTimePanel from './components/TaskTimePanel';
 import useTaskQuickUpdate from './hooks/useTaskQuickUpdate';
 import useTaskSiblings from './hooks/useTaskSiblings';
 import useTaskStatus from './hooks/useTaskStatus';
@@ -30,7 +35,6 @@ type TaskDialog = 'edit' | 'duplicate' | 'delete' | null;
 export default function TaskDetailsPage() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { can } = useAuth();
   const canEdit = can('tasks.update');
 
@@ -40,7 +44,8 @@ export default function TaskDetailsPage() {
   const siblings = useTaskSiblings(task?.project?.id, task?.id ?? 0);
   const status = useTaskStatus();
   const quick = useTaskQuickUpdate();
-  const { isFinal } = useTaskLookups();
+  const { isFinal, doneStatus, reopenStatus } = useTaskLookups();
+  const userOptions = useUserOptions({ enabled: can('users.view') });
   const [dialog, setDialog] = useState<TaskDialog>(null);
 
   const remove = useApiMutation({
@@ -55,18 +60,12 @@ export default function TaskDetailsPage() {
   useHotkeys(
     {
       e: () => canEdit && setDialog('edit'),
-      c: () => task && (can('tasks.change_status') || canEdit) && status.change(task, isFinal(task.status) ? TASK_REOPEN_STATUS : TASK_DONE_STATUS),
+      c: () => task && (can('tasks.change_status') || canEdit) && status.change(task, isFinal(task.status) ? reopenStatus : doneStatus),
       j: () => siblings.nextId && navigate(`/tasks/${siblings.nextId}`),
       k: () => siblings.previousId && navigate(`/tasks/${siblings.previousId}`),
     },
     task !== undefined && dialog === null
   );
-
-  const updateComments = (update: (comments: Comment[]) => Comment[]) => {
-    queryClient.setQueryData<Task>(queryKeys.tasks.detail(id), (prev) =>
-      prev ? { ...prev, comments: update(prev.comments ?? []) } : prev
-    );
-  };
 
   if (taskQuery.isPending) {
     return <LoadingSpinner text="Loading task details..." />;
@@ -92,6 +91,8 @@ export default function TaskDetailsPage() {
   for (const member of [project.data?.owner, ...(project.data?.members ?? [])]) {
     if (member && !members.some((m) => m.id === member.id)) members.push(member);
   }
+  // Anyone in the company can follow a task; without users.view, the project's people.
+  const peopleCandidates: UserOption[] = userOptions.data ?? members;
 
   return (
     <div className="space-y-6">
@@ -113,10 +114,18 @@ export default function TaskDetailsPage() {
               quick.update(task, { description }, notify ? 'Description saved.' : undefined)
             }
           />
-          <TaskComments taskId={task.id} comments={task.comments ?? []} onCommentsChange={updateComments} />
+          <TaskChecklist taskId={task.id} />
+          <TaskSubtasks task={task} />
+          <TaskFilesPanel taskId={task.id} />
+          <TaskResultsPanel taskId={task.id} />
+          {can('comments.view') && <TaskChatPanel taskId={task.id} />}
         </div>
 
-        <TaskSidebar task={task} members={members} status={status} quick={quick} />
+        <div className="min-w-0 space-y-4 self-start">
+          <TaskSidebar task={task} members={members} status={status} quick={quick} />
+          <TaskPeoplePanel task={task} candidates={peopleCandidates} />
+          <TaskTimePanel task={task} />
+        </div>
       </div>
 
       <TaskFormDialog open={dialog === 'edit'} onOpenChange={(open) => setDialog(open ? 'edit' : null)} task={task} />

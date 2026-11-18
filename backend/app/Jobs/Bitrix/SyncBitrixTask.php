@@ -7,8 +7,8 @@ use App\Integrations\Bitrix24\BitrixEchoGuard;
 use App\Integrations\Bitrix24\BitrixRecordFetcher;
 use App\Integrations\Bitrix24\BitrixTaskSync;
 use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
-use App\Models\Project;
-use App\Models\Task;
+use App\Repositories\Contracts\ProjectRepositoryInterface;
+use App\Repositories\Contracts\TaskRepositoryInterface;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -41,7 +41,7 @@ class SyncBitrixTask implements ShouldBeUniqueUntilProcessing, ShouldQueue
         return (string) $this->bitrixTaskId;
     }
 
-    public function handle(BitrixRecordFetcher $fetch, BitrixTaskSync $tasks, BitrixTaskMapper $mapper, BitrixEchoGuard $echo, BitrixDeletionGuard $guard): void
+    public function handle(BitrixRecordFetcher $fetch, BitrixTaskSync $tasks, BitrixTaskMapper $mapper, BitrixEchoGuard $echo, TaskRepositoryInterface $taskRepository, ProjectRepositoryInterface $projects, BitrixDeletionGuard $guard): void
     {
         $row = $fetch->task($this->bitrixTaskId);
 
@@ -49,8 +49,8 @@ class SyncBitrixTask implements ShouldBeUniqueUntilProcessing, ShouldQueue
         // service account sees every task, so "not found" proves nothing otherwise.
         if ($row === null) {
             if (! $echo->isTaskEcho($this->bitrixTaskId, null) && $guard->serviceAccountIsAdmin()) {
-                if ($task = Task::where('bitrix_task_id', $this->bitrixTaskId)->first()) {
-                    $task->delete();
+                if ($task = $taskRepository->findByBitrixId($this->bitrixTaskId)) {
+                    $taskRepository->delete($task);
                     $guard->recordDeleted('tasks', [$this->bitrixTaskId], 'event');
                 }
             }
@@ -59,16 +59,20 @@ class SyncBitrixTask implements ShouldBeUniqueUntilProcessing, ShouldQueue
         }
 
         // The task may point at people or a group we haven't seen yet.
-        $fetch->importMissingUsers([$mapper->creatorBitrixId($row), $mapper->responsibleBitrixId($row)]);
+        $members = $mapper->members($row);
+        $fetch->importMissingUsers([
+            $mapper->creatorBitrixId($row), $mapper->responsibleBitrixId($row),
+            ...$members['accomplice'] ?? [], ...$members['auditor'] ?? [],
+        ]);
 
         $groupId = $mapper->groupBitrixId($row);
-        if ($groupId !== 0 && ! Project::where('bitrix_group_id', $groupId)->exists()) {
+        if ($groupId !== 0 && $projects->idByBitrixGroupId($groupId) === null) {
             app()->call([new SyncBitrixProject($groupId), 'handle']);
         }
 
         // Our own change coming back: already saved here.
         $attributes = $tasks->resolve($row);
-        if ($attributes !== null && $echo->isTaskEcho($this->bitrixTaskId, $attributes)) {
+        if ($attributes !== null && $echo->isTaskEcho($this->bitrixTaskId, $attributes, $members)) {
             return;
         }
 

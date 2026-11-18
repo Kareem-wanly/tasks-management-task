@@ -75,3 +75,41 @@ export function formatRelativeTime(value: string | null | undefined, now: Date =
   }
   return format.format(0, 'second');
 }
+
+/** A span of seconds as "1h 30m", "45m" or "20s" (timer and time log). */
+export function formatDuration(seconds: number): string {
+  const total = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  if (hours > 0) return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  if (minutes > 0) return `${minutes}m`;
+  return `${total}s`;
+}
+
+/** A running timer's clock, "1:05:09". */
+export function formatClock(seconds: number): string {
+  const total = Math.max(0, Math.floor(seconds));
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${Math.floor(total / 3600)}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`;
+}
+
+/** A file size as "820 B", "14 KB", "2.4 MB". */
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * Bitrix24 text (BBCode, e.g. "[p]Done[/p]", "[b]x[/b]", "[url=…]link[/url]")
+ * as plain text: tags dropped, paragraphs and [br] as line breaks, and chat
+ * timestamps ("[TIMESTAMP=1794837753 FORMAT=…]") as a local date and time.
+ */
+export function bbcodeToText(value: string): string {
+  return value
+    .replace(/\[timestamp=(\d+)[^\]]*\]/gi, (_, seconds: string) => formatDateTime(new Date(Number(seconds) * 1000).toISOString()))
+    .replace(/\[br\s*\/?\]/gi, '\n')
+    .replace(/\[\/p\]\s*\[p\]/gi, '\n\n')
+    .replace(/\[\/?[a-z*]+(=[^\]]*)?\]/gi, '')
+    .trim();
+}
