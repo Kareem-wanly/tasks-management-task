@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixClient;
-use App\Integrations\Bitrix24\BitrixException;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskPriority;

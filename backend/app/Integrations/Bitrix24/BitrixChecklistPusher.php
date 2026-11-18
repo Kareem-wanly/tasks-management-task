@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24;
 
+use App\Exceptions\Bitrix\BitrixException;
 use App\Models\Task;
 use App\Models\TaskChecklistItem;
 use App\Models\User;

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\User\SyncUserRolesDTO;
-use App\Exceptions\BusinessRuleException;
+use App\Exceptions\User\AdministratorRoleChangeDeniedException;
+use App\Exceptions\User\LastAdministratorException;
+use App\Exceptions\User\RoleAssignmentDeniedException;
 use App\Models\User;
 use App\Repositories\Contracts\PermissionRepositoryInterface;
 use App\Repositories\Contracts\RoleRepositoryInterface;
@@ -38,7 +40,7 @@ class UserRoleService
         $actorIsAdmin = $actor->hasRole('Administrator');
 
         if (! $actorIsAdmin && $this->permissions->idsGrantedByRoles($roleIds)->diff($actor->permissionIds())->isNotEmpty()) {
-            throw BusinessRuleException::forbidden('You cannot assign roles with permissions that you do not possess.');
+            throw new RoleAssignmentDeniedException;
         }
 
         return DB::transaction(function () use ($actorIsAdmin, $user, $roleIds): User {
@@ -49,11 +51,11 @@ class UserRoleService
                 $keepsAdmin = in_array($adminRole->id, $roleIds);
 
                 if (($keepsAdmin || $hasAdmin) && ! $actorIsAdmin) {
-                    throw BusinessRuleException::forbidden('Only an Administrator can assign or revoke the Administrator role.');
+                    throw new AdministratorRoleChangeDeniedException;
                 }
 
                 if ($hasAdmin && ! $keepsAdmin && $this->users->countWithRoleForUpdate($adminRole) <= 1) {
-                    throw new BusinessRuleException('Cannot revoke Administrator role from the final active administrator.');
+                    throw new LastAdministratorException;
                 }
             }
 

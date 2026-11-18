@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Task\TaskHistoryDTO;
-use App\Integrations\Bitrix24\BitrixException;
+use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixTaskHistoryReader;
 use App\Models\Task;
 use Illuminate\Support\Facades\Log;

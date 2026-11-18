@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Exceptions\BitrixSignInException;
-use App\Exceptions\BusinessRuleException;
+use App\Exceptions\Bitrix\BitrixException;
+use App\Exceptions\Bitrix\BitrixLoginCodeExpiredException;
+use App\Exceptions\Bitrix\BitrixSignInException;
 use App\Integrations\Bitrix24\BitrixClient;
-use App\Integrations\Bitrix24\BitrixException;
 use App\Integrations\Bitrix24\BitrixLoginCodes;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\BitrixUserSync;
@@ -102,14 +102,14 @@ class BitrixAuthService
     /**
      * The one-time code from the callback and this browser's nonce, for a Sanctum token.
      *
-     * @throws BusinessRuleException When the code is unknown, expired, already used, for another browser, or its user is inactive.
+     * @throws BitrixLoginCodeExpiredException When the code is unknown, expired, already used, for another browser, or its user is inactive.
      */
     public function exchangeCode(string $code, string $nonce): string
     {
         $user = $this->codes->redeem($code, $nonce);
 
         if (! $user instanceof User || ! $user->is_active) {
-            throw new BusinessRuleException('The sign-in link expired or was already used. Please sign in again.');
+            throw new BitrixLoginCodeExpiredException;
         }
 
         return $this->userRepository->createApiToken($user, self::TOKEN_NAME);

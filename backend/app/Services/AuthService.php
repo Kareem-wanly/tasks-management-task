@@ -8,7 +8,8 @@ use App\DTOs\Auth\LoginDTO;
 use App\DTOs\Auth\RegisterDTO;
 use App\DTOs\Auth\UpdatePasswordDTO;
 use App\DTOs\Auth\UpdateProfileDTO;
-use App\Exceptions\BusinessRuleException;
+use App\Exceptions\Auth\AccountDeactivatedException;
+use App\Exceptions\Auth\InvalidCredentialsException;
 use App\Models\User;
 use App\Repositories\Contracts\RoleRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
@@ -52,11 +53,11 @@ class AuthService
         $user = $this->users->findByEmail($credentials->email);
 
         if (! $user instanceof User || ! Hash::check($credentials->password, $user->password)) {
-            throw new BusinessRuleException('Invalid login credentials', 401);
+            throw new InvalidCredentialsException;
         }
 
         if (! $user->is_active) {
-            throw BusinessRuleException::forbidden('This account is deactivated');
+            throw new AccountDeactivatedException;
         }
 
         return [$this->users->withRoles($user), $this->users->createApiToken($user, self::TOKEN_NAME)];

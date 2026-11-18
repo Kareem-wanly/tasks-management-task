@@ -7,7 +7,11 @@ namespace App\Services;
 use App\DTOs\Role\CreateRoleDTO;
 use App\DTOs\Role\SyncRolePermissionsDTO;
 use App\DTOs\Role\UpdateRoleDTO;
-use App\Exceptions\BusinessRuleException;
+use App\Exceptions\Role\PermissionGrantDeniedException;
+use App\Exceptions\Role\ReservedRoleNameException;
+use App\Exceptions\Role\RolePermissionsChangeDeniedException;
+use App\Exceptions\Role\SystemRoleCannotBeDeletedException;
+use App\Exceptions\Role\SystemRoleCannotBeRenamedException;
 use App\Models\Role;
 use App\Models\User;
 use App\Repositories\Contracts\RoleRepositoryInterface;
@@ -66,10 +70,10 @@ class RoleService
 
         // System roles keep their names, so the app can rely on them.
         if ($isSystem && $newName !== null && $newName !== $role->name) {
-            throw BusinessRuleException::forbidden('System roles cannot be renamed.');
+            throw new SystemRoleCannotBeRenamedException;
         }
         if (! $isSystem && $newName !== null && in_array($newName, self::SYSTEM_ROLES, true)) {
-            throw BusinessRuleException::forbidden('Cannot rename a role to a reserved system role name.');
+            throw new ReservedRoleNameException;
         }
 
         $this->database->transaction(function () use ($actor, $role, $data): void {
@@ -95,7 +99,7 @@ class RoleService
     public function delete(Role $role): void
     {
         if (in_array($role->name, self::SYSTEM_ROLES, true)) {
-            throw BusinessRuleException::forbidden("Protected system role [{$role->name}] cannot be deleted");
+            throw SystemRoleCannotBeDeletedException::forRole($role->name);
         }
 
         $this->roles->delete($role);
@@ -109,11 +113,11 @@ class RoleService
         }
 
         if ($role->name === 'Administrator') {
-            throw BusinessRuleException::forbidden('Only an Administrator can modify permissions for this role.');
+            throw new RolePermissionsChangeDeniedException;
         }
 
         if (array_diff($permissionIds, $actor->permissionIds()->all()) !== []) {
-            throw BusinessRuleException::forbidden('You cannot grant permissions that you do not possess.');
+            throw new PermissionGrantDeniedException;
         }
     }
 }

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Bitrix24;
 
+use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixClient;
-use App\Integrations\Bitrix24\BitrixException;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use App\Integrations\Bitrix24\TokenManager;
@@ -110,7 +110,7 @@ class BitrixClientTest extends TestCase
             $this->fail('Expected a BitrixException.');
         } catch (BitrixException $e) {
             $this->assertTrue($e->isRateLimited());
-            $this->assertSame(503, $e->status);
+            $this->assertSame(503, $e->httpStatus);
         }
 
         Http::assertSentCount(4);
