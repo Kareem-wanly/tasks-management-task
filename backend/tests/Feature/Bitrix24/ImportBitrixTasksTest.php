@@ -23,6 +23,11 @@ class ImportBitrixTasksTest extends TestCase
     /** @var list<array> Every task the fake portal holds. */
     private array $tasks = [];
 
+    /** Tasks the listing leaves out but tasks.task.get still returns (e.g. hidden from the listing). */
+    private array $stillThere = [];
+
+    private bool $serviceIsAdmin = true;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -56,6 +61,15 @@ class ImportBitrixTasksTest extends TestCase
 
                 return Http::response(['result' => ['tasks' => $rows], 'total' => count($rows)]);
             },
+            // A deleted task answers an empty result (checked on the real portal).
+            'https://portal.test/rest/tasks.task.get.json' => function (Request $request) {
+                $id = (int) $request['taskId'];
+                $found = in_array($id, $this->stillThere, true)
+                    || array_filter($this->tasks, fn (array $t) => (int) $t['id'] === $id) !== [];
+
+                return Http::response(['result' => $found ? ['task' => $this->task($id)] : []]);
+            },
+            'https://portal.test/rest/user.admin.json' => fn () => Http::response(['result' => $this->serviceIsAdmin]),
         ]);
     }
 
@@ -187,5 +201,94 @@ class ImportBitrixTasksTest extends TestCase
         $this->import();
 
         $this->assertSame(1, Task::count());
+    }
+
+    public function test_a_full_import_deletes_tasks_gone_from_bitrix(): void
+    {
+        $this->tasks = [$this->task(15), $this->task(16)];
+        $this->import();
+
+        // 16 was deleted in Bitrix while its event was lost.
+        $this->tasks = [$this->task(15)];
+        $this->import();
+
+        $this->assertSame([15], Task::pluck('bitrix_task_id')->all());
+        $this->assertSoftDeleted(Task::withTrashed()->where('bitrix_task_id', 16)->sole());
+    }
+
+    /** Review A4: a non-admin service account doesn't see every task, so nothing is deleted. */
+    public function test_nothing_is_deleted_when_the_service_account_is_not_an_admin(): void
+    {
+        $this->tasks = [$this->task(15), $this->task(16)];
+        $this->import();
+
+        $this->tasks = [$this->task(15)];
+        $this->serviceIsAdmin = false;
+        $this->import();
+
+        $this->assertSame(2, Task::count());
+    }
+
+    /** Review A4: missing from the listing is not proof; Bitrix must confirm it is gone. */
+    public function test_a_task_bitrix_still_returns_is_not_deleted(): void
+    {
+        $this->tasks = [$this->task(15), $this->task(16)];
+        $this->import();
+
+        $this->tasks = [$this->task(15)];
+        $this->stillThere = [16];
+        $this->import();
+
+        $this->assertSame(2, Task::count());
+    }
+
+    /** Review A4: a mass deletion is far more likely a fault, so a run deletes at most 20. */
+    public function test_too_many_missing_tasks_deletes_none(): void
+    {
+        $this->tasks = array_map(fn (int $id) => $this->task($id), range(100, 125));
+        $this->import();
+
+        $this->tasks = [$this->task(100)];
+        $this->import();
+
+        $this->assertSame(26, Task::count());
+    }
+
+    public function test_an_empty_listing_deletes_nothing(): void
+    {
+        $this->tasks = [$this->task(15)];
+        $this->import();
+
+        $this->tasks = [];
+        $this->import();
+
+        $this->assertSame(1, Task::count());
+    }
+
+    public function test_a_delta_asks_only_for_changed_tasks_and_deletes_nothing(): void
+    {
+        $this->tasks = [$this->task(15), $this->task(16)];
+        $this->import();
+
+        $this->tasks = [$this->task(15, ['title' => 'Changed in Bitrix'])];
+        ImportBitrixTasks::dispatchSync(CarbonImmutable::parse('2026-11-15 12:00:00', 'UTC'));
+
+        $this->assertSame('Changed in Bitrix', Task::where('bitrix_task_id', 15)->sole()->title);
+        $this->assertSame(2, Task::count());
+        Http::assertSent(fn (Request $r) => ($r['filter']['>CHANGED_DATE'] ?? null) === '2026-11-15T12:00:00+00:00');
+    }
+
+    public function test_re_importing_an_unchanged_task_keeps_its_updated_at(): void
+    {
+        $this->tasks = [$this->task(15)];
+        $this->import();
+        $updatedAt = Task::sole()->updated_at->toDateTimeString();
+
+        $this->travel(1)->hours();
+        $this->import();
+
+        $task = Task::sole();
+        $this->assertSame($updatedAt, $task->updated_at->toDateTimeString());
+        $this->assertSame(now()->toDateTimeString(), $task->bitrix_synced_at->toDateTimeString());
     }
 }

@@ -165,4 +165,35 @@ class ImportFromBitrixCommandTest extends TestCase
             ])
             ->assertSuccessful();
     }
+
+    public function test_sync_changes_imports_everything_when_never_synced(): void
+    {
+        $this->artisan('bitrix:sync-changes')->assertSuccessful();
+
+        $this->assertSame(2, User::whereNotNull('bitrix_user_id')->count());
+        $this->assertSame(2, Task::whereNotNull('bitrix_task_id')->count());
+    }
+
+    public function test_sync_changes_asks_for_what_changed_since_the_last_sync(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-15 12:00:00', 'UTC'));
+        $this->artisan('bitrix:import --sync')->assertSuccessful();
+        $this->travelTo(CarbonImmutable::parse('2026-11-15 12:05:00', 'UTC'));
+
+        $this->artisan('bitrix:sync-changes')->assertSuccessful();
+
+        // A minute of overlap with the previous run.
+        Http::assertSent(fn (Request $r) => ($r['filter']['>CHANGED_DATE'] ?? null) === '2026-11-15T11:59:00+00:00');
+        // The next run starts from when this one started.
+        $this->assertSame('2026-11-15 12:05:00', BitrixSyncCursor::where('entity', 'tasks')->sole()->last_synced_at->utc()->toDateTimeString());
+        $this->assertSame(2, Task::count());
+    }
+
+    public function test_the_safety_net_is_scheduled(): void
+    {
+        $this->artisan('schedule:list')
+            ->expectsOutputToContain('bitrix:sync-changes')
+            ->expectsOutputToContain('bitrix:import --sync')
+            ->assertSuccessful();
+    }
 }

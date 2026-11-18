@@ -9,6 +9,7 @@ use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use App\Integrations\Bitrix24\TokenManager;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 use InvalidArgumentException;
@@ -96,6 +97,23 @@ class BitrixClientTest extends TestCase
             && $r['refresh_token'] === 'old-refresh'
             && $r['client_secret'] === 'app-secret');
         Http::assertSent(fn (Request $r) => str_contains($r->url(), '/rest/user.current.json') && $r['auth'] === 'new-access');
+    }
+
+    /** Review C11: waiting too long for another process's refresh is "Bitrix unreachable" (503), not a 500. */
+    public function test_a_refresh_lock_held_too_long_is_reported_as_unreachable(): void
+    {
+        Sleep::fake(syncWithCarbon: true);
+        Http::fake();
+        Cache::lock('bitrix-token:test', 60)->get();
+
+        try {
+            $this->client()->callAsUser($this->holder($this->token(expiresInSeconds: 30)), 'user.current');
+            $this->fail('Expected a BitrixException.');
+        } catch (BitrixException $e) {
+            $this->assertSame(BitrixException::UNREACHABLE, $e->errorCode);
+        }
+
+        Http::assertNothingSent();
     }
 
     public function test_valid_token_is_not_refreshed(): void

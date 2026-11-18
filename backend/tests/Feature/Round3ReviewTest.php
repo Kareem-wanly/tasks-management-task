@@ -37,14 +37,14 @@ class Round3ReviewTest extends TestCase
         $admin = User::factory()->create();
         $admin->roles()->attach(Role::where('name', 'Administrator')->first());
         Sanctum::actingAs($this->deleter());
-        $this->deleteJson("/api/users/{$admin->id}")->assertStatus(403);
+        $this->patchJson("/api/users/{$admin->id}/active", ['active' => false])->assertStatus(403);
     }
 
     public function test_f1_user_cannot_delete_own_account(): void
     {
         $me = $this->deleter();
         Sanctum::actingAs($me);
-        $this->deleteJson("/api/users/{$me->id}")->assertStatus(403);
+        $this->patchJson("/api/users/{$me->id}/active", ['active' => false])->assertStatus(403);
     }
 
     public function test_f3_project_delete_logs_task_deleted_activity(): void

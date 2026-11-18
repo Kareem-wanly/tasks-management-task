@@ -6,6 +6,7 @@ use App\Http\Requests\AddProjectMemberRequest;
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Http\Resources\ProjectResource;
+use App\Integrations\Bitrix24\BitrixProjectPusher;
 use App\Models\ActivityLog;
 use App\Models\Project;
 use App\Models\User;
@@ -14,9 +15,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+/*
+ * Changes to a project linked to Bitrix24 go to Bitrix first (see
+ * BitrixProjectPusher) and are saved here only when Bitrix accepts them.
+ */
 class ProjectController extends Controller
 {
     use AuthorizesRequests;
+
+    public function __construct(private readonly BitrixProjectPusher $bitrix) {}
 
     public function index(Request $request)
     {
@@ -93,19 +100,21 @@ class ProjectController extends Controller
         $validated = $request->validated();
         $title = $validated['title'] ?? null;
 
-        $project = DB::transaction(function () use ($request, $validated, $title) {
-            $project = Project::create([
-                'title' => $title,
-                'description' => $validated['description'] ?? null,
-                'start_date' => $validated['start_date'] ?? null,
-                'due_date' => $validated['due_date'] ?? null,
-                'owner_id' => $request->user()->id,
-                'status' => $validated['status'] ?? 'active',
-            ]);
+        $project = new Project([
+            'title' => $title,
+            'description' => $validated['description'] ?? null,
+            'start_date' => $validated['start_date'] ?? null,
+            'due_date' => $validated['due_date'] ?? null,
+            'owner_id' => $request->user()->id,
+            'status' => $validated['status'] ?? 'active',
+        ]);
 
-            $project->members()->attach($request->user()->id);
+        $this->bitrix->create($request->user(), $project);
 
-            return $project;
+        DB::transaction(function () use ($request, $project) {
+            $project->save();
+            // Same role the Bitrix import gives the group owner.
+            $project->members()->attach($request->user()->id, ['role' => 'owner']);
         });
 
         return (new ProjectResource($project->load(['owner:id,name,email', 'members:id,name,email'])))
@@ -132,15 +141,18 @@ class ProjectController extends Controller
             }
         }
 
-        $project->update($validated);
+        $project->fill($validated);
+        $this->bitrix->update($request->user(), $project);
+        $project->save();
 
         return new ProjectResource($project->fresh(['owner:id,name,email', 'members:id,name,email']));
     }
 
-    public function destroy(Project $project): JsonResponse
+    public function destroy(Request $request, Project $project): JsonResponse
     {
         $this->authorize('delete', $project);
 
+        $this->bitrix->delete($request->user(), $project);
         $project->delete();
 
         return response()->json([
@@ -180,6 +192,7 @@ class ProjectController extends Controller
             ], 422);
         }
 
+        $this->bitrix->addMember($request->user(), $project, User::findOrFail($userId), $role);
         $project->members()->attach($userId, ['role' => $role]);
 
         ActivityLog::create([
@@ -210,6 +223,7 @@ class ProjectController extends Controller
             ], 404);
         }
 
+        $this->bitrix->removeMember($request->user(), $project, $user);
         $project->members()->detach($user->id);
 
         ActivityLog::create([
@@ -232,9 +246,9 @@ class ProjectController extends Controller
 
         $newStatus = $project->status === 'archived' ? 'active' : 'archived';
 
-        $project->update([
-            'status' => $newStatus,
-        ]);
+        $project->status = $newStatus;
+        $this->bitrix->update($request->user(), $project);
+        $project->save();
 
         return response()->json([
             'success' => true,

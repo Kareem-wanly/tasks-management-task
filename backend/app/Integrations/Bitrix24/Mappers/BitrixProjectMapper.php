@@ -70,8 +70,16 @@ class BitrixProjectMapper
         return $roles;
     }
 
+    /**
+     * Project dates are calendar days, stored by Bitrix as midnight in the
+     * portal's timezone and returned in UTC: 15 Nov at +03:00 comes back as
+     * 2026-11-14T21:00:00+00:00. Rounding to the nearest midnight gives the
+     * day back for any timezone between -12:00 and +12:00.
+     */
     private function date(mixed $value): ?string
     {
-        return is_string($value) && $value !== '' ? Carbon::parse($value)->toDateString() : null;
+        return is_string($value) && $value !== ''
+            ? Carbon::parse($value)->utc()->addHours(12)->toDateString()
+            : null;
     }
 }

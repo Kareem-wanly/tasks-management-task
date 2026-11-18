@@ -65,6 +65,8 @@ export interface UserListItem {
   name: string;
   email: string;
   roles: RoleRef[];
+  /** false = deactivated (here and in Bitrix24); they can't sign in. */
+  is_active: boolean;
   created_at: string | null;
 }
 

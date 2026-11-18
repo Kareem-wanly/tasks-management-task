@@ -1,5 +1,6 @@
 <?php
 
+use App\Integrations\Bitrix24\BitrixException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
@@ -39,6 +40,23 @@ return Application::configure(basePath: dirname(__DIR__))
                     'message' => 'This action is unauthorized.',
                 ], 403);
             }
+        });
+
+        // A change Bitrix24 didn't accept was not saved here either; say why.
+        $exceptions->render(function (BitrixException $e, Request $request) {
+            if (! ($request->is('api/*') || $request->expectsJson())) {
+                return null;
+            }
+
+            [$status, $message] = match (true) {
+                $e->isMissingToken() => [403, 'Sign in with Bitrix24 to change data that is synced with Bitrix24.'],
+                $e->errorCode === BitrixException::UNREACHABLE => [503, 'Bitrix24 is not responding. Your change was not saved; try again in a moment.'],
+                $e->errorCode === BitrixException::CANNOT_SYNC => [422, $e->getMessage()],
+                $e->isAccessDenied() => [403, 'Bitrix24 does not allow you to do this.'],
+                default => [422, 'Bitrix24 rejected the change: '.$e->getMessage()],
+            };
+
+            return response()->json(['message' => $message], $status);
         });
 
     })->create();

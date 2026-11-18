@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BitrixAuthController;
+use App\Http\Controllers\BitrixEventController;
 use App\Http\Controllers\BitrixInstallController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\PermissionController;
@@ -21,6 +22,8 @@ Route::middleware('throttle:5,1')->group(function () {
 
 // Bitrix24 calls this itself, so there is no user auth.
 Route::post('/bitrix/install', [BitrixInstallController::class, 'install']);
+// Verified by the application token inside the event, not by a user session.
+Route::post('/bitrix/events', [BitrixEventController::class, 'handle']);
 Route::post('/auth/bitrix/exchange', [BitrixAuthController::class, 'exchange'])->middleware('throttle:10,1');
 Route::post('/auth/bitrix/app-session', [BitrixAuthController::class, 'appSession'])->middleware('throttle:10,1');
 
@@ -40,7 +43,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/users', [UserController::class, 'store']);
     Route::get('/users/{user}', [UserController::class, 'show']);
     Route::put('/users/{user}', [UserController::class, 'update']);
-    Route::delete('/users/{user}', [UserController::class, 'destroy']);
+    // No delete: Bitrix24 can't delete users over REST, so they are deactivated.
+    Route::patch('/users/{user}/active', [UserController::class, 'setActive']);
 
     Route::get('/users/{user}/roles', [UserRoleController::class, 'index']);
     Route::put('/users/{user}/roles', [UserRoleController::class, 'syncRoles']);
@@ -69,6 +73,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // 5. Tasks Management
     Route::get('/tasks', [TaskController::class, 'index']);
+    Route::post('/tasks', [TaskController::class, 'store']);
     Route::get('/projects/{project}/tasks', [TaskController::class, 'indexByProject']);
     Route::post('/projects/{project}/tasks', [TaskController::class, 'storeByProject']);
 

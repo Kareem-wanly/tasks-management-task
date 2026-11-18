@@ -8,6 +8,10 @@ class BitrixException extends RuntimeException
 {
     public const NO_TOKEN = 'NO_TOKEN';
 
+    public const UNREACHABLE = 'UNREACHABLE';
+
+    public const CANNOT_SYNC = 'CANNOT_SYNC';
+
     public function __construct(
         public readonly string $errorCode,
         string $message = '',
@@ -31,6 +35,18 @@ class BitrixException extends RuntimeException
     public static function missingToken(): self
     {
         return new self(self::NO_TOKEN, 'No Bitrix24 token is stored for this account.');
+    }
+
+    /** Timeout or network failure: Bitrix never answered. */
+    public static function unreachable(string $reason): self
+    {
+        return new self(self::UNREACHABLE, $reason);
+    }
+
+    /** Our data can't be expressed in Bitrix (e.g. a user who isn't in Bitrix). */
+    public static function cannotSync(string $message): self
+    {
+        return new self(self::CANNOT_SYNC, $message);
     }
 
     public function isExpiredToken(): bool

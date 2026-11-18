@@ -41,6 +41,12 @@ class BitrixProjectSync
                 ?? new Project;
 
             if ($project->trashed()) {
+                // Deleting here archives the Bitrix group (BitrixProjectPusher::delete),
+                // so a closed group is our own delete: leave it deleted. Reopened in
+                // Bitrix means someone wants it back.
+                if ($this->mapper->isClosed($group)) {
+                    return $project;
+                }
                 $project->restore();
             }
 
@@ -53,7 +59,8 @@ class BitrixProjectSync
                 $project->save();
             }
 
-            $project->forceFill(['bitrix_synced_at' => now()])->saveQuietly();
+            // Bookkeeping, not a change: updated_at keeps the last real change.
+            Project::withoutTimestamps(fn () => $project->forceFill(['bitrix_synced_at' => now()])->saveQuietly());
 
             $this->syncMembers($project, $this->mapper->members($members));
 

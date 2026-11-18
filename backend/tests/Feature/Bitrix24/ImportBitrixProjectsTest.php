@@ -26,6 +26,8 @@ class ImportBitrixProjectsTest extends TestCase
     /** @var array<int, list<array>> group ID => members */
     private array $members = [];
 
+    private bool $serviceIsAdmin = true;
+
     private ?array $batchError = null;
 
     protected function setUp(): void
@@ -54,10 +56,15 @@ class ImportBitrixProjectsTest extends TestCase
 
         // Stubs can't be replaced later, so they read the properties above.
         Http::fake([
-            'https://portal.test/rest/socialnetwork.api.workgroup.list.json' => fn () => Http::response([
-                'result' => ['workgroups' => array_slice($this->groups, 0, 50)],
-                'total' => count($this->groups),
-            ]),
+            'https://portal.test/rest/socialnetwork.api.workgroup.list.json' => function (Request $request) {
+                // One group by ID (BitrixRecordFetcher::group) or the first page of the listing.
+                $groups = isset($request['filter']['ID'])
+                    ? array_values(array_filter($this->groups, fn (array $g) => (int) $g['id'] === (int) $request['filter']['ID']))
+                    : array_slice($this->groups, 0, 50);
+
+                return Http::response(['result' => ['workgroups' => $groups], 'total' => count($this->groups)]);
+            },
+            'https://portal.test/rest/user.admin.json' => fn () => Http::response(['result' => $this->serviceIsAdmin]),
             'https://portal.test/rest/batch.json' => function (Request $request) {
                 $result = [];
                 foreach ($request['cmd'] as $key => $command) {
@@ -97,8 +104,9 @@ class ImportBitrixProjectsTest extends TestCase
     public function test_group_is_imported_with_owner_dates_and_member_roles(): void
     {
         $this->groups = [$this->group(10, [
-            'projectDateStart' => '2026-11-01T00:00:00+03:00',
-            'projectDateFinish' => '2026-12-31T00:00:00+03:00',
+            // As Bitrix returns them: midnight at +03:00, in UTC.
+            'projectDateStart' => '2026-10-31T21:00:00+00:00',
+            'projectDateFinish' => '2026-12-30T21:00:00+00:00',
         ])];
         $this->members = [10 => [
             ['USER_ID' => '1', 'ROLE' => 'A'],
@@ -206,6 +214,19 @@ class ImportBitrixProjectsTest extends TestCase
         $this->assertSame(1, Project::count());
     }
 
+    public function test_project_deleted_here_stays_deleted_while_its_group_is_archived(): void
+    {
+        $this->groups = [$this->group(10)];
+        $this->import();
+        Project::sole()->delete();
+
+        // Our delete archived the Bitrix group.
+        $this->groups = [$this->group(10, ['closed' => 'Y'])];
+        $this->import();
+
+        $this->assertSame(0, Project::count());
+    }
+
     public function test_failed_member_lookup_fails_the_job(): void
     {
         $this->groups = [$this->group(10)];
@@ -214,5 +235,42 @@ class ImportBitrixProjectsTest extends TestCase
         $this->expectException(BitrixException::class);
 
         $this->import();
+    }
+
+    public function test_a_group_gone_from_bitrix_is_deleted_here(): void
+    {
+        $this->groups = [$this->group(10), $this->group(11)];
+        $this->import();
+
+        // 11 was deleted in Bitrix while its event was lost.
+        $this->groups = [$this->group(10)];
+        $this->import();
+
+        $this->assertSame([10], Project::pluck('bitrix_group_id')->all());
+    }
+
+    /** Review A4: a non-admin service account doesn't see every group, so nothing is deleted. */
+    public function test_no_group_is_deleted_when_the_service_account_is_not_an_admin(): void
+    {
+        $this->groups = [$this->group(10), $this->group(11)];
+        $this->import();
+
+        $this->groups = [$this->group(10)];
+        $this->serviceIsAdmin = false;
+        $this->import();
+
+        $this->assertSame(2, Project::count());
+    }
+
+    public function test_re_importing_an_unchanged_group_keeps_its_updated_at(): void
+    {
+        $this->groups = [$this->group(10)];
+        $this->import();
+        $updatedAt = Project::sole()->updated_at->toDateTimeString();
+
+        $this->travel(1)->hours();
+        $this->import();
+
+        $this->assertSame($updatedAt, Project::sole()->updated_at->toDateTimeString());
     }
 }

@@ -3,7 +3,9 @@
 namespace App\Integrations\Bitrix24;
 
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -39,6 +41,16 @@ class TokenManager
             return $token;
         }
 
+        try {
+            return $this->refreshUnderLock($holder, $token, $force);
+        } catch (LockTimeoutException) {
+            // Another process kept refreshing for too long: Bitrix is most likely slow.
+            throw BitrixException::unreachable('Timed out waiting for the Bitrix24 token refresh.');
+        }
+    }
+
+    private function refreshUnderLock(HasBitrixToken $holder, BitrixToken $token, bool $force): BitrixToken
+    {
         return Cache::lock($holder->bitrixTokenLockKey(), self::LOCK_SECONDS)
             ->block(self::LOCK_SECONDS, function () use ($holder, $token, $force) {
                 if ($holder instanceof Model && $holder->exists) {
@@ -61,13 +73,17 @@ class TokenManager
 
     private function requestToken(array $params): BitrixToken
     {
-        $response = Http::acceptJson()
-            ->timeout(config('bitrix.timeout'))
-            ->get(rtrim(config('bitrix.oauth_server'), '/').'/oauth/token/', [
-                'client_id' => config('bitrix.client_id'),
-                'client_secret' => config('bitrix.client_secret'),
-                ...$params,
-            ]);
+        try {
+            $response = Http::acceptJson()
+                ->timeout(config('bitrix.timeout'))
+                ->get(rtrim(config('bitrix.oauth_server'), '/').'/oauth/token/', [
+                    'client_id' => config('bitrix.client_id'),
+                    'client_secret' => config('bitrix.client_secret'),
+                    ...$params,
+                ]);
+        } catch (ConnectionException $e) {
+            throw BitrixException::unreachable($e->getMessage());
+        }
 
         $body = $response->json();
 

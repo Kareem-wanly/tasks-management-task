@@ -3,6 +3,7 @@
 namespace App\Integrations\Bitrix24;
 
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 use InvalidArgumentException;
@@ -186,9 +187,13 @@ class BitrixClient
         $url = 'https://'.config('bitrix.portal')."/rest/{$method}.json";
 
         for ($attempt = 0; ; $attempt++) {
-            $response = Http::acceptJson()
-                ->timeout(config('bitrix.timeout'))
-                ->post($url, [...$params, 'auth' => $accessToken]);
+            try {
+                $response = Http::acceptJson()
+                    ->timeout(config('bitrix.timeout'))
+                    ->post($url, [...$params, 'auth' => $accessToken]);
+            } catch (ConnectionException $e) {
+                throw BitrixException::unreachable($e->getMessage());
+            }
 
             $body = $response->json();
 

@@ -3,10 +3,13 @@
 namespace App\Jobs\Bitrix;
 
 use App\Integrations\Bitrix24\BitrixClient;
+use App\Integrations\Bitrix24\BitrixDeletionGuard;
 use App\Integrations\Bitrix24\BitrixException;
 use App\Integrations\Bitrix24\BitrixProjectSync;
+use App\Integrations\Bitrix24\BitrixRecordFetcher;
 use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;
 use App\Models\BitrixSyncCursor;
+use App\Models\Project;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -27,23 +30,25 @@ class ImportBitrixProjects implements ShouldQueue
         $this->onQueue('bitrix');
     }
 
-    public function handle(BitrixClient $bitrix, BitrixProjectSync $projects): void
+    public function handle(BitrixClient $bitrix, BitrixProjectSync $projects, BitrixRecordFetcher $fetch, BitrixDeletionGuard $guard): void
     {
         $cursor = BitrixSyncCursor::start(self::ENTITY);
         $skipped = 0;
+        $seen = [];
 
         $total = $bitrix->eachPageAsService('socialnetwork.api.workgroup.list', [
             'select' => BitrixProjectMapper::SELECT,
             'order' => ['ID' => 'ASC'],
             // Without it the list is limited to groups the service user can see.
             'params' => ['IS_ADMIN' => 'Y'],
-        ], function (array $page, int $total) use ($bitrix, $projects, $cursor, &$skipped) {
+        ], function (array $page, int $total) use ($bitrix, $projects, $cursor, &$skipped, &$seen) {
             $groups = $page['workgroups'] ?? [];
 
             if ($groups !== []) {
                 $members = $this->members($bitrix, $groups);
 
                 foreach ($groups as $group) {
+                    $seen[] = (int) $group['id'];
                     if (! $projects->upsert($group, $members[(int) $group['id']])) {
                         $skipped++;
                     }
@@ -53,8 +58,34 @@ class ImportBitrixProjects implements ShouldQueue
             $cursor->advance(count($groups), $total);
         });
 
+        $deleted = $this->deleteMissing($seen, $fetch, $guard);
+
         $cursor->complete();
-        Log::info('Bitrix24 projects imported.', ['processed' => $cursor->processed, 'skipped' => $skipped, 'portal_total' => $total]);
+        Log::info('Bitrix24 projects imported.', ['processed' => $cursor->processed, 'skipped' => $skipped, 'deleted' => $deleted, 'portal_total' => $total]);
+    }
+
+    /**
+     * Step 3.6: deletes our copies of groups gone from Bitrix (their delete
+     * event may have been lost), once Bitrix confirms each is gone (see
+     * BitrixDeletionGuard).
+     *
+     * @param  list<int>  $seen
+     */
+    private function deleteMissing(array $seen, BitrixRecordFetcher $fetch, BitrixDeletionGuard $guard): int
+    {
+        // An empty listing is more likely a Bitrix hiccup than an empty portal.
+        if ($seen === []) {
+            return 0;
+        }
+
+        $missing = array_values(array_diff(Project::whereNotNull('bitrix_group_id')->pluck('bitrix_group_id')->all(), $seen));
+        $gone = $guard->confirmedGone($missing, fn (int $id) => $fetch->group($id) !== null, 'groups');
+
+        $projects = Project::whereIn('bitrix_group_id', $gone)->get();
+        $projects->each->delete();
+        $guard->recordDeleted('groups', $projects->pluck('bitrix_group_id')->map(fn ($id) => (int) $id)->all(), 'import');
+
+        return $projects->count();
     }
 
     /**
