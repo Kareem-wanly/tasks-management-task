@@ -19,7 +19,7 @@ class TaskRepository implements TaskRepositoryInterface
 
     public function paginate(?User $visibleTo, array $filters, int $perPage): LengthAwarePaginator
     {
-        $query = Task::with(['project:id,title', 'assignee:id,name,email']);
+        $query = Task::with(['project', 'assignee']);
 
         if ($visibleTo instanceof User) {
             $query->visibleTo($visibleTo);
@@ -33,7 +33,7 @@ class TaskRepository implements TaskRepositoryInterface
 
     public function paginateForProject(Project $project, int $perPage): LengthAwarePaginator
     {
-        return $project->tasks()->with('assignee:id,name,email')->latest()->paginate($perPage);
+        return $project->tasks()->with('assignee')->latest()->paginate($perPage);
     }
 
     public function loadForDetail(Task $task, User $viewer): Task
@@ -163,8 +163,8 @@ class TaskRepository implements TaskRepositoryInterface
     private function detailRelations(User $viewer): array
     {
         return [
-            'project:id,title', 'assignee:id,name,email', 'accomplices:id,name,email', 'auditors:id,name,email', 'parent:id,title',
-            'subtasks' => fn ($query) => $query->with('assignee:id,name,email')
+            'project', 'assignee', 'accomplices', 'auditors', 'parent',
+            'subtasks' => fn ($query) => $query->with('assignee')
                 ->when(! $viewer->hasRole('Administrator'), fn ($q) => $q->visibleTo($viewer))
                 ->orderBy('id'),
         ];

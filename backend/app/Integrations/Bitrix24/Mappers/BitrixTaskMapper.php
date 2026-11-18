@@ -7,7 +7,7 @@ namespace App\Integrations\Bitrix24\Mappers;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
 use App\Repositories\Contracts\TaskLookupRepositoryInterface;
-use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 
 /**
  * Turns a Bitrix24 task (tasks.task.list, camelCase keys) into our tasks
@@ -50,7 +50,7 @@ class BitrixTaskMapper
             'completed_at' => $this->dateTime($task['closedDate'] ?? null),
         ];
 
-        if (($created = $this->dateTime($task['createdDate'] ?? null)) instanceof Carbon) {
+        if (($created = $this->dateTime($task['createdDate'] ?? null)) instanceof CarbonImmutable) {
             $attributes['created_at'] = $created;
         }
 
@@ -100,7 +100,7 @@ class BitrixTaskMapper
         return (int) ($task['groupId'] ?? 0);
     }
 
-    private function dateTime(mixed $value): ?Carbon
+    private function dateTime(mixed $value): ?CarbonImmutable
     {
         return is_string($value) && $value !== ''
             ? \Illuminate\Support\Facades\Date::parse($value)->setTimezone(config('app.timezone'))

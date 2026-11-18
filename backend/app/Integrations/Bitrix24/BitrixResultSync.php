@@ -8,7 +8,7 @@ use App\Models\Task;
 use App\Models\TaskResult;
 use App\Repositories\Contracts\TaskResultRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
-use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 
 /**
  * Step 4.6: makes our copy of a task's results match Bitrix's
@@ -54,7 +54,7 @@ class BitrixResultSync
         $this->results->deleteBitrixResultsExcept($task, $seen);
     }
 
-    private function time(mixed $value): ?Carbon
+    private function time(mixed $value): ?CarbonImmutable
     {
         return is_string($value) && $value !== '' ? \Illuminate\Support\Facades\Date::parse($value)->setTimezone(config('app.timezone')) : null;
     }

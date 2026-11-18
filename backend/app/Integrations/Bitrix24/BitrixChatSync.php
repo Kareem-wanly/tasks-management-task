@@ -8,7 +8,7 @@ use App\Models\Task;
 use App\Models\TaskChatMessage;
 use App\Repositories\Contracts\TaskChatMessageRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
-use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 
 /**
  * Step 4.7: makes our copy of a task's chat match Bitrix's
@@ -113,7 +113,7 @@ class BitrixChatSync
         return $list === [] ? null : $list;
     }
 
-    private function time(mixed $value): ?Carbon
+    private function time(mixed $value): ?CarbonImmutable
     {
         return is_string($value) && $value !== '' ? \Illuminate\Support\Facades\Date::parse($value)->setTimezone(config('app.timezone')) : null;
     }
