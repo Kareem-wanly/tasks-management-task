@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Data;
+namespace App\DTOs\Task;
 
 use App\Models\RunningTimer;
 use App\Models\Task;
@@ -12,7 +12,7 @@ use Illuminate\Support\Collection;
 /**
  * A task's time log, with the viewer's timer, as the service hands it to the controller.
  */
-final readonly class TimeLog
+final readonly class TimeLogDTO
 {
     /**
      * @param  Collection<int, TaskElapsedItem>  $entries  Newest first.

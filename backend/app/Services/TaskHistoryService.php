@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Data\TaskHistory;
+use App\DTOs\Task\TaskHistoryDTO;
 use App\Integrations\Bitrix24\BitrixException;
 use App\Integrations\Bitrix24\BitrixTaskHistoryReader;
 use App\Models\Task;
@@ -18,18 +18,18 @@ class TaskHistoryService
 {
     public function __construct(private readonly BitrixTaskHistoryReader $bitrix) {}
 
-    public function forTask(Task $task): TaskHistory
+    public function forTask(Task $task): TaskHistoryDTO
     {
         if (! $this->bitrix->handles($task)) {
-            return new TaskHistory([], TaskHistory::NOT_IN_BITRIX);
+            return new TaskHistoryDTO([], TaskHistoryDTO::NOT_IN_BITRIX);
         }
 
         try {
-            return new TaskHistory($this->bitrix->entries($task));
+            return new TaskHistoryDTO($this->bitrix->entries($task));
         } catch (BitrixException $e) {
             Log::warning('Bitrix24 task history not available.', ['task_id' => $task->id, 'error' => $e->errorCode]);
 
-            return new TaskHistory([], $e->errorCode === BitrixException::UNREACHABLE ? TaskHistory::UNREACHABLE : TaskHistory::UNAVAILABLE);
+            return new TaskHistoryDTO([], $e->errorCode === BitrixException::UNREACHABLE ? TaskHistoryDTO::UNREACHABLE : TaskHistoryDTO::UNAVAILABLE);
         }
     }
 }

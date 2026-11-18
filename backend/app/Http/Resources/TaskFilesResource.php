@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
-use App\Data\TaskFiles;
+use App\DTOs\Task\TaskFilesDTO;
 use App\Http\Requests\UploadTaskFileRequest;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -12,7 +12,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * Step 4.5: { data: files, meta: { stale, can_manage, max_kb } }.
  *
- * @property TaskFiles $resource
+ * @property TaskFilesDTO $resource
  */
 class TaskFilesResource extends JsonResource
 {

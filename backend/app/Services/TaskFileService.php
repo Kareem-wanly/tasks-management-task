@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Data\FileDownload;
-use App\Data\TaskFiles;
+use App\DTOs\Task\FileDownloadDTO;
+use App\DTOs\Task\TaskFilesDTO;
 use App\Integrations\Bitrix24\BitrixException;
 use App\Integrations\Bitrix24\BitrixFilePusher;
 use App\Models\Task;
@@ -35,7 +35,7 @@ class TaskFileService
     ) {}
 
     /** The files, fresh from Bitrix; our last copy when Bitrix can't be reached. */
-    public function open(Task $task): TaskFiles
+    public function open(Task $task): TaskFilesDTO
     {
         $stale = false;
 
@@ -51,7 +51,7 @@ class TaskFileService
         return $this->current($task, $stale);
     }
 
-    public function upload(User $actor, Task $task, UploadedFile $upload): TaskFiles
+    public function upload(User $actor, Task $task, UploadedFile $upload): TaskFilesDTO
     {
         if ($this->bitrix->handles($task)) {
             $this->bitrix->upload($actor, $task, $upload);
@@ -64,7 +64,7 @@ class TaskFileService
     }
 
     /** Takes the file off the task (in Bitrix it stays on the uploader's Drive). */
-    public function remove(User $actor, TaskFile $file): TaskFiles
+    public function remove(User $actor, TaskFile $file): TaskFilesDTO
     {
         $task = $file->task;
 
@@ -78,20 +78,22 @@ class TaskFileService
         return $this->current($task);
     }
 
-    public function download(TaskFile $file): FileDownload
+    public function download(TaskFile $file): FileDownloadDTO
     {
         if (! $file->isInBitrix()) {
-            return new FileDownload($file->name, $file->mime, fn (): int => fpassthru(Storage::disk(self::DISK)->readStream((string) $file->path)));
+            return new FileDownloadDTO($file->name, $file->mime, function () use ($file): void {
+                fpassthru(Storage::disk(self::DISK)->readStream((string) $file->path));
+            });
         }
 
         // Opened before the response starts, so a refusal is a normal error.
         $body = $this->bitrix->open($this->bitrix->downloadUrl($file));
 
-        return FileDownload::fromStream($file->name, $file->mime, $body);
+        return FileDownloadDTO::fromStream($file->name, $file->mime, $body);
     }
 
-    private function current(Task $task, bool $stale = false): TaskFiles
+    private function current(Task $task, bool $stale = false): TaskFilesDTO
     {
-        return new TaskFiles($task, $this->files->forTask($task), $stale);
+        return new TaskFilesDTO($task, $this->files->forTask($task), $stale);
     }
 }

@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
-use App\Data\TaskChat;
+use App\DTOs\Task\TaskChatDTO;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Step 4.7: { data: messages (oldest first), meta: { stale, can_post } }.
  *
- * @property TaskChat $resource
+ * @property TaskChatDTO $resource
  */
 class TaskChatResource extends JsonResource
 {

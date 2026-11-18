@@ -2,24 +2,24 @@
 
 declare(strict_types=1);
 
-namespace App\Data;
+namespace App\DTOs\Task;
 
 use App\Models\Task;
-use App\Models\TaskChatMessage;
+use App\Models\TaskChecklistItem;
 use Illuminate\Support\Collection;
 
 /**
- * A task's chat as the service hands it to the controller.
+ * A task's checklists as the service hands them to the controller.
  */
-final readonly class TaskChat
+final readonly class TaskChecklistDTO
 {
     /**
-     * @param  Collection<int, TaskChatMessage>  $messages  The newest ones, oldest first.
+     * @param  Collection<int, TaskChecklistItem>  $items  Lists and items, by sort_index.
      * @param  bool  $stale  Bitrix could not be reached: this is our last copy.
      */
     public function __construct(
         public Task $task,
-        public Collection $messages,
+        public Collection $items,
         public bool $stale = false,
     ) {}
 }

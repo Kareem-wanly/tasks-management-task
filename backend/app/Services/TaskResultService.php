@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Data\TaskResults;
+use App\DTOs\Task\TaskResultsDTO;
 use App\Integrations\Bitrix24\BitrixException;
 use App\Integrations\Bitrix24\BitrixResultPusher;
 use App\Models\Task;
@@ -26,7 +26,7 @@ class TaskResultService
     ) {}
 
     /** The results, fresh from Bitrix; our last copy when Bitrix can't be reached. */
-    public function open(Task $task): TaskResults
+    public function open(Task $task): TaskResultsDTO
     {
         $stale = false;
 
@@ -42,7 +42,7 @@ class TaskResultService
         return $this->current($task, $stale);
     }
 
-    public function add(User $actor, Task $task, string $text): TaskResults
+    public function add(User $actor, Task $task, string $text): TaskResultsDTO
     {
         $this->bitrix->handles($task)
             ? $this->bitrix->add($actor, $task, $text)
@@ -51,7 +51,7 @@ class TaskResultService
         return $this->current($task);
     }
 
-    public function update(User $actor, TaskResult $result, string $text): TaskResults
+    public function update(User $actor, TaskResult $result, string $text): TaskResultsDTO
     {
         $task = $result->task;
 
@@ -63,7 +63,7 @@ class TaskResultService
         return $this->current($task);
     }
 
-    public function delete(User $actor, TaskResult $result): TaskResults
+    public function delete(User $actor, TaskResult $result): TaskResultsDTO
     {
         $task = $result->task;
 
@@ -74,8 +74,8 @@ class TaskResultService
         return $this->current($task);
     }
 
-    private function current(Task $task, bool $stale = false): TaskResults
+    private function current(Task $task, bool $stale = false): TaskResultsDTO
     {
-        return new TaskResults($task, $this->results->forTask($task), $stale);
+        return new TaskResultsDTO($task, $this->results->forTask($task), $stale);
     }
 }

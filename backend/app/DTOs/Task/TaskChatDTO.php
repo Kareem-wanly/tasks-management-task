@@ -2,24 +2,24 @@
 
 declare(strict_types=1);
 
-namespace App\Data;
+namespace App\DTOs\Task;
 
 use App\Models\Task;
-use App\Models\TaskResult;
+use App\Models\TaskChatMessage;
 use Illuminate\Support\Collection;
 
 /**
- * A task's results as the service hands them to the controller.
+ * A task's chat as the service hands it to the controller.
  */
-final readonly class TaskResults
+final readonly class TaskChatDTO
 {
     /**
-     * @param  Collection<int, TaskResult>  $results  Newest first.
+     * @param  Collection<int, TaskChatMessage>  $messages  The newest ones, oldest first.
      * @param  bool  $stale  Bitrix could not be reached: this is our last copy.
      */
     public function __construct(
         public Task $task,
-        public Collection $results,
+        public Collection $messages,
         public bool $stale = false,
     ) {}
 }
