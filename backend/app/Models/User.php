@@ -13,12 +13,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Laravel\Sanctum\HasApiTokens;
 
 /**
- * @property Carbon|null $bitrix_synced_at
+ * @property CarbonImmutable|null $bitrix_synced_at
  */
 class User extends Authenticatable implements HasBitrixToken
 {

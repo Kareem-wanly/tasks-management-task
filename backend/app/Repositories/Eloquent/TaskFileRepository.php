@@ -13,7 +13,7 @@ class TaskFileRepository implements TaskFileRepositoryInterface
 {
     public function forTask(Task $task): Collection
     {
-        return $task->files()->with(['uploader:id,name', 'task'])->latest()->orderByDesc('id')->get();
+        return $task->files()->with(['uploader', 'task'])->latest()->orderByDesc('id')->get();
     }
 
     public function bitrixFiles(Task $task): Collection

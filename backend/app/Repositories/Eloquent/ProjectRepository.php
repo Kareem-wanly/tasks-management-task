@@ -14,7 +14,7 @@ class ProjectRepository implements ProjectRepositoryInterface
 {
     private const SORTS = ['created_at', 'updated_at', 'start_date', 'due_date', 'title'];
 
-    private const WITH_MEMBERS = ['owner:id,name,email', 'members:id,name,email'];
+    private const WITH_MEMBERS = ['owner', 'members'];
 
     public function paginateAccessible(User $user, array $filters, int $perPage): LengthAwarePaginator
     {
@@ -39,7 +39,7 @@ class ProjectRepository implements ProjectRepositoryInterface
         }
 
         // The same counts as the project page, so list rows draw the progress bar.
-        return $query->with('owner:id,name,email')
+        return $query->with('owner')
             ->withCount(['members', ...$this->taskCounts()])
             ->paginate($perPage);
     }

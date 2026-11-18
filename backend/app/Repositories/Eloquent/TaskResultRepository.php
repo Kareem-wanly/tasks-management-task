@@ -13,7 +13,7 @@ class TaskResultRepository implements TaskResultRepositoryInterface
 {
     public function forTask(Task $task): Collection
     {
-        return $task->results()->with(['author:id,name,avatar_url', 'task'])->latest()->orderByDesc('id')->get();
+        return $task->results()->with(['author', 'task'])->latest()->orderByDesc('id')->get();
     }
 
     public function bitrixResults(Task $task): Collection
