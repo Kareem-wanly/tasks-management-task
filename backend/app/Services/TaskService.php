@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Task\ChangeTaskStatusDTO;
+use App\DTOs\Task\CreateTaskDTO;
+use App\DTOs\Task\TaskFiltersDTO;
+use App\DTOs\Task\UpdateTaskDTO;
 use App\Integrations\Bitrix24\BitrixTaskPusher;
 use App\Models\Project;
 use App\Models\Task;
@@ -23,8 +27,7 @@ class TaskService
         private readonly BitrixTaskPusher $bitrix,
     ) {}
 
-    /** @param  array<string, mixed>  $filters */
-    public function list(User $viewer, array $filters, int $perPage): LengthAwarePaginator
+    public function list(User $viewer, TaskFiltersDTO $filters, int $perPage): LengthAwarePaginator
     {
         // Administrators see every task; everyone else what they may see.
         return $this->tasks->paginate($viewer->hasRole('Administrator') ? null : $viewer, $filters, $perPage);
@@ -42,12 +45,10 @@ class TaskService
 
     /**
      * A task in a project, or (no project) a Bitrix personal task (GROUP_ID 0).
-     *
-     * @param  array<string, mixed>  $data
      */
-    public function create(User $actor, ?Project $project, array $data): Task
+    public function create(User $actor, ?Project $project, CreateTaskDTO $data): Task
     {
-        $task = new Task($data);
+        $task = new Task($data->toArray());
         $task->project_id = $project?->id;
         $task->created_by = $actor->id;
         // Step 4.4: tasks made here track time from the start.
@@ -59,19 +60,18 @@ class TaskService
         return $this->tasks->loadForDetail($task, $actor);
     }
 
-    /** @param  array<string, mixed>  $data */
-    public function update(User $actor, Task $task, array $data): Task
+    public function update(User $actor, Task $task, UpdateTaskDTO $data): Task
     {
-        $task->fill($data);
+        $task->fill($data->toArray());
         $this->bitrix->update($actor, $task);
         $this->tasks->save($task);
 
         return $this->tasks->freshForDetail($task, $actor);
     }
 
-    public function changeStatus(User $actor, Task $task, string $status): Task
+    public function changeStatus(User $actor, Task $task, ChangeTaskStatusDTO $data): Task
     {
-        $task->status = $status;
+        $task->status = $data->status;
         $this->bitrix->update($actor, $task);
         $this->tasks->save($task);
 

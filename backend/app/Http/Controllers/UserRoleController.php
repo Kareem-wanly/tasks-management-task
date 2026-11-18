@@ -27,7 +27,7 @@ class UserRoleController extends Controller
     {
         return response()->json([
             'message' => 'User roles updated successfully',
-            'user' => $this->roles->sync($request->user(), $user, array_map('intval', $request->validated('roles'))),
+            'user' => $this->roles->sync($request->user(), $user, $request->toDto()),
         ]);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Project\CreateProjectDTO;
 use App\Models\Project;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -23,5 +24,10 @@ class StoreProjectRequest extends FormRequest
             'start_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date', 'after_or_equal:start_date'],
         ];
+    }
+
+    public function toDto(): CreateProjectDTO
+    {
+        return CreateProjectDTO::fromArray($this->validated());
     }
 }

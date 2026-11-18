@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Task\TaskResultDTO;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Records what was achieved on a task as an official result. */
@@ -19,8 +20,11 @@ class StoreTaskResultRequest extends FormRequest
         return ['text' => ['required', 'string', 'max:10000']];
     }
 
-    public function text(): string
+    public function toDto(): TaskResultDTO
     {
-        return trim((string) $this->validated('text'));
+        /** @var array{text: string} $validated */
+        $validated = $this->validated();
+
+        return TaskResultDTO::fromArray($validated);
     }
 }

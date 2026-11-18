@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories\Contracts;
 
+use App\DTOs\User\UserFiltersDTO;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -13,10 +14,8 @@ interface UserRepositoryInterface
 {
     /**
      * Newest first, with roles.
-     *
-     * @param  array{search?: ?string, role?: ?string}  $filters  role: a role name or ID.
      */
-    public function paginate(array $filters, int $perPage): LengthAwarePaginator;
+    public function paginate(UserFiltersDTO $filters, int $perPage): LengthAwarePaginator;
 
     /** Active users (id, name, email) for dropdowns. */
     public function activeOptions(int $limit): Collection;

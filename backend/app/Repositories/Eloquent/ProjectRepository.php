@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
 
+use App\DTOs\Project\ProjectFiltersDTO;
 use App\Models\Project;
 use App\Models\User;
 use App\Repositories\Contracts\ProjectRepositoryInterface;
@@ -16,26 +17,27 @@ class ProjectRepository implements ProjectRepositoryInterface
 
     private const WITH_MEMBERS = ['owner', 'members'];
 
-    public function paginateAccessible(User $user, array $filters, int $perPage): LengthAwarePaginator
+    public function paginateAccessible(User $user, ProjectFiltersDTO $filters, int $perPage): LengthAwarePaginator
     {
         $query = Project::query()->accessibleBy($user);
 
-        if (! empty($filters['search'])) {
-            $search = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $filters['search']);
+        if ($filters->search !== null) {
+            $search = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $filters->search);
             $query->where(fn ($q) => $q->where('title', 'like', "%{$search}%")->orWhere('description', 'like', "%{$search}%"));
         }
 
-        if (! empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+        if ($filters->status !== null) {
+            $query->where('status', $filters->status);
         }
 
-        if (! empty($filters['member_id'])) {
-            $query->whereHas('members', fn ($q) => $q->where('users.id', $filters['member_id']));
+        if ($filters->memberId !== null) {
+            $memberId = $filters->memberId;
+            $query->whereHas('members', fn ($q) => $q->where('users.id', $memberId));
         }
 
-        $sort = $filters['sort'] ?? 'created_at';
+        $sort = $filters->sort ?? 'created_at';
         if (in_array($sort, self::SORTS, true)) {
-            $query->orderBy($sort, strtolower($filters['direction'] ?? 'desc') === 'asc' ? 'asc' : 'desc');
+            $query->orderBy($sort, strtolower($filters->direction ?? 'desc') === 'asc' ? 'asc' : 'desc');
         }
 
         // The same counts as the project page, so list rows draw the progress bar.

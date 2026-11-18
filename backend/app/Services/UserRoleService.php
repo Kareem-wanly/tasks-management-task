@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\User\SyncUserRolesDTO;
 use App\Exceptions\BusinessRuleException;
 use App\Models\User;
 use App\Repositories\Contracts\PermissionRepositoryInterface;
@@ -30,9 +31,10 @@ class UserRoleService
         return $this->users->roles($user);
     }
 
-    /** @param  list<int>  $roleIds */
-    public function sync(User $actor, User $user, array $roleIds): User
+    public function sync(User $actor, User $user, SyncUserRolesDTO $roles): User
     {
+        $roleIds = $roles->roleIds;
+
         $actorIsAdmin = $actor->hasRole('Administrator');
 
         if (! $actorIsAdmin && $this->permissions->idsGrantedByRoles($roleIds)->diff($actor->permissionIds())->isNotEmpty()) {

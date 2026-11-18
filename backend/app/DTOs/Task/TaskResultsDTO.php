@@ -2,24 +2,24 @@
 
 declare(strict_types=1);
 
-namespace App\Data;
+namespace App\DTOs\Task;
 
 use App\Models\Task;
-use App\Models\TaskChecklistItem;
+use App\Models\TaskResult;
 use Illuminate\Support\Collection;
 
 /**
- * A task's checklists as the service hands them to the controller.
+ * A task's results as the service hands them to the controller.
  */
-final readonly class TaskChecklist
+final readonly class TaskResultsDTO
 {
     /**
-     * @param  Collection<int, TaskChecklistItem>  $items  Lists and items, by sort_index.
+     * @param  Collection<int, TaskResult>  $results  Newest first.
      * @param  bool  $stale  Bitrix could not be reached: this is our last copy.
      */
     public function __construct(
         public Task $task,
-        public Collection $items,
+        public Collection $results,
         public bool $stale = false,
     ) {}
 }

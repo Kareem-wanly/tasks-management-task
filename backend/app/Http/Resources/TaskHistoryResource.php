@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
-use App\Data\TaskHistory;
+use App\DTOs\Task\TaskHistoryDTO;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Step 4.8: { data: entries (newest first), meta: { unavailable_because } }.
  *
- * @property TaskHistory $resource
+ * @property TaskHistoryDTO $resource
  */
 class TaskHistoryResource extends JsonResource
 {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\User\SyncUserRolesDTO;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SyncUserRolesRequest extends FormRequest
@@ -31,5 +32,13 @@ class SyncUserRolesRequest extends FormRequest
             'roles' => ['required', 'array'],
             'roles.*' => ['integer', 'exists:roles,id'],
         ];
+    }
+
+    public function toDto(): SyncUserRolesDTO
+    {
+        /** @var array{roles: list<int|string>} $validated */
+        $validated = $this->validated();
+
+        return SyncUserRolesDTO::fromArray($validated);
     }
 }

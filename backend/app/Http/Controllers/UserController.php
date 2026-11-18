@@ -20,14 +20,14 @@ class UserController extends Controller
 
     public function index(ListUsersRequest $request): JsonResponse
     {
-        return response()->json($this->users->list($request->filters(), $request->perPage(10)));
+        return response()->json($this->users->list($request->toDto(), $request->perPage(10)));
     }
 
     public function store(StoreUserRequest $request): JsonResponse
     {
         return response()->json([
             'message' => 'User created successfully',
-            'data' => $this->users->invite($request->user(), $request->validated()),
+            'data' => $this->users->invite($request->user(), $request->toDto()),
         ], 201);
     }
 
@@ -40,17 +40,17 @@ class UserController extends Controller
     {
         return response()->json([
             'message' => 'User details updated successfully',
-            'data' => $this->users->update($request->user(), $user, $request->validated()),
+            'data' => $this->users->update($request->user(), $user, $request->toDto()),
         ]);
     }
 
     public function setActive(SetUserActiveRequest $request, User $user): JsonResponse
     {
-        $active = $request->boolean('active');
+        $data = $request->toDto();
 
         return response()->json([
-            'message' => $active ? 'User activated' : 'User deactivated',
-            'data' => $this->users->setActive($request->user(), $user, $active),
+            'message' => $data->active ? 'User activated' : 'User deactivated',
+            'data' => $this->users->setActive($request->user(), $user, $data),
         ]);
     }
 

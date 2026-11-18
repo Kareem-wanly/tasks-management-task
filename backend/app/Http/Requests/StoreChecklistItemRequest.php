@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Task\AddChecklistItemDTO;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,5 +22,13 @@ class StoreChecklistItemRequest extends FormRequest
             'title' => ['required', 'string', 'max:2000'],
             'list_id' => ['nullable', 'integer', Rule::exists('task_checklist_items', 'id')->where('task_id', $this->route('task')->id)->whereNull('parent_id')],
         ];
+    }
+
+    public function toDto(): AddChecklistItemDTO
+    {
+        /** @var array{title: string, list_id?: int|string|null} $validated */
+        $validated = $this->validated();
+
+        return AddChecklistItemDTO::fromArray($validated);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Task\UpdateTaskDTO;
 use App\Models\Task;
 use App\Rules\ParentTask;
 use App\Rules\ProjectMember;
@@ -59,6 +60,11 @@ class UpdateTaskRequest extends FormRequest
                 }
             }
         });
+    }
+
+    public function toDto(): UpdateTaskDTO
+    {
+        return UpdateTaskDTO::fromArray($this->validated());
     }
 
     private function changesAssignee(Task $task): bool

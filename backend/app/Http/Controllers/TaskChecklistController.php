@@ -28,14 +28,12 @@ class TaskChecklistController extends Controller
 
     public function store(StoreChecklistItemRequest $request, Task $task): TaskChecklistResource
     {
-        $listId = $request->validated('list_id');
-
-        return new TaskChecklistResource($this->checklists->add($request->user(), $task, trim($request->validated('title')), $listId ? (int) $listId : null));
+        return new TaskChecklistResource($this->checklists->add($request->user(), $task, $request->toDto()));
     }
 
     public function update(UpdateChecklistItemRequest $request, TaskChecklistItem $item): TaskChecklistResource
     {
-        return new TaskChecklistResource($this->checklists->update($request->user(), $item, $request->changes()));
+        return new TaskChecklistResource($this->checklists->update($request->user(), $item, $request->toDto()));
     }
 
     public function destroy(DeleteChecklistItemRequest $request, TaskChecklistItem $item): TaskChecklistResource
@@ -45,8 +43,6 @@ class TaskChecklistController extends Controller
 
     public function move(MoveChecklistItemRequest $request, TaskChecklistItem $item): TaskChecklistResource
     {
-        $afterId = $request->validated('after_id');
-
-        return new TaskChecklistResource($this->checklists->move($request->user(), $item, $afterId === null ? null : (int) $afterId));
+        return new TaskChecklistResource($this->checklists->move($request->user(), $item, $request->toDto()));
     }
 }

@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Data\FileDownload;
-use App\Data\TaskChat;
+use App\DTOs\Task\FileDownloadDTO;
+use App\DTOs\Task\TaskChatDTO;
+use App\DTOs\Task\TaskChatMessageDTO;
 use App\Integrations\Bitrix24\BitrixChatPusher;
 use App\Integrations\Bitrix24\BitrixException;
 use App\Models\Task;
@@ -35,7 +36,7 @@ class TaskChatService
     ) {}
 
     /** The chat, fresh from Bitrix; our last copy when Bitrix can't be reached. */
-    public function open(Task $task): TaskChat
+    public function open(Task $task): TaskChatDTO
     {
         $stale = false;
 
@@ -52,16 +53,19 @@ class TaskChatService
         return $this->current($task, $stale);
     }
 
-    public function send(User $actor, Task $task, string $text): TaskChat
+    public function send(User $actor, Task $task, TaskChatMessageDTO $message): TaskChatDTO
     {
+        $text = $message->text;
         $bitrixId = $this->bitrix->handles($task) ? $this->bitrix->send($actor, $task, $text) : null;
         $this->messages->create($task, $actor->id, $text, $bitrixId);
 
         return $this->current($task);
     }
 
-    public function update(User $actor, TaskChatMessage $message, string $text): TaskChat
+    public function update(User $actor, TaskChatMessage $message, TaskChatMessageDTO $change): TaskChatDTO
     {
+        $text = $change->text;
+
         if ($message->bitrix_message_id !== null) {
             $this->bitrix->update($actor, $message, $text);
         }
@@ -70,7 +74,7 @@ class TaskChatService
         return $this->current($message->task);
     }
 
-    public function delete(User $actor, TaskChatMessage $message): TaskChat
+    public function delete(User $actor, TaskChatMessage $message): TaskChatDTO
     {
         $task = $message->task;
 
@@ -83,18 +87,18 @@ class TaskChatService
     }
 
     /** A file sent in the chat in Bitrix (the request checks it belongs to the message). */
-    public function download(TaskChatMessage $message, int $bitrixFileId): FileDownload
+    public function download(TaskChatMessage $message, int $bitrixFileId): FileDownloadDTO
     {
         $file = $message->file($bitrixFileId);
 
         // Opened before the response starts, so a refusal is a normal error.
         $body = $this->bitrix->open($this->bitrix->downloadUrl($bitrixFileId));
 
-        return FileDownload::fromStream((string) ($file['name'] ?? 'file'), null, $body);
+        return FileDownloadDTO::fromStream((string) ($file['name'] ?? 'file'), null, $body);
     }
 
-    private function current(Task $task, bool $stale = false): TaskChat
+    private function current(Task $task, bool $stale = false): TaskChatDTO
     {
-        return new TaskChat($task, $this->messages->latestForTask($task, self::SHOWN), $stale);
+        return new TaskChatDTO($task, $this->messages->latestForTask($task, self::SHOWN), $stale);
     }
 }

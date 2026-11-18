@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories\Contracts;
 
+use App\DTOs\Project\ProjectFiltersDTO;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -13,10 +14,8 @@ interface ProjectRepositoryInterface
 {
     /**
      * Projects the user may open, with their owner and task counts.
-     *
-     * @param  array{search?: ?string, status?: ?string, member_id?: ?int, sort?: ?string, direction?: ?string}  $filters
      */
-    public function paginateAccessible(User $user, array $filters, int $perPage): LengthAwarePaginator;
+    public function paginateAccessible(User $user, ProjectFiltersDTO $filters, int $perPage): LengthAwarePaginator;
 
     /** Owner, members and task counts, for the project page. */
     public function loadForDetail(Project $project): Project;

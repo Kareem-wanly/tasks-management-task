@@ -32,7 +32,7 @@ class ProjectController extends Controller
 
     public function index(ListProjectsRequest $request): AnonymousResourceCollection
     {
-        return ProjectResource::collection($this->projects->list($request->user(), $request->filters(), $request->perPage()));
+        return ProjectResource::collection($this->projects->list($request->user(), $request->toDto(), $request->perPage()));
     }
 
     public function show(ShowProjectRequest $request, Project $project): ProjectResource
@@ -42,14 +42,14 @@ class ProjectController extends Controller
 
     public function store(StoreProjectRequest $request): JsonResponse
     {
-        return (new ProjectResource($this->projects->create($request->user(), $request->validated())))
+        return (new ProjectResource($this->projects->create($request->user(), $request->toDto())))
             ->response()
             ->setStatusCode(201);
     }
 
     public function update(UpdateProjectRequest $request, Project $project): ProjectResource
     {
-        return new ProjectResource($this->projects->update($request->user(), $project, $request->validated()));
+        return new ProjectResource($this->projects->update($request->user(), $project, $request->toDto()));
     }
 
     public function destroy(DeleteProjectRequest $request, Project $project): JsonResponse
@@ -70,7 +70,7 @@ class ProjectController extends Controller
 
     public function addMember(AddProjectMemberRequest $request, Project $project): JsonResponse
     {
-        $project = $this->projects->addMember($request->user(), $project, (int) $request->validated('user_id'), $request->validated('role') ?? 'member');
+        $project = $this->projects->addMember($request->user(), $project, $request->toDto());
 
         return response()->json(['success' => true, 'message' => 'Member added to project successfully', 'data' => $project]);
     }

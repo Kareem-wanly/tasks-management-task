@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Task\TaskMembersDTO;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -27,5 +28,13 @@ class UpdateTaskMembersRequest extends FormRequest
             'auditor_ids' => ['present', 'array'],
             'auditor_ids.*' => ['integer', 'distinct', $activeUser],
         ];
+    }
+
+    public function toDto(): TaskMembersDTO
+    {
+        /** @var array{accomplice_ids: list<int|string>, auditor_ids: list<int|string>} $validated */
+        $validated = $this->validated();
+
+        return TaskMembersDTO::fromArray($validated);
     }
 }

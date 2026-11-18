@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Task\DelegateTaskDTO;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -31,5 +32,13 @@ class DelegateTaskRequest extends FormRequest
     public function messages(): array
     {
         return ['user_id.not_in' => 'The task is already assigned to this person.'];
+    }
+
+    public function toDto(): DelegateTaskDTO
+    {
+        /** @var array{user_id: int|string} $validated */
+        $validated = $this->validated();
+
+        return DelegateTaskDTO::fromArray($validated);
     }
 }

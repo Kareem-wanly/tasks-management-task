@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Data\TimeLog;
+use App\DTOs\Task\StopTimerDTO;
+use App\DTOs\Task\TimeEntryDTO;
+use App\DTOs\Task\TimeLogDTO;
 use App\Exceptions\BusinessRuleException;
 use App\Integrations\Bitrix24\BitrixException;
 use App\Integrations\Bitrix24\BitrixTimePusher;
@@ -37,7 +39,7 @@ class TaskTimeService
     ) {}
 
     /** The log, fresh from Bitrix; our last copy when Bitrix can't be reached. */
-    public function open(User $viewer, Task $task): TimeLog
+    public function open(User $viewer, Task $task): TimeLogDTO
     {
         $stale = false;
 
@@ -53,16 +55,18 @@ class TaskTimeService
         return $this->current($viewer, $task, $stale);
     }
 
-    public function add(User $actor, Task $task, int $seconds, ?string $comment): TimeLog
+    public function add(User $actor, Task $task, TimeEntryDTO $time): TimeLogDTO
     {
         $this->ensureTracking($task);
-        $this->logTime($actor, $task, $seconds, $comment);
+        $this->logTime($actor, $task, $time->seconds, $time->comment);
 
         return $this->current($actor, $task);
     }
 
-    public function update(User $actor, TaskElapsedItem $entry, int $seconds, ?string $comment): TimeLog
+    public function update(User $actor, TaskElapsedItem $entry, TimeEntryDTO $time): TimeLogDTO
     {
+        $seconds = $time->seconds;
+        $comment = $time->comment;
         $task = $entry->task;
 
         if ($this->bitrix->handles($task)) {
@@ -75,7 +79,7 @@ class TaskTimeService
         return $this->current($actor, $task);
     }
 
-    public function delete(User $actor, TaskElapsedItem $entry): TimeLog
+    public function delete(User $actor, TaskElapsedItem $entry): TimeLogDTO
     {
         $task = $entry->task;
 
@@ -90,7 +94,7 @@ class TaskTimeService
     }
 
     /** Starts the actor's timer here; a timer running on another task is stopped and logged. */
-    public function startTimer(User $actor, Task $task): TimeLog
+    public function startTimer(User $actor, Task $task): TimeLogDTO
     {
         $this->ensureTracking($task);
 
@@ -112,8 +116,9 @@ class TaskTimeService
     }
 
     /** Stops the actor's timer on this task; a second stop (double click, other tab) changes nothing. */
-    public function stopTimer(User $actor, Task $task, ?string $comment): TimeLog
+    public function stopTimer(User $actor, Task $task, StopTimerDTO $stop): TimeLogDTO
     {
+        $comment = $stop->comment;
         $timer = $this->entries->runningTimer($actor);
 
         if ($timer instanceof RunningTimer && $timer->task_id !== $task->id) {
@@ -179,8 +184,8 @@ class TaskTimeService
         }
     }
 
-    private function current(User $viewer, Task $task, bool $stale = false, ?Task $stoppedTask = null): TimeLog
+    private function current(User $viewer, Task $task, bool $stale = false, ?Task $stoppedTask = null): TimeLogDTO
     {
-        return new TimeLog($task, $this->entries->forTask($task), $this->entries->runningTimer($viewer), $stale, $stoppedTask);
+        return new TimeLogDTO($task, $this->entries->forTask($task), $this->entries->runningTimer($viewer), $stale, $stoppedTask);
     }
 }
