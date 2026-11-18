@@ -4,18 +4,11 @@ import DeadlineBadge from '@/components/data/DeadlineBadge';
 import ExtendDueDateMenu from '@/components/data/ExtendDueDateMenu';
 import ProjectMark from '@/components/data/ProjectMark';
 import StatusBadge from '@/components/data/StatusBadge';
+import TaskStatusBadge from '@/components/data/TaskStatusBadge';
 import UserAvatar from '@/components/data/UserAvatar';
 import Panel from '@/components/layout/Panel';
 import { Button } from '@/components/ui/button';
-import {
-  PRIORITY_TONES,
-  STATUS_TONES,
-  TASK_PRIORITIES,
-  TASK_PRIORITY_LABELS,
-  TASK_STATUSES,
-  TASK_STATUS_LABELS,
-  isLiveStatus,
-} from '@/constants/statuses';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { cn } from '@/lib/utils';
 import { formatDateOnly, formatTimestampDate } from '@/utils/format';
@@ -34,8 +27,6 @@ interface TaskSidebarProps {
 }
 
 const UNASSIGNED = 'none';
-const STATUS_OPTIONS = TASK_STATUSES.map((s) => ({ value: s, label: TASK_STATUS_LABELS[s] }));
-const PRIORITY_OPTIONS = TASK_PRIORITIES.map((p) => ({ value: p, label: TASK_PRIORITY_LABELS[p] }));
 
 /** Task facts; each one the user may change is edited right here and saved on pick. */
 export default function TaskSidebar({ task, members, status, quick }: TaskSidebarProps) {
@@ -43,7 +34,8 @@ export default function TaskSidebar({ task, members, status, quick }: TaskSideba
   const canEdit = can('tasks.update');
   const canChangeStatus = can('tasks.change_status') || canEdit;
   const canAssign = can('tasks.assign');
-  const done = task.status === 'completed';
+  const { statusOptions, priorityOptions, priorityLabel, priorityTone, isFinal } = useTaskLookups();
+  const done = isFinal(task.status);
   // The server flag doesn't know about an optimistic status change until the refetch
   const isOverdue = task.is_overdue && !done;
   const isMember = user !== null && members.some((m) => m.id === user.id);
@@ -60,18 +52,13 @@ export default function TaskSidebar({ task, members, status, quick }: TaskSideba
           {canChangeStatus ? (
             <InlineSelect
               value={task.status}
-              options={STATUS_OPTIONS}
+              options={statusOptions}
               ariaLabel="Task status"
               pending={status.isPending}
-              onChange={(value) => {
-                const next = TASK_STATUSES.find((s) => s === value);
-                if (next) status.change(task, next);
-              }}
+              onChange={(value) => status.change(task, value)}
             />
           ) : (
-            <StatusBadge tone={STATUS_TONES[task.status]} live={isLiveStatus(task.status)}>
-              {TASK_STATUS_LABELS[task.status]}
-            </StatusBadge>
+            <TaskStatusBadge status={task.status} />
           )}
         </DetailRow>
 
@@ -79,15 +66,12 @@ export default function TaskSidebar({ task, members, status, quick }: TaskSideba
           {canEdit ? (
             <InlineSelect
               value={task.priority}
-              options={PRIORITY_OPTIONS}
+              options={priorityOptions}
               ariaLabel="Task priority"
-              onChange={(value) => {
-                const next = TASK_PRIORITIES.find((p) => p === value);
-                if (next) quick.update(task, { priority: next }, `Priority set to ${TASK_PRIORITY_LABELS[next]}.`);
-              }}
+              onChange={(value) => quick.update(task, { priority: value }, `Priority set to ${priorityLabel(value)}.`)}
             />
           ) : (
-            <StatusBadge tone={PRIORITY_TONES[task.priority]}>{TASK_PRIORITY_LABELS[task.priority]}</StatusBadge>
+            <StatusBadge tone={priorityTone(task.priority)}>{priorityLabel(task.priority)}</StatusBadge>
           )}
         </DetailRow>
 

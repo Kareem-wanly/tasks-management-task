@@ -13,14 +13,9 @@ class TaskPolicy
         return $user->hasPermission('tasks.view');
     }
 
-    private function isProjectMember(User $user, Task $task): bool
+    private function canSee(User $user, Task $task): bool
     {
-        $project = $task->project;
-        if (! $project) {
-            return false;
-        }
-
-        return $task->project ? $task->project->hasMember($user) : false;
+        return $task->isVisibleTo($user);
     }
 
     private function isAssignee(User $user, Task $task): bool
@@ -30,7 +25,7 @@ class TaskPolicy
 
     public function view(User $user, Task $task): bool
     {
-        return $user->hasPermission('tasks.view') && $this->isProjectMember($user, $task);
+        return $user->hasPermission('tasks.view') && $this->canSee($user, $task);
     }
 
     public function create(User $user, ?Project $project = null): bool
@@ -48,18 +43,18 @@ class TaskPolicy
 
     public function update(User $user, Task $task): bool
     {
-        if (! $this->isProjectMember($user, $task)) {
+        if (! $this->canSee($user, $task)) {
             return false;
         }
 
-        return $task->project->owner_id === $user->id
+        return $task->project?->owner_id === $user->id
             || $task->created_by === $user->id
             || $user->hasPermission('tasks.update');
     }
 
     public function updateStatus(User $user, Task $task): bool
     {
-        if (! $this->isProjectMember($user, $task)) {
+        if (! $this->canSee($user, $task)) {
             return false;
         }
 
@@ -70,11 +65,11 @@ class TaskPolicy
 
     public function delete(User $user, Task $task): bool
     {
-        if (! $this->isProjectMember($user, $task)) {
+        if (! $this->canSee($user, $task)) {
             return false;
         }
 
-        return $task->project->owner_id === $user->id
+        return $task->project?->owner_id === $user->id
             || $task->created_by === $user->id
             || $user->hasPermission('tasks.delete');
     }

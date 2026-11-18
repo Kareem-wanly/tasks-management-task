@@ -4,16 +4,16 @@ import { daysUntil } from '@/utils/dates';
 import { uiLocale } from '@/utils/format';
 
 export interface TaskCounts {
-  byStatus: Record<TaskStatus, number>;
-  byPriority: Record<TaskPriority, number>;
+  byStatus: Map<TaskStatus, number>;
+  byPriority: Map<TaskPriority, number>;
 }
 
 export function countTasks(tasks: Task[]): TaskCounts {
-  const byStatus: Record<TaskStatus, number> = { todo: 0, in_progress: 0, review: 0, completed: 0 };
-  const byPriority: Record<TaskPriority, number> = { low: 0, medium: 0, high: 0, urgent: 0 };
+  const byStatus = new Map<TaskStatus, number>();
+  const byPriority = new Map<TaskPriority, number>();
   for (const t of tasks) {
-    byStatus[t.status] += 1;
-    byPriority[t.priority] += 1;
+    byStatus.set(t.status, (byStatus.get(t.status) ?? 0) + 1);
+    byPriority.set(t.priority, (byPriority.get(t.priority) ?? 0) + 1);
   }
   return { byStatus, byPriority };
 }
@@ -49,8 +49,8 @@ export function dailySeries(tasks: Task[], days = 30): ChartPoint[] {
 const dueRank = (dueDate: string | null | undefined): number => daysUntil(dueDate) ?? Number.MAX_SAFE_INTEGER;
 
 /** The user's unfinished tasks, soonest due first (undated last). */
-export function openTasksByDue(tasks: Task[]): Task[] {
-  return tasks.filter((t) => t.status !== 'completed').sort((a, b) => dueRank(a.due_date) - dueRank(b.due_date));
+export function openTasksByDue(tasks: Task[], isFinal: (status: TaskStatus) => boolean): Task[] {
+  return tasks.filter((t) => !isFinal(t.status)).sort((a, b) => dueRank(a.due_date) - dueRank(b.due_date));
 }
 
 /** Tasks due within `days` days (overdue ones are counted separately). */

@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Enums\TaskStatus;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -18,7 +17,7 @@ class TaskFactory extends Factory
         return [
             'title' => ucfirst(fake()->words(fake()->numberBetween(3, 6), true)),
             'description' => fake()->optional(0.8)->paragraph(),
-            'status' => fake()->randomElement(TaskStatus::cases())->value,
+            'status' => fake()->randomElement(['todo', 'in_progress', 'review', 'completed', 'deferred']),
             'priority' => fake()->randomElement(['low', 'medium', 'medium', 'high', 'urgent']),
             'due_date' => fake()->optional(0.85)->dateTimeBetween('-1 month', '+2 months'),
             'project_id' => Project::factory(),

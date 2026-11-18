@@ -7,7 +7,7 @@ import EmptyState from '@/components/data/EmptyState';
 import StatusBadge from '@/components/data/StatusBadge';
 import Stagger from '@/components/motion/Stagger';
 import StaggerItem from '@/components/motion/StaggerItem';
-import { PROJECT_STATUS_LABELS, STATUS_TONES, isLiveStatus } from '@/constants/statuses';
+import { PROJECT_STATUS_LABELS, PROJECT_STATUS_TONES, isLiveStatus } from '@/constants/statuses';
 import { formatDateOnly } from '@/utils/format';
 import type { Project } from '@/types/api';
 import { isProjectOpen, isProjectOverdue } from '../utils';
@@ -64,7 +64,7 @@ export default function ProjectsCards({ projects, isLoading, ...actions }: Proje
                   <ProjectMark projectId={project.id} size="md" />
                   {project.title}
                 </h3>
-                <StatusBadge tone={STATUS_TONES[project.status]} live={isLiveStatus(project.status)}>
+                <StatusBadge tone={PROJECT_STATUS_TONES[project.status]} live={isLiveStatus(project.status)}>
                   {PROJECT_STATUS_LABELS[project.status]}
                 </StatusBadge>
               </div>

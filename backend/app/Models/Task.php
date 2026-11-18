@@ -33,6 +33,7 @@ class Task extends Model
         return [
             'due_date' => 'datetime',
             'completed_at' => 'datetime',
+            'bitrix_synced_at' => 'datetime',
         ];
     }
 
@@ -40,7 +41,7 @@ class Task extends Model
     {
         return Attribute::make(
             get: fn () => $this->due_date
-                && $this->status !== 'completed'
+                && ! $this->isFinished()
                 && $this->due_date < now()
         );
     }
@@ -49,7 +50,7 @@ class Task extends Model
     {
         static::saving(function (Task $task) {
             if ($task->isDirty('status') || ! $task->exists) {
-                $task->completed_at = $task->status === 'completed'
+                $task->completed_at = $task->isFinished()
                     ? ($task->completed_at ?? now())
                     : null;
             }
@@ -81,9 +82,50 @@ class Task extends Model
         return $this->hasMany(ActivityLog::class);
     }
 
+    /** Whether the task is in a closing status (is_final), not just "completed". */
+    public function isFinished(): bool
+    {
+        return in_array($this->status, TaskStatus::finalKeys(), true);
+    }
+
+    public function scopeFinished(Builder $query): Builder
+    {
+        return $query->whereIn('status', TaskStatus::finalKeys());
+    }
+
+    public function scopeUnfinished(Builder $query): Builder
+    {
+        return $query->whereNotIn('status', TaskStatus::finalKeys());
+    }
+
+    /**
+     * Project members see a project's tasks. A task without a project (a
+     * Bitrix personal task) is seen by its creator and responsible person.
+     * Administrators pass every policy before this is asked.
+     */
+    public function isVisibleTo(User $user): bool
+    {
+        if ($this->project_id === null) {
+            return (int) $this->created_by === $user->id || (int) $this->assigned_to === $user->id;
+        }
+
+        return $this->project ? $this->project->hasMember($user) : false;
+    }
+
+    /**
+     * Query form of isVisibleTo(), for non-admin task lists.
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        return $query->where(function (Builder $q) use ($user) {
+            $q->whereHas('project', fn (Builder $p) => $p->accessibleBy($user))
+                ->orWhere(fn (Builder $own) => $own->whereNull('project_id')
+                    ->where(fn (Builder $w) => $w->where('created_by', $user->id)->orWhere('assigned_to', $user->id)));
+        });
+    }
+
     public function scopeOverdue(Builder $query): Builder
     {
-        return $query->where('due_date', '<', now())
-            ->where('status', '!=', 'completed');
+        return $query->where('due_date', '<', now())->unfinished();
     }
 }

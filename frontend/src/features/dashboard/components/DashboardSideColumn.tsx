@@ -1,7 +1,8 @@
 import BreakdownBar, { type BreakdownSegment } from '@/components/data/BreakdownBar';
 import Panel from '@/components/layout/Panel';
-import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '@/constants/statuses';
-import type { Task, TaskPriority, TaskStatus } from '@/types/api';
+import type { Tone } from '@/constants/statuses';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
+import type { Task } from '@/types/api';
 import { countTasks } from '../utils';
 import TasksCreatedPanel from './TasksCreatedPanel';
 
@@ -10,35 +11,32 @@ interface DashboardSideColumnProps {
   tasks: Task[];
 }
 
-const STATUS_COLORS: [TaskStatus, string][] = [
-  ['todo', 'bg-chart-3'],
-  ['in_progress', 'bg-info'],
-  ['review', 'bg-brand'],
-  ['completed', 'bg-success'],
-];
-
-const PRIORITY_COLORS: [TaskPriority, string][] = [
-  ['urgent', 'bg-danger'],
-  ['high', 'bg-chart-5'],
-  ['medium', 'bg-chart-2'],
-  ['low', 'bg-chart-3'],
-];
+const TONE_BAR: Record<Tone, string> = {
+  neutral: 'bg-chart-3',
+  info: 'bg-info',
+  brand: 'bg-brand',
+  success: 'bg-success',
+  warning: 'bg-chart-5',
+  danger: 'bg-danger',
+};
 
 /** Workload breakdowns and the creation trend, stacked in the narrow column. */
 export default function DashboardSideColumn({ tasks }: DashboardSideColumnProps) {
+  const { statuses, priorities, statusTone, priorityTone } = useTaskLookups();
   const { byStatus, byPriority } = countTasks(tasks);
 
-  const statusSegments: BreakdownSegment[] = STATUS_COLORS.map(([status, colorClass]) => ({
-    key: status,
-    label: TASK_STATUS_LABELS[status],
-    value: byStatus[status],
-    colorClass,
+  const statusSegments: BreakdownSegment[] = statuses.map((s) => ({
+    key: s.key,
+    label: s.name,
+    value: byStatus.get(s.key) ?? 0,
+    colorClass: TONE_BAR[statusTone(s.key)],
   }));
-  const prioritySegments: BreakdownSegment[] = PRIORITY_COLORS.map(([priority, colorClass]) => ({
-    key: priority,
-    label: TASK_PRIORITY_LABELS[priority],
-    value: byPriority[priority],
-    colorClass,
+  // Most important first
+  const prioritySegments: BreakdownSegment[] = [...priorities].reverse().map((p) => ({
+    key: p.key,
+    label: p.name,
+    value: byPriority.get(p.key) ?? 0,
+    colorClass: TONE_BAR[priorityTone(p.key)],
   }));
 
   return (

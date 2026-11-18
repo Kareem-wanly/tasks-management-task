@@ -1,13 +1,16 @@
 import type { Announcements, UniqueIdentifier } from '@dnd-kit/core';
-import { TASK_STATUSES, TASK_STATUS_LABELS } from '@/constants/statuses';
-import type { Task } from '@/types/api';
+import type { Task, TaskStatus } from '@/types/api';
 
 /** Screen reader messages while dragging, naming the task and the column instead of raw ids. */
-export function boardAnnouncements(findTask: (id: UniqueIdentifier) => Task | undefined): Announcements {
+export function boardAnnouncements(
+  findTask: (id: UniqueIdentifier) => Task | undefined,
+  statusLabel: (status: TaskStatus) => string
+): Announcements {
   const titleOf = (id: UniqueIdentifier) => findTask(id)?.title ?? 'Task';
+  // Cell ids are "<lane>|<status>"
   const columnOf = (id: UniqueIdentifier | undefined) => {
-    const status = TASK_STATUSES.find((s) => typeof id === 'string' && id.endsWith(`|${s}`));
-    return status ? TASK_STATUS_LABELS[status] : 'no column';
+    const status = typeof id === 'string' ? id.split('|')[1] : undefined;
+    return status ? statusLabel(status) : 'no column';
   };
 
   return {

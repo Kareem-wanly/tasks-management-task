@@ -15,6 +15,8 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   login: (credentials: LoginCredentials) => Promise<AuthResponse>;
   register: (userData: RegisterData) => Promise<AuthResponse>;
+  /** Starts a session from a token issued elsewhere (Bitrix24 sign-in). */
+  loginWithToken: (token: string) => Promise<void>;
   logout: () => Promise<void>;
   restoreAuthentication: () => Promise<void>;
   /** Reloads the signed-in user (after a profile change) without the full-page loader. */
@@ -111,6 +113,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return payload;
   };
 
+  const loginWithToken = useCallback(async (token: string) => {
+    setToken(token);
+    try {
+      setUser(await authApi.getCurrentUser());
+      setStartupError(null);
+    } catch (error) {
+      clearToken();
+      throw error;
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await authApi.logout();
@@ -152,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: Boolean(user),
     login,
     register,
+    loginWithToken,
     logout,
     restoreAuthentication,
     refreshUser,

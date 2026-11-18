@@ -8,6 +8,8 @@ use App\Http\Requests\UpdateTaskStatusRequest;
 use App\Http\Resources\TaskResource;
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\TaskPriority;
+use App\Models\TaskStatus;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,6 +33,11 @@ class TaskController extends Controller
             $query->where('status', $request->query('status'));
         }
 
+        // finished=true: any closing status (is_final), not only "completed"
+        if ($request->filled('finished')) {
+            $request->boolean('finished') ? $query->finished() : $query->unfinished();
+        }
+
         if ($request->filled('priority')) {
             $query->where('priority', $request->query('priority'));
         }
@@ -38,10 +45,7 @@ class TaskController extends Controller
         $user = $request->user();
 
         if (! $user->hasRole('Administrator')) {
-            $query->whereHas('project', function ($q) use ($user) {
-                $q->where('owner_id', $user->id)
-                    ->orWhereHas('members', fn ($m) => $m->where('users.id', $user->id));
-            });
+            $query->visibleTo($user);
         }
 
         if ($request->filled('assigned_to')) {
@@ -61,7 +65,7 @@ class TaskController extends Controller
         }
 
         if ($request->boolean('overdue') || $request->query('overdue') === 'true') {
-            $query->where('status', '!=', 'completed')
+            $query->unfinished()
                 ->whereNotNull('due_date')
                 ->whereDate('due_date', '<', now()->toDateString());
         }
@@ -79,7 +83,16 @@ class TaskController extends Controller
         $sortBy = in_array($sortBy, $allowedSorts) ? $sortBy : 'created_at';
         $sortOrder = in_array($sortOrder, ['asc', 'desc']) ? $sortOrder : 'desc';
 
-        $query->orderBy($sortBy, $sortOrder);
+        // status/priority are keys now, so order them by their lookup's `sort`, not alphabetically
+        match ($sortBy) {
+            'status' => $query->orderBy(
+                TaskStatus::select('sort')->whereColumn('task_statuses.key', 'tasks.status'), $sortOrder
+            ),
+            'priority' => $query->orderBy(
+                TaskPriority::select('sort')->whereColumn('task_priorities.key', 'tasks.priority'), $sortOrder
+            ),
+            default => $query->orderBy($sortBy, $sortOrder),
+        };
 
         $perPage = min(max((int) $request->query('per_page', 15), 1), 100);
         $tasks = $query->paginate($perPage);

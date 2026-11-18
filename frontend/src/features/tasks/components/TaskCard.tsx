@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import DeadlineBadge from '@/components/data/DeadlineBadge';
 import ProjectMark from '@/components/data/ProjectMark';
 import UserAvatar from '@/components/data/UserAvatar';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import { cn } from '@/lib/utils';
 import { formatDateOnly } from '@/utils/format';
 import type { Task } from '@/types/api';
@@ -19,7 +20,8 @@ interface TaskCardProps {
 
 /** A compact task on the board: id and priority, title, then project, deadline and assignee. */
 export default function TaskCard({ task, dragging = false, overlay = false, showProject = false }: TaskCardProps) {
-  const done = task.status === 'completed';
+  const { isFinal } = useTaskLookups();
+  const done = isFinal(task.status);
   const overdue = task.is_overdue && !done;
 
   return (

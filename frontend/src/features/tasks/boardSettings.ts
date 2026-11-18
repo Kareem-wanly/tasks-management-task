@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { TASK_PRIORITIES, TASK_PRIORITY_LABELS, TASK_STATUSES } from '@/constants/statuses';
+import type { LookupOption } from '@/hooks/queries/useTaskLookups';
 import { createJsonPreference } from '@/lib/preferences/jsonPreference';
-import type { Task, TaskStatus } from '@/types/api';
+import type { Task, TaskPriority } from '@/types/api';
 import { daysUntil } from '@/utils/dates';
 
 export const BOARD_SORTS = { newest: 'Newest first', due: 'Due date', priority: 'Priority' } as const;
@@ -10,7 +10,8 @@ export type BoardSort = keyof typeof BOARD_SORTS;
 export const BOARD_GROUPS = { none: 'No grouping', priority: 'Priority', assignee: 'Assignee' } as const;
 export type BoardGroup = keyof typeof BOARD_GROUPS;
 
-const statusSchema = z.custom<TaskStatus>((v) => TASK_STATUSES.some((s) => s === v));
+// Status keys; one that no longer exists just never matches a column
+const statusSchema = z.string();
 
 const settingsSchema = z.object({
   sort: z.enum(['newest', 'due', 'priority']),
@@ -30,12 +31,11 @@ export const boardSettingsStore = createJsonPreference('board-settings', setting
   limits: {},
 });
 
-const PRIORITY_RANK = Object.fromEntries(TASK_PRIORITIES.map((p, i) => [p, TASK_PRIORITIES.length - i]));
-
-export function sortTasks(tasks: Task[], sort: BoardSort): Task[] {
+/** `priorityRank`: higher = more important (useTaskLookups). */
+export function sortTasks(tasks: Task[], sort: BoardSort, priorityRank: (key: TaskPriority) => number): Task[] {
   if (sort === 'newest') return tasks;
   const due = (t: Task) => daysUntil(t.due_date) ?? Number.MAX_SAFE_INTEGER;
-  const rank = (t: Task) => PRIORITY_RANK[t.priority] ?? 0;
+  const rank = (t: Task) => priorityRank(t.priority);
   return [...tasks].sort((a, b) => (sort === 'due' ? due(a) - due(b) : rank(b) - rank(a) || due(a) - due(b)));
 }
 
@@ -53,10 +53,10 @@ export function laneKeyOf(task: Task, group: BoardGroup): string {
 }
 
 /** Lanes for the loaded tasks: priorities high → low, or people A → Z with "Unassigned" last. */
-export function lanesFor(tasks: Task[], group: BoardGroup): Lane[] {
+export function lanesFor(tasks: Task[], group: BoardGroup, priorities: LookupOption[]): Lane[] {
   if (group === 'none') return [{ key: 'all', label: '' }];
   if (group === 'priority') {
-    return [...TASK_PRIORITIES].reverse().map((p) => ({ key: p, label: TASK_PRIORITY_LABELS[p] }));
+    return [...priorities].reverse().map((p) => ({ key: p.value, label: p.label }));
   }
   const people = new Map<string, string>();
   for (const task of tasks) if (task.assignee) people.set(`user:${task.assignee.id}`, task.assignee.name);

@@ -31,6 +31,10 @@ export const queryKeys = {
     all: ['activities'] as const,
     recent: (limit: number) => ['activities', 'recent', limit] as const,
   },
+  taskLookups: {
+    statuses: ['task-lookups', 'statuses'] as const,
+    priorities: ['task-lookups', 'priorities'] as const,
+  },
   tasks: {
     all: ['tasks'] as const,
     lists: ['tasks', 'list'] as const,

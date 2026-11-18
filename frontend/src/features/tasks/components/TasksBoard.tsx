@@ -10,7 +10,7 @@ import {
   type DragEndEvent,
   type UniqueIdentifier,
 } from '@dnd-kit/core';
-import { TASK_PRIORITIES, TASK_STATUSES, TASK_STATUS_LABELS } from '@/constants/statuses';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { showToast } from '@/lib/toast/ToastContext';
 import { cn } from '@/lib/utils';
@@ -31,22 +31,23 @@ interface TasksBoardProps {
   showProject?: boolean;
 }
 
+/** Cell ids are "<lane>|<status>" (BoardCell's cellId). */
 const parseCell = (id: UniqueIdentifier | undefined): { lane: string; status: TaskStatus } | null => {
   if (typeof id !== 'string') return null;
   const [lane = '', status] = id.split('|');
-  const match = TASK_STATUSES.find((s) => s === status);
-  return match ? { lane, status: match } : null;
+  return status ? { lane, status } : null;
 };
 
 /** Kanban board: drag a card to another column (and lane) to change its status (and priority or assignee). */
 export default function TasksBoard({ board, onShowAll, showProject = false }: TasksBoardProps) {
   const { can } = useAuth();
+  const { priorityOptions, priorityRank, statusLabel } = useTaskLookups();
   const settings = boardSettingsStore.useValue();
   const canDrag = can('tasks.change_status') || can('tasks.update');
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   const allTasks = board.columns.flatMap((c) => c.tasks);
-  const lanes = lanesFor(allTasks, settings.group);
+  const lanes = lanesFor(allTasks, settings.group, priorityOptions);
   const grouped = settings.group !== 'none';
   const findTask = (id: UniqueIdentifier) => allTasks.find((t) => t.id === id);
 
@@ -70,8 +71,7 @@ export default function TasksBoard({ board, onShowAll, showProject = false }: Ta
   const laneChangeFor = (task: Task, lane: string): LaneChange | undefined => {
     if (!grouped || lane === laneKeyOf(task, settings.group)) return undefined;
     if (settings.group === 'priority') {
-      const priority = TASK_PRIORITIES.find((p) => p === lane);
-      if (priority && can('tasks.update')) return { priority };
+      if (can('tasks.update')) return { priority: lane };
     } else if (can('tasks.assign')) {
       const id = assigneeFromLane(lane);
       return { assignee: allTasks.find((t) => t.assignee?.id === id)?.assignee ?? null };
@@ -90,7 +90,7 @@ export default function TasksBoard({ board, onShowAll, showProject = false }: Ta
   return (
     <DndContext
       sensors={sensors}
-      accessibility={{ announcements: boardAnnouncements(findTask) }}
+      accessibility={{ announcements: boardAnnouncements(findTask, statusLabel) }}
       onDragStart={({ active }) => setActiveTask(findTask(active.id) ?? null)}
       onDragEnd={handleDragEnd}
       onDragCancel={() => setActiveTask(null)}
@@ -109,7 +109,7 @@ export default function TasksBoard({ board, onShowAll, showProject = false }: Ta
             return (
               <section
                 key={column.status}
-                aria-label={`${TASK_STATUS_LABELS[column.status]} column`}
+                aria-label={`${statusLabel(column.status)} column`}
                 className={cn('rounded-lg bg-muted/60 p-1.5', collapsed ? 'w-12 shrink-0' : 'min-w-60 flex-1')}
               >
                 <BoardColumnHeader
@@ -130,7 +130,8 @@ export default function TasksBoard({ board, onShowAll, showProject = false }: Ta
                       laneKey={lane.key}
                       tasks={sortTasks(
                         column.tasks.filter((t) => !grouped || laneKeyOf(t, settings.group) === lane.key),
-                        settings.sort
+                        settings.sort,
+                        priorityRank
                       )}
                       loading={column.isPending}
                       collapsed={collapsed}

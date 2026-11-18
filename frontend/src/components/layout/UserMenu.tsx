@@ -23,6 +23,8 @@ export default function UserMenu() {
   const { reduced, setReduced } = useMotionPreference();
   const name = user?.name ?? 'User';
   const roleText = roles.length > 0 ? roles.join(', ') : 'Member';
+  // The Bitrix24 job title says more about a person than their local role.
+  const subtitle = user?.position || roleText;
 
   return (
     <SidebarMenu>
@@ -30,10 +32,10 @@ export default function UserMenu() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
-              <UserAvatar user={{ id: user?.id, name }} size="md" />
+              <UserAvatar user={{ id: user?.id, name, avatar_url: user?.avatar_url }} size="md" />
               <span className="grid min-w-0 flex-1 text-start leading-tight group-data-[collapsible=icon]:opacity-0">
                 <span className="truncate text-sm font-medium text-foreground">{name}</span>
-                <span className="truncate text-xs text-muted-foreground">{roleText}</span>
+                <span className="truncate text-xs text-muted-foreground">{subtitle}</span>
               </span>
               <ChevronsUpDownIcon className="text-muted-foreground" />
             </SidebarMenuButton>

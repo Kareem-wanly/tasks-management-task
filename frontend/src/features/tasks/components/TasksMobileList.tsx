@@ -3,10 +3,10 @@ import { InboxIcon } from 'lucide-react';
 import DeadlineBadge from '@/components/data/DeadlineBadge';
 import EmptyState from '@/components/data/EmptyState';
 import ProjectMark from '@/components/data/ProjectMark';
-import StatusBadge from '@/components/data/StatusBadge';
+import TaskStatusBadge from '@/components/data/TaskStatusBadge';
 import UserAvatar from '@/components/data/UserAvatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { STATUS_TONES, TASK_STATUS_LABELS, isLiveStatus } from '@/constants/statuses';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import { cn } from '@/lib/utils';
 import type { Task } from '@/types/api';
 import PriorityIcon from './PriorityIcon';
@@ -22,6 +22,8 @@ interface TasksMobileListProps {
 
 /** Phone layout of the tasks table: one compact row per task, nothing to scroll sideways. */
 export default function TasksMobileList({ tasks, loading, canChangeStatus, showProject, emptyMessage }: TasksMobileListProps) {
+  const { isFinal } = useTaskLookups();
+
   if (loading) {
     return (
       <div className="space-y-2">
@@ -44,16 +46,14 @@ export default function TasksMobileList({ tasks, loading, canChangeStatus, showP
           <div className="min-w-0 flex-1 space-y-1">
             <Link
               to={`/tasks/${task.id}`}
-              className={cn('block text-[13px] leading-5 font-medium', task.status === 'completed' && 'text-muted-foreground line-through')}
+              className={cn('block text-[13px] leading-5 font-medium', isFinal(task.status) && 'text-muted-foreground line-through')}
             >
               {task.title}
             </Link>
             <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
               <PriorityIcon priority={task.priority} />
-              <StatusBadge tone={STATUS_TONES[task.status]} live={isLiveStatus(task.status)} className="px-1.5 py-0 text-[10px]">
-                {TASK_STATUS_LABELS[task.status]}
-              </StatusBadge>
-              <DeadlineBadge dueDate={task.due_date} overdue={task.is_overdue} done={task.status === 'completed'} className="px-1.5 py-0 text-[10px]" />
+              <TaskStatusBadge status={task.status} className="px-1.5 py-0 text-[10px]" />
+              <DeadlineBadge dueDate={task.due_date} overdue={task.is_overdue} done={isFinal(task.status)} className="px-1.5 py-0 text-[10px]" />
               {showProject && task.project && (
                 <span className="flex min-w-0 items-center gap-1">
                   <ProjectMark projectId={task.project.id} size="xs" />

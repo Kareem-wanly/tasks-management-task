@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\TaskStatus;
 use App\Rules\ProjectMember;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
@@ -21,8 +20,8 @@ class StoreTaskRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'status' => ['sometimes', Rule::enum(TaskStatus::class)],
-            'priority' => ['sometimes', 'string', 'in:low,medium,high,urgent'],
+            'status' => ['sometimes', Rule::exists('task_statuses', 'key')],
+            'priority' => ['sometimes', 'string', Rule::exists('task_priorities', 'key')],
             'due_date' => ['nullable', 'date'],
             'assigned_to' => ['nullable', 'integer', 'exists:users,id', new ProjectMember($this->route('project'))],
         ];

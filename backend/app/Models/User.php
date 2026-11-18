@@ -3,6 +3,9 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Integrations\Bitrix24\BitrixToken;
+use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,9 +14,9 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements HasBitrixToken
 {
-    use HasApiTokens,HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
         'name',
@@ -24,6 +27,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'bitrix_access_token',
+        'bitrix_refresh_token',
     ];
 
     protected ?Collection $permissionCache = null;
@@ -35,7 +40,40 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'bitrix_access_token' => 'encrypted',
+            'bitrix_refresh_token' => 'encrypted',
+            'bitrix_token_expires_at' => 'immutable_datetime',
+            'is_active' => 'boolean',
+            'bitrix_department_ids' => 'array', // Bitrix UF_DEPARTMENT; names live in bitrix_portals.departments.
+            'bitrix_synced_at' => 'datetime',
         ];
+    }
+
+    public function bitrixToken(): ?BitrixToken
+    {
+        if (! $this->bitrix_access_token || ! $this->bitrix_refresh_token) {
+            return null;
+        }
+
+        return new BitrixToken(
+            accessToken: $this->bitrix_access_token,
+            refreshToken: $this->bitrix_refresh_token,
+            expiresAt: $this->bitrix_token_expires_at ?? CarbonImmutable::now(),
+        );
+    }
+
+    public function storeBitrixToken(BitrixToken $token): void
+    {
+        $this->forceFill([
+            'bitrix_access_token' => $token->accessToken,
+            'bitrix_refresh_token' => $token->refreshToken,
+            'bitrix_token_expires_at' => $token->expiresAt,
+        ])->save();
+    }
+
+    public function bitrixTokenLockKey(): string
+    {
+        return "bitrix-token:user:{$this->id}";
     }
 
     public function permissionNames(): Collection
@@ -58,6 +96,20 @@ class User extends Authenticatable
     public function hasPermission(string $name): bool
     {
         return $this->permissionNames()->contains($name);
+    }
+
+    /** Permissions that let an account manage people and their access. */
+    public const ADMINISTRATIVE_PERMISSIONS = [
+        'users.create', 'users.update', 'users.delete', 'users.manage_roles',
+        'roles.create', 'roles.update', 'roles.delete', 'roles.assign', 'roles.manage',
+        'permissions.assign',
+    ];
+
+    /** Administrators, and anyone who can manage users, roles or permissions. */
+    public function hasAdministrativeRights(): bool
+    {
+        return $this->hasRole('Administrator')
+            || $this->permissionNames()->intersect(self::ADMINISTRATIVE_PERMISSIONS)->isNotEmpty();
     }
 
     public function hasRole(string $name): bool

@@ -33,7 +33,7 @@ class UpdateProjectRequest extends FormRequest
                 $newDueDate = Carbon::parse($this->input('due_date'))->startOfDay();
 
                 $latestUnfinishedTask = $project->tasks()
-                    ->where('status', '!=', 'completed')
+                    ->unfinished()
                     ->whereNotNull('due_date')
                     ->orderBy('due_date', 'desc')
                     ->first();

@@ -1,7 +1,8 @@
 import { getToken, clearToken } from '@/lib/tokenStorage';
 import type { ValidationErrors } from '@/types/api';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
+// Same address as the SPA by default: the dev server (and the production web server) forwards /api to Laravel.
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 type Body = Record<string, unknown> | unknown[] | FormData;
 
@@ -13,6 +14,8 @@ export interface RequestOptions extends Omit<RequestInit, 'body' | 'headers'> {
 interface ErrorBody {
   message?: string;
   errors?: ValidationErrors;
+  /** A machine-readable cause some endpoints add (e.g. Bitrix24 sign-in). */
+  reason?: string;
 }
 
 export class ApiError extends Error {

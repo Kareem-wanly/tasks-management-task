@@ -1,7 +1,7 @@
 import DeadlineBadge from '@/components/data/DeadlineBadge';
 import Panel from '@/components/layout/Panel';
 import StatusBadge from '@/components/data/StatusBadge';
-import { PROJECT_STATUS_LABELS, STATUS_TONES, isLiveStatus } from '@/constants/statuses';
+import { PROJECT_STATUS_LABELS, PROJECT_STATUS_TONES, isLiveStatus } from '@/constants/statuses';
 import { formatDateOnly, formatTimestampDate } from '@/utils/format';
 import type { Project } from '@/types/api';
 import { isProjectOpen, isProjectOverdue } from '../utils';
@@ -19,7 +19,7 @@ export default function ProjectMetaPanel({ project, memberCount }: ProjectMetaPa
       <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-sm">
         <dt className="text-muted-foreground">Status</dt>
         <dd>
-          <StatusBadge tone={STATUS_TONES[project.status]} live={isLiveStatus(project.status)}>
+          <StatusBadge tone={PROJECT_STATUS_TONES[project.status]} live={isLiveStatus(project.status)}>
             {PROJECT_STATUS_LABELS[project.status]}
           </StatusBadge>
         </dd>

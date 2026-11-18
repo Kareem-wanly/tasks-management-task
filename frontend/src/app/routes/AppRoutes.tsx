@@ -4,7 +4,7 @@ import ProtectedRoute from './ProtectedRoute';
 
 import AppShell from '../shell/AppShell';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { LoginPage, RegisterPage } from '@/features/auth';
+import { BitrixAppPage, BitrixCallbackPage, LoginPage, RegisterPage } from '@/features/auth';
 import ForbiddenPage from '../pages/ForbiddenPage';
 import NotFoundPage from '../pages/NotFoundPage';
 
@@ -25,6 +25,9 @@ export default function AppRoutes() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        {/* Not /auth/bitrix/callback: that path is Laravel's, on the same address. */}
+        <Route path="/auth/bitrix/done" element={<BitrixCallbackPage />} />
+        <Route path="/auth/bitrix/app" element={<BitrixAppPage />} />
         <Route path="/403" element={<ForbiddenPage />} />
         <Route path="/unauthorized" element={<Navigate to="/403" replace />} />
 

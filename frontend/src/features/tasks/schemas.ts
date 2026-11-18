@@ -1,15 +1,19 @@
 import { z } from 'zod';
 import type { TaskInput } from '@/api/tasksApi';
-import { TASK_PRIORITIES, TASK_STATUSES } from '@/constants/statuses';
-import type { Task, TaskPriority, TaskStatus } from '@/types/api';
+import { TASK_DEFAULT_PRIORITY, TASK_REOPEN_STATUS } from '@/constants/statuses';
+import type { Task } from '@/types/api';
 import { toDateOnly } from '@/utils/dates';
 
-const taskStatus = z.custom<TaskStatus>((value) => TASK_STATUSES.some((s) => s === value), 'Pick a status.');
-const taskPriority = z.custom<TaskPriority>((value) => TASK_PRIORITIES.some((p) => p === value), 'Pick a priority.');
+// Keys come from /task-statuses and /task-priorities; the server rejects unknown ones
+const taskStatus = z.string().min(1, 'Pick a status.');
+const taskPriority = z.string().min(1, 'Pick a priority.');
 
 export const taskFormSchema = z.object({
-  /** Project id as a string; fixed when the dialog is opened from a project or for an existing task. */
-  project_id: z.string().min(1, 'Please select a project for this task.'),
+  /**
+   * Project id as a string; fixed when the dialog is opened from a project or for an existing task.
+   * '' only for an existing task without a project (a Bitrix personal task); new tasks need one.
+   */
+  project_id: z.string(),
   title: z.string().trim().min(1, 'Task title is required.').max(255, 'Task title is too long.'),
   description: z.string(),
   status: taskStatus,
@@ -21,6 +25,11 @@ export const taskFormSchema = z.object({
 });
 
 export type TaskFormValues = z.infer<typeof taskFormSchema>;
+
+/** Creating a task: tasks are created inside a project. */
+export const newTaskFormSchema = taskFormSchema.extend({
+  project_id: z.string().min(1, 'Please select a project for this task.'),
+});
 
 /** Renaming a task in place on its page. */
 export const titleSchema = taskFormSchema.pick({ title: true });
@@ -40,8 +49,8 @@ export const emptyTaskForm: TaskFormValues = {
   project_id: '',
   title: '',
   description: '',
-  status: 'todo',
-  priority: 'medium',
+  status: TASK_REOPEN_STATUS,
+  priority: TASK_DEFAULT_PRIORITY,
   assigned_to: '',
   due_date: '',
 };
@@ -52,7 +61,7 @@ export function taskFormValues(task: Task, duplicate: boolean): TaskFormValues {
     project_id: task.project ? String(task.project.id) : '',
     title: duplicate ? `${task.title} (copy)` : task.title,
     description: task.description ?? '',
-    status: duplicate ? 'todo' : task.status,
+    status: duplicate ? TASK_REOPEN_STATUS : task.status,
     priority: task.priority,
     assigned_to: task.assignee ? String(task.assignee.id) : '',
     due_date: toDateOnly(task.due_date) ?? '',

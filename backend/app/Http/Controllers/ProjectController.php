@@ -64,7 +64,7 @@ class ProjectController extends Controller
             ->withCount([
                 'members',
                 'tasks',
-                'tasks as completed_tasks_count' => fn ($q) => $q->where('status', 'completed'),
+                'tasks as completed_tasks_count' => fn ($q) => $q->finished(),
                 'tasks as in_progress_tasks_count' => fn ($q) => $q->where('status', 'in_progress'),
             ])
             ->paginate($perPage);
@@ -79,7 +79,7 @@ class ProjectController extends Controller
         $project->load(['owner:id,name,email', 'members:id,name,email'])
             ->loadCount([
                 'tasks',
-                'tasks as completed_tasks_count' => fn ($q) => $q->where('status', 'completed'),
+                'tasks as completed_tasks_count' => fn ($q) => $q->finished(),
                 'tasks as in_progress_tasks_count' => fn ($q) => $q->where('status', 'in_progress'),
             ]);
 
@@ -120,9 +120,7 @@ class ProjectController extends Controller
         $validated = $request->validated();
 
         if (isset($validated['status']) && $validated['status'] === 'completed') {
-            $hasUnfinishedTasks = $project->tasks()
-                ->where('status', '!=', 'completed')
-                ->exists();
+            $hasUnfinishedTasks = $project->tasks()->unfinished()->exists();
 
             if ($hasUnfinishedTasks) {
                 return response()->json([

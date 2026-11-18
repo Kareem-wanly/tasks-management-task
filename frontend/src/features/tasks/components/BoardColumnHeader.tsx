@@ -4,6 +4,7 @@ import {
   CircleDashedIcon,
   CircleDotIcon,
   CircleEllipsisIcon,
+  CirclePauseIcon,
   EllipsisIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -16,7 +17,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { TASK_STATUS_LABELS } from '@/constants/statuses';
+import type { Tone } from '@/constants/statuses';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import { cn } from '@/lib/utils';
 import type { TaskStatus } from '@/types/api';
 
@@ -30,11 +32,22 @@ interface BoardColumnHeaderProps {
   onLimitChange: (limit: number | undefined) => void;
 }
 
-const STATUS_ICONS: Record<TaskStatus, { icon: LucideIcon; color: string }> = {
-  todo: { icon: CircleDashedIcon, color: 'text-muted-foreground' },
-  in_progress: { icon: CircleDotIcon, color: 'text-info' },
-  review: { icon: CircleEllipsisIcon, color: 'text-brand' },
-  completed: { icon: CircleCheckIcon, color: 'text-success' },
+// Built-in statuses get their own icon; any other one is drawn by whether it closes the task
+const STATUS_ICONS: Partial<Record<TaskStatus, LucideIcon>> = {
+  todo: CircleDashedIcon,
+  in_progress: CircleDotIcon,
+  review: CircleEllipsisIcon,
+  completed: CircleCheckIcon,
+  deferred: CirclePauseIcon,
+};
+
+const TONE_TEXT: Record<Tone, string> = {
+  neutral: 'text-muted-foreground',
+  info: 'text-info',
+  brand: 'text-brand',
+  success: 'text-success',
+  warning: 'text-warning',
+  danger: 'text-danger',
 };
 
 const LIMITS = [3, 5, 8, 12];
@@ -48,8 +61,10 @@ export default function BoardColumnHeader({
   onToggleCollapsed,
   onLimitChange,
 }: BoardColumnHeaderProps) {
-  const label = TASK_STATUS_LABELS[status];
-  const { icon: Icon, color } = STATUS_ICONS[status];
+  const { statusLabel, statusTone, isFinal } = useTaskLookups();
+  const label = statusLabel(status);
+  const Icon = STATUS_ICONS[status] ?? (isFinal(status) ? CircleCheckIcon : CircleDashedIcon);
+  const color = TONE_TEXT[statusTone(status)];
   const over = limit !== undefined && count > limit;
 
   if (collapsed) {

@@ -93,7 +93,7 @@ class DemoDataSeeder extends Seeder
                 ->random(fake()->numberBetween(3, 8))
                 ->each(function (User $member) use ($project, $owner): void {
                     $project->members()->attach($member->id, [
-                        'role' => fake()->randomElement(['member', 'member', 'member', 'lead', 'manager']),
+                        'role' => fake()->randomElement(['member', 'member', 'member', 'moderator']),
                     ]);
                     ActivityLog::create([
                         'user_id' => $owner->id,

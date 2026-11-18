@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { PROJECT_STATUS_LABELS, STATUS_TONES, isLiveStatus } from '@/constants/statuses';
+import { PROJECT_STATUS_LABELS, PROJECT_STATUS_TONES, isLiveStatus } from '@/constants/statuses';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { toDateOnly } from '@/utils/dates';
 import { formatTimestampDate } from '@/utils/format';
@@ -56,7 +56,7 @@ export default function ProjectDetailsHeader({
         <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <ProjectAppearancePicker projectId={project.id} />
           {project.title}
-          <StatusBadge tone={STATUS_TONES[project.status]} live={isLiveStatus(project.status)}>
+          <StatusBadge tone={PROJECT_STATUS_TONES[project.status]} live={isLiveStatus(project.status)}>
             {PROJECT_STATUS_LABELS[project.status]}
           </StatusBadge>
           <DeadlineBadge dueDate={project.due_date} overdue={overdue} done={!isProjectOpen(project)} className="px-2.5 py-1" />

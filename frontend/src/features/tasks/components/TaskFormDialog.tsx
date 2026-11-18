@@ -10,11 +10,12 @@ import { Label } from '@/components/ui/label';
 import useApiMutation from '@/hooks/useApiMutation';
 import useProject from '@/hooks/queries/useProject';
 import useProjectOptions from '@/hooks/queries/useProjectOptions';
+import useUserOptions from '@/hooks/queries/useUserOptions';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { applyServerErrors } from '@/lib/forms';
 import { showActionToast } from '@/lib/toast/ToastContext';
-import type { Task, User } from '@/types/api';
-import { emptyTaskForm, taskFormSchema, taskFormValues, toTaskInput, type TaskFormValues } from '../schemas';
+import type { Task, UserOption } from '@/types/api';
+import { emptyTaskForm, newTaskFormSchema, taskFormSchema, taskFormValues, toTaskInput, type TaskFormValues } from '../schemas';
 import TaskFormFields from './TaskFormFields';
 
 interface TaskFormDialogProps {
@@ -35,10 +36,12 @@ export default function TaskFormDialog({ open, onOpenChange, projectId = null, t
   const isEdit = task !== null;
   const source = task ?? template;
   const fixedProjectId = projectId ?? source?.project?.id ?? null;
+  // An imported Bitrix task may have no project; it keeps none when edited
+  const withoutProject = isEdit && !task.project;
   const [createAnother, setCreateAnother] = useState(false);
 
   const form = useForm<TaskFormValues>({
-    resolver: zodResolver(taskFormSchema),
+    resolver: zodResolver(isEdit ? taskFormSchema : newTaskFormSchema),
     defaultValues: emptyTaskForm,
   });
 
@@ -51,10 +54,15 @@ export default function TaskFormDialog({ open, onOpenChange, projectId = null, t
 
   const selectedProjectId = useWatch({ control: form.control, name: 'project_id' });
   const project = useProject(open ? selectedProjectId : null);
-  const projectOptions = useProjectOptions({ enabled: open && fixedProjectId === null });
+  const projectOptions = useProjectOptions({ enabled: open && fixedProjectId === null && !withoutProject });
+  // Without a project anyone can be the assignee
+  const userOptions = useUserOptions({ enabled: open && withoutProject && can('users.view') });
 
-  const members: User[] = [];
-  for (const member of [project.data?.owner, ...(project.data?.members ?? [])]) {
+  const candidates = withoutProject
+    ? [task.assignee, ...(userOptions.data ?? [])]
+    : [project.data?.owner, ...(project.data?.members ?? [])];
+  const members: UserOption[] = [];
+  for (const member of candidates) {
     if (member && !members.some((m) => m.id === member.id)) members.push(member);
   }
 
@@ -96,12 +104,12 @@ export default function TaskFormDialog({ open, onOpenChange, projectId = null, t
     >
       <TaskFormFields
         control={form.control}
-        showProjectSelect={fixedProjectId === null}
+        showProjectSelect={fixedProjectId === null && !withoutProject}
         projects={projectOptions.data ?? []}
         loadingProjects={projectOptions.isPending && fixedProjectId === null}
         members={members}
         canAssign={canAssign}
-        assigneeDisabled={!selectedProjectId}
+        assigneeDisabled={!selectedProjectId && !withoutProject}
         projectDueDate={project.data?.due_date}
         disabled={save.isPending}
       />

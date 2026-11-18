@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import useTaskLookups from '@/hooks/queries/useTaskLookups';
 import { cn } from '@/lib/utils';
 import type { Task } from '@/types/api';
 import PriorityIcon from './PriorityIcon';
@@ -12,7 +13,8 @@ interface CalendarChipCardProps {
 
 /** How a task looks inside a calendar day. */
 export default function CalendarChipCard({ task, dragging = false, overlay = false }: CalendarChipCardProps) {
-  const done = task.status === 'completed';
+  const { isFinal } = useTaskLookups();
+  const done = isFinal(task.status);
 
   return (
     <div

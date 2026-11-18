@@ -5,6 +5,7 @@ import { ApiError, errorMessage } from '@/lib/apiClient';
 import AuthField from './components/AuthField';
 import AuthShell from './components/AuthShell';
 import AuthSubmit from './components/AuthSubmit';
+import BitrixLoginButton from './components/BitrixLoginButton';
 
 type FieldErrors = Record<string, string>;
 
@@ -139,6 +140,13 @@ export default function LoginPage() {
         />
         <AuthSubmit label="Sign in" pendingLabel="Signing in..." isSubmitting={isSubmitting} delay={0.32} />
       </form>
+
+      <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+        <span className="h-px flex-1 bg-border" />
+        or
+        <span className="h-px flex-1 bg-border" />
+      </div>
+      <BitrixLoginButton delay={0.37} />
     </AuthShell>
   );
 }

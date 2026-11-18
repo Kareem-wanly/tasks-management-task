@@ -6,7 +6,7 @@ import DataTable, { type DataTableColumn } from '@/components/data/DataTable';
 import DeadlineBadge from '@/components/data/DeadlineBadge';
 import ProjectMark from '@/components/data/ProjectMark';
 import StatusBadge from '@/components/data/StatusBadge';
-import { PROJECT_STATUS_LABELS, STATUS_TONES, isLiveStatus } from '@/constants/statuses';
+import { PROJECT_STATUS_LABELS, PROJECT_STATUS_TONES, isLiveStatus } from '@/constants/statuses';
 import { formatDateOnly } from '@/utils/format';
 import { cn } from '@/lib/utils';
 import type { Project } from '@/types/api';
@@ -65,7 +65,7 @@ export default function ProjectsTable({
       key: 'status',
       header: 'Status',
       cell: (p) => (
-        <StatusBadge tone={STATUS_TONES[p.status]} live={isLiveStatus(p.status)}>
+        <StatusBadge tone={PROJECT_STATUS_TONES[p.status]} live={isLiveStatus(p.status)}>
           {PROJECT_STATUS_LABELS[p.status]}
         </StatusBadge>
       ),
