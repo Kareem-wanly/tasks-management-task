@@ -8,7 +8,7 @@ use App\Models\Role;
 use App\Repositories\Contracts\RoleRepositoryInterface;
 use Illuminate\Support\Collection;
 
-class RoleRepository implements RoleRepositoryInterface
+final class EloquentRoleRepository implements RoleRepositoryInterface
 {
     public function allWithPermissions(): Collection
     {

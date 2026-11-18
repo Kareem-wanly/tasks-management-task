@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Repositories\Contracts\ActivityLogRepositoryInterface;
 use App\Repositories\Contracts\ProjectRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Services\Contracts\ProjectServiceInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -26,16 +27,16 @@ use Illuminate\Support\Facades\DB;
  * Bitrix first (BitrixProjectPusher) and are saved here only when Bitrix
  * accepts them.
  */
-class ProjectService
+final readonly class ProjectService implements ProjectServiceInterface
 {
     /** Dropdowns never list more than this many projects. */
     private const OPTIONS_LIMIT = 1000;
 
     public function __construct(
-        private readonly ProjectRepositoryInterface $projects,
-        private readonly UserRepositoryInterface $users,
-        private readonly ActivityLogRepositoryInterface $activities,
-        private readonly BitrixProjectPusher $bitrix,
+        private ProjectRepositoryInterface $projects,
+        private UserRepositoryInterface $users,
+        private ActivityLogRepositoryInterface $activities,
+        private BitrixProjectPusher $bitrix,
     ) {}
 
     public function list(User $user, ProjectFiltersDTO $filters, int $perPage): LengthAwarePaginator

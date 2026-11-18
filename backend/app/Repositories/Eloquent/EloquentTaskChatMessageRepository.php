@@ -10,7 +10,7 @@ use App\Repositories\Contracts\TaskChatMessageRepositoryInterface;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 
-class TaskChatMessageRepository implements TaskChatMessageRepositoryInterface
+final class EloquentTaskChatMessageRepository implements TaskChatMessageRepositoryInterface
 {
     public function latestForTask(Task $task, int $limit): Collection
     {

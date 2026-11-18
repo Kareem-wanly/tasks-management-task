@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Repositories\Contracts\PermissionRepositoryInterface;
 use App\Repositories\Contracts\RoleRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Services\Contracts\UserRoleServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -20,12 +21,12 @@ use Illuminate\Support\Facades\DB;
  * only an Administrator touches the Administrator role, and the last
  * Administrator keeps it.
  */
-class UserRoleService
+final readonly class UserRoleService implements UserRoleServiceInterface
 {
     public function __construct(
-        private readonly UserRepositoryInterface $users,
-        private readonly RoleRepositoryInterface $roles,
-        private readonly PermissionRepositoryInterface $permissions,
+        private UserRepositoryInterface $users,
+        private RoleRepositoryInterface $roles,
+        private PermissionRepositoryInterface $permissions,
     ) {}
 
     public function list(User $user): Collection

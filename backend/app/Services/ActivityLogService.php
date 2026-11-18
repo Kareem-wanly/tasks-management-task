@@ -7,14 +7,15 @@ namespace App\Services;
 use App\Models\Project;
 use App\Models\User;
 use App\Repositories\Contracts\ActivityLogRepositoryInterface;
+use App\Services\Contracts\ActivityLogServiceInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
  * The activity log, written by the observers and services.
  */
-class ActivityLogService
+final readonly class ActivityLogService implements ActivityLogServiceInterface
 {
-    public function __construct(private readonly ActivityLogRepositoryInterface $activities) {}
+    public function __construct(private ActivityLogRepositoryInterface $activities) {}
 
     public function forProject(Project $project, int $perPage): LengthAwarePaginator
     {

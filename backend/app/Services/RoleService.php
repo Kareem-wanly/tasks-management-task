@@ -15,6 +15,7 @@ use App\Exceptions\Role\SystemRoleCannotBeRenamedException;
 use App\Models\Role;
 use App\Models\User;
 use App\Repositories\Contracts\RoleRepositoryInterface;
+use App\Services\Contracts\RoleServiceInterface;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Collection;
 
@@ -22,14 +23,14 @@ use Illuminate\Support\Collection;
  * Roles and the permissions they grant. Only an Administrator touches the
  * Administrator role, and nobody grants permissions they don't have.
  */
-class RoleService
+final readonly class RoleService implements RoleServiceInterface
 {
     /** Seeded roles: never deleted, never renamed, their names never reused. */
     public const SYSTEM_ROLES = ['Administrator', 'Project Manager', 'Member'];
 
     public function __construct(
-        private readonly RoleRepositoryInterface $roles,
-        private readonly ConnectionInterface $database,
+        private RoleRepositoryInterface $roles,
+        private ConnectionInterface $database,
     ) {}
 
     public function list(): Collection

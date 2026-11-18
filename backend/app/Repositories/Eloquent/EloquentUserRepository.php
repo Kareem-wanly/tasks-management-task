@@ -11,7 +11,7 @@ use App\Repositories\Contracts\UserRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
-class UserRepository implements UserRepositoryInterface
+final class EloquentUserRepository implements UserRepositoryInterface
 {
     public function paginate(UserFiltersDTO $filters, int $perPage): LengthAwarePaginator
     {

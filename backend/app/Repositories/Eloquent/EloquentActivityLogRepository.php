@@ -10,7 +10,7 @@ use App\Models\User;
 use App\Repositories\Contracts\ActivityLogRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
-class ActivityLogRepository implements ActivityLogRepositoryInterface
+final class EloquentActivityLogRepository implements ActivityLogRepositoryInterface
 {
     public function paginateForProject(Project $project, int $perPage): LengthAwarePaginator
     {

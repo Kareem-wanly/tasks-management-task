@@ -9,7 +9,7 @@ use App\Models\TaskFile;
 use App\Repositories\Contracts\TaskFileRepositoryInterface;
 use Illuminate\Support\Collection;
 
-class TaskFileRepository implements TaskFileRepositoryInterface
+final class EloquentTaskFileRepository implements TaskFileRepositoryInterface
 {
     public function forTask(Task $task): Collection
     {

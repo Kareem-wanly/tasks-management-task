@@ -9,7 +9,7 @@ use App\Models\TaskLookup;
 use App\Repositories\Contracts\TaskLookupRepositoryInterface;
 use Illuminate\Support\Collection;
 
-class TaskLookupRepository implements TaskLookupRepositoryInterface
+final class EloquentTaskLookupRepository implements TaskLookupRepositoryInterface
 {
     public function ordered(string $model): Collection
     {

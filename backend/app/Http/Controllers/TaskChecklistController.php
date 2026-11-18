@@ -12,14 +12,14 @@ use App\Http\Requests\UpdateChecklistItemRequest;
 use App\Http\Resources\TaskChecklistResource;
 use App\Models\Task;
 use App\Models\TaskChecklistItem;
-use App\Services\TaskChecklistService;
+use App\Services\Contracts\TaskChecklistServiceInterface;
 
 /**
  * Step 4.3: a task's checklists. Every answer is the whole checklist.
  */
 class TaskChecklistController extends Controller
 {
-    public function __construct(private readonly TaskChecklistService $checklists) {}
+    public function __construct(private readonly TaskChecklistServiceInterface $checklists) {}
 
     public function index(ShowTaskRequest $request, Task $task): TaskChecklistResource
     {

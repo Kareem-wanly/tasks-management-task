@@ -14,7 +14,7 @@ use App\Repositories\Contracts\TaskRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 
-class TaskRepository implements TaskRepositoryInterface
+final class EloquentTaskRepository implements TaskRepositoryInterface
 {
     private const SORTS = ['created_at', 'due_date', 'priority', 'title', 'status'];
 

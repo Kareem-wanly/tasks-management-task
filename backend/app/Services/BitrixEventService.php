@@ -8,6 +8,7 @@ use App\Jobs\Bitrix\SyncBitrixProject;
 use App\Jobs\Bitrix\SyncBitrixTask;
 use App\Jobs\Bitrix\SyncBitrixTaskChat;
 use App\Repositories\Contracts\BitrixPortalRepositoryInterface;
+use App\Services\Contracts\BitrixEventServiceInterface;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -15,12 +16,12 @@ use Illuminate\Support\Facades\Log;
  * (BitrixInstallService::EVENTS). An event only names the record, so we
  * queue a job that fetches it.
  */
-class BitrixEventService
+final readonly class BitrixEventService implements BitrixEventServiceInterface
 {
     /** Seconds to wait before fetching: more events for the same record may follow. */
     private const DEBOUNCE_SECONDS = 3;
 
-    public function __construct(private readonly BitrixPortalRepositoryInterface $portals) {}
+    public function __construct(private BitrixPortalRepositoryInterface $portals) {}
 
     /**
      * Bitrix signs every event with the application token it gave us at

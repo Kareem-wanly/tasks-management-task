@@ -7,12 +7,12 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ShowUserRolesRequest;
 use App\Http\Requests\SyncUserRolesRequest;
 use App\Models\User;
-use App\Services\UserRoleService;
+use App\Services\Contracts\UserRoleServiceInterface;
 use Illuminate\Http\JsonResponse;
 
 class UserRoleController extends Controller
 {
-    public function __construct(private readonly UserRoleService $roles) {}
+    public function __construct(private readonly UserRoleServiceInterface $roles) {}
 
     public function index(ShowUserRolesRequest $request, User $user): JsonResponse
     {

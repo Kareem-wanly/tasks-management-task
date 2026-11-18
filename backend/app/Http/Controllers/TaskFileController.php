@@ -11,7 +11,7 @@ use App\Http\Requests\UploadTaskFileRequest;
 use App\Http\Resources\TaskFilesResource;
 use App\Models\Task;
 use App\Models\TaskFile;
-use App\Services\TaskFileService;
+use App\Services\Contracts\TaskFileServiceInterface;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -19,7 +19,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class TaskFileController extends Controller
 {
-    public function __construct(private readonly TaskFileService $files) {}
+    public function __construct(private readonly TaskFileServiceInterface $files) {}
 
     public function index(ShowTaskRequest $request, Task $task): TaskFilesResource
     {

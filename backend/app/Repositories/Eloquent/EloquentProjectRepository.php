@@ -11,7 +11,7 @@ use App\Repositories\Contracts\ProjectRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
-class ProjectRepository implements ProjectRepositoryInterface
+final class EloquentProjectRepository implements ProjectRepositoryInterface
 {
     private const SORTS = ['created_at', 'updated_at', 'start_date', 'due_date', 'title'];
 

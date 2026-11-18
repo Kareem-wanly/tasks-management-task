@@ -13,6 +13,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use App\Repositories\Contracts\TaskRepositoryInterface;
+use App\Services\Contracts\TaskServiceInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
@@ -20,11 +21,11 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  * token) and are saved here only when Bitrix accepts them; a refusal throws
  * a BitrixException, rendered in bootstrap/app.php.
  */
-class TaskService
+final readonly class TaskService implements TaskServiceInterface
 {
     public function __construct(
-        private readonly TaskRepositoryInterface $tasks,
-        private readonly BitrixTaskPusher $bitrix,
+        private TaskRepositoryInterface $tasks,
+        private BitrixTaskPusher $bitrix,
     ) {}
 
     public function list(User $viewer, TaskFiltersDTO $filters, int $perPage): LengthAwarePaginator

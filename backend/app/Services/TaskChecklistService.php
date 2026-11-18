@@ -15,6 +15,7 @@ use App\Models\Task;
 use App\Models\TaskChecklistItem;
 use App\Models\User;
 use App\Repositories\Contracts\TaskChecklistRepositoryInterface;
+use App\Services\Contracts\TaskChecklistServiceInterface;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\Log;
 
@@ -23,15 +24,15 @@ use Illuminate\Support\Facades\Log;
  * are fetched from Bitrix each time the task is opened. Tasks in Bitrix
  * change there first; tasks of local-only projects change here only.
  */
-class TaskChecklistService
+final readonly class TaskChecklistService implements TaskChecklistServiceInterface
 {
     /** The name Bitrix gives a list made without a title. */
     private const DEFAULT_LIST_TITLE = 'BX_CHECKLIST_1';
 
     public function __construct(
-        private readonly TaskChecklistRepositoryInterface $checklists,
-        private readonly BitrixChecklistPusher $bitrix,
-        private readonly ConnectionInterface $database,
+        private TaskChecklistRepositoryInterface $checklists,
+        private BitrixChecklistPusher $bitrix,
+        private ConnectionInterface $database,
     ) {}
 
     /** The checklist, fresh from Bitrix; our last copy when Bitrix can't be reached. */

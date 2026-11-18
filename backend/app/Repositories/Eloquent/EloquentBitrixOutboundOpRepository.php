@@ -9,7 +9,7 @@ use App\Models\User;
 use App\Repositories\Contracts\BitrixOutboundOpRepositoryInterface;
 use Illuminate\Support\Collection;
 
-class BitrixOutboundOpRepository implements BitrixOutboundOpRepositoryInterface
+final class EloquentBitrixOutboundOpRepository implements BitrixOutboundOpRepositoryInterface
 {
     public function record(string $entity, int $bitrixId, string $action, ?string $fingerprint, User $actor): void
     {

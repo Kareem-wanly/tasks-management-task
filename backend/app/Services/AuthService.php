@@ -13,6 +13,7 @@ use App\Exceptions\Auth\InvalidCredentialsException;
 use App\Models\User;
 use App\Repositories\Contracts\RoleRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Services\Contracts\AuthServiceInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -20,13 +21,13 @@ use Illuminate\Support\Facades\Hash;
  * Password sign-up, sign-in and the user's own profile. (Bitrix24 sign-in
  * is BitrixAuthService.)
  */
-class AuthService
+final readonly class AuthService implements AuthServiceInterface
 {
     private const TOKEN_NAME = 'auth_token';
 
     public function __construct(
-        private readonly UserRepositoryInterface $users,
-        private readonly RoleRepositoryInterface $roles,
+        private UserRepositoryInterface $users,
+        private RoleRepositoryInterface $roles,
     ) {}
 
     /**

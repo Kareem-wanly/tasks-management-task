@@ -10,6 +10,7 @@ use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Models\BitrixPortal;
 use App\Repositories\Contracts\BitrixPortalRepositoryInterface;
+use App\Services\Contracts\BitrixInstallServiceInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
 
@@ -23,7 +24,7 @@ use Illuminate\Support\Facades\Log;
  * token. Once accepted, a failure while fetching extra details is logged
  * instead of rejecting the install.
  */
-class BitrixInstallService
+final readonly class BitrixInstallService implements BitrixInstallServiceInterface
 {
     public const REQUIRED_SCOPES = ['task', 'sonet_group', 'socialnetwork', 'user', 'im', 'disk', 'department'];
 
@@ -40,8 +41,8 @@ class BitrixInstallService
     private const DEPARTMENTS_PAGE_SIZE = 50;
 
     public function __construct(
-        private readonly BitrixClient $bitrix,
-        private readonly BitrixPortalRepositoryInterface $portals,
+        private BitrixClient $bitrix,
+        private BitrixPortalRepositoryInterface $portals,
     ) {}
 
     /** @param  array<string, mixed>  $auth  The event's auth block. */

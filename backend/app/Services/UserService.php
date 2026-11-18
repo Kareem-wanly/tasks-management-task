@@ -14,6 +14,7 @@ use App\Integrations\Bitrix24\BitrixUserPusher;
 use App\Models\User;
 use App\Repositories\Contracts\RoleRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Services\Contracts\UserServiceInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -22,15 +23,15 @@ use Illuminate\Support\Facades\DB;
  * Employees. Changes go to Bitrix24 first (BitrixUserPusher) and are saved
  * here only when Bitrix accepts them.
  */
-class UserService
+final readonly class UserService implements UserServiceInterface
 {
     /** Dropdowns never list more than this many people. */
     private const OPTIONS_LIMIT = 1000;
 
     public function __construct(
-        private readonly UserRepositoryInterface $users,
-        private readonly RoleRepositoryInterface $roles,
-        private readonly BitrixUserPusher $bitrix,
+        private UserRepositoryInterface $users,
+        private RoleRepositoryInterface $roles,
+        private BitrixUserPusher $bitrix,
     ) {}
 
     public function list(UserFiltersDTO $filters, int $perPage): LengthAwarePaginator
