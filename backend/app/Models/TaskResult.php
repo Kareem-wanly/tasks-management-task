@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -12,11 +14,6 @@ class TaskResult extends Model
 {
     protected $fillable = ['task_id', 'bitrix_result_id', 'author_id', 'text', 'status', 'created_at', 'updated_at'];
 
-    protected function casts(): array
-    {
-        return ['bitrix_result_id' => 'integer'];
-    }
-
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class);
@@ -25,5 +22,10 @@ class TaskResult extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
+    }
+
+    protected function casts(): array
+    {
+        return ['bitrix_result_id' => 'integer'];
     }
 }

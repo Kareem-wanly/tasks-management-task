@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Exceptions\BitrixSignInException;
@@ -57,7 +59,7 @@ class BitrixAuthService
 
         try {
             $token = $this->tokens->exchangeCode($code);
-        } catch (BitrixException $e) {
+        } catch (BitrixException) {
             throw new BitrixSignInException('exchange_failed');
         }
 
@@ -98,6 +100,22 @@ class BitrixAuthService
     }
 
     /**
+     * The one-time code from the callback and this browser's nonce, for a Sanctum token.
+     *
+     * @throws BusinessRuleException When the code is unknown, expired, already used, for another browser, or its user is inactive.
+     */
+    public function exchangeCode(string $code, string $nonce): string
+    {
+        $user = $this->codes->redeem($code, $nonce);
+
+        if (! $user instanceof User || ! $user->is_active) {
+            throw new BusinessRuleException('The sign-in link expired or was already used. Please sign in again.');
+        }
+
+        return $this->userRepository->createApiToken($user, self::TOKEN_NAME);
+    }
+
+    /**
      * The employee the token belongs to, with the token stored.
      * user.current doubles as the check that Bitrix accepts the token.
      */
@@ -105,7 +123,7 @@ class BitrixAuthService
     {
         try {
             $profile = $this->bitrix->callWithToken($token->accessToken, 'user.current')['result'] ?? [];
-        } catch (BitrixException $e) {
+        } catch (BitrixException) {
             throw new BitrixSignInException('bitrix_rejected');
         }
 
@@ -116,7 +134,7 @@ class BitrixAuthService
         // Never links by email here: anyone can put any email on their Bitrix profile.
         $user = $this->users->upsert($profile);
 
-        if ($user === null) {
+        if (! $user instanceof User) {
             throw new BitrixSignInException('account_not_linked');
         }
 
@@ -127,22 +145,6 @@ class BitrixAuthService
         $user->storeBitrixToken($token);
 
         return $user;
-    }
-
-    /**
-     * The one-time code from the callback and this browser's nonce, for a Sanctum token.
-     *
-     * @throws BusinessRuleException When the code is unknown, expired, already used, for another browser, or its user is inactive.
-     */
-    public function exchangeCode(string $code, string $nonce): string
-    {
-        $user = $this->codes->redeem($code, $nonce);
-
-        if ($user === null || ! $user->is_active) {
-            throw new BusinessRuleException('The sign-in link expired or was already used. Please sign in again.');
-        }
-
-        return $this->userRepository->createApiToken($user, self::TOKEN_NAME);
     }
 
     /** For a local app, app.info's CODE is its client_id. */

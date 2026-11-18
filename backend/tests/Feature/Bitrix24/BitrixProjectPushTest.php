@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -39,7 +41,7 @@ class BitrixProjectPushTest extends TestCase
 
         app()->instance(BitrixClient::SERVICE_ACCOUNT, new class implements HasBitrixToken
         {
-            public function bitrixToken(): ?BitrixToken
+            public function bitrixToken(): BitrixToken
             {
                 return new BitrixToken('service-access', 'service-refresh', CarbonImmutable::now()->addHour());
             }
@@ -59,21 +61,6 @@ class BitrixProjectPushTest extends TestCase
 
             return Http::response(['result' => str_ends_with($request->url(), 'sonet_group.create.json') ? 40 : true]);
         });
-    }
-
-    private function linkedProject(array $attributes = []): Project
-    {
-        return Project::forceCreate(array_merge([
-            'title' => 'P', 'status' => 'active', 'owner_id' => $this->actor->id, 'bitrix_group_id' => 40,
-        ], $attributes));
-    }
-
-    private function sent(string $method): Request
-    {
-        $pair = Http::recorded(fn (Request $r) => str_ends_with($r->url(), "/{$method}.json"))->first();
-        $this->assertNotNull($pair, "{$method} was not called.");
-
-        return $pair[0];
     }
 
     public function test_new_project_is_created_in_bitrix_by_the_employee(): void
@@ -135,7 +122,7 @@ class BitrixProjectPushTest extends TestCase
         $this->deleteJson("/api/projects/{$project->id}")->assertOk();
 
         $this->assertSame('Y', $this->sent('sonet_group.update')['CLOSED']);
-        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'sonet_group.delete'));
+        Http::assertNotSent(fn (Request $r): bool => str_contains($r->url(), 'sonet_group.delete'));
         $this->assertSoftDeleted($project);
     }
 
@@ -160,7 +147,7 @@ class BitrixProjectPushTest extends TestCase
 
         $this->postJson("/api/projects/{$project->id}/members", ['user_id' => $this->colleague->id])->assertOk();
 
-        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'sonet_group.user.update'));
+        Http::assertNotSent(fn (Request $r): bool => str_contains($r->url(), 'sonet_group.user.update'));
         $this->assertSame('member', $project->members()->sole()->pivot->role);
     }
 
@@ -175,7 +162,7 @@ class BitrixProjectPushTest extends TestCase
             ->assertJsonPath('message', 'tester is not a Bitrix24 user, so they cannot be added to this project.');
 
         $this->assertSame(0, $project->members()->count());
-        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'sonet_group.user.add'));
+        Http::assertNotSent(fn (Request $r): bool => str_contains($r->url(), 'sonet_group.user.add'));
     }
 
     public function test_inactive_user_is_refused_before_bitrix_is_called(): void
@@ -189,7 +176,7 @@ class BitrixProjectPushTest extends TestCase
             ->assertJsonValidationErrors('user_id');
 
         $this->assertSame(0, $project->members()->count());
-        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'sonet_group.user.add'));
+        Http::assertNotSent(fn (Request $r): bool => str_contains($r->url(), 'sonet_group.user.add'));
     }
 
     public function test_bitrix_refusal_saves_nothing(): void
@@ -226,5 +213,20 @@ class BitrixProjectPushTest extends TestCase
         $this->deleteJson("/api/projects/{$project->id}")->assertOk();
 
         Http::assertNothingSent();
+    }
+
+    private function linkedProject(array $attributes = []): Project
+    {
+        return Project::forceCreate(array_merge([
+            'title' => 'P', 'status' => 'active', 'owner_id' => $this->actor->id, 'bitrix_group_id' => 40,
+        ], $attributes));
+    }
+
+    private function sent(string $method): Request
+    {
+        $pair = Http::recorded(fn (Request $r): bool => str_ends_with($r->url(), "/{$method}.json"))->first();
+        $this->assertNotNull($pair, "{$method} was not called.");
+
+        return $pair[0];
     }
 }

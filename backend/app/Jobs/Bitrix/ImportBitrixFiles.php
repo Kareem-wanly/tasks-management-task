@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs\Bitrix;
 
 use App\Integrations\Bitrix24\BitrixFilePusher;
@@ -34,7 +36,7 @@ class ImportBitrixFiles implements ShouldQueue
         $total = $tasks->countInBitrix();
         $skipped = 0;
 
-        $tasks->chunkInBitrix(self::BATCH, function ($chunk) use ($files, $cursor, $cursors, $total, &$skipped) {
+        $tasks->chunkInBitrix(self::BATCH, function ($chunk) use ($files, $cursor, $cursors, $total, &$skipped): void {
             $skipped += $files->refreshMany($chunk);
             $cursors->advance($cursor, $chunk->count(), $total);
         });

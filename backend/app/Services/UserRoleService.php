@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Exceptions\BusinessRuleException;
@@ -37,10 +39,10 @@ class UserRoleService
             throw BusinessRuleException::forbidden('You cannot assign roles with permissions that you do not possess.');
         }
 
-        return DB::transaction(function () use ($actorIsAdmin, $user, $roleIds) {
+        return DB::transaction(function () use ($actorIsAdmin, $user, $roleIds): User {
             $adminRole = $this->roles->findByName('Administrator');
 
-            if ($adminRole) {
+            if ($adminRole instanceof \App\Models\Role) {
                 $hasAdmin = $this->users->hasRoleId($user, $adminRole->id);
                 $keepsAdmin = in_array($adminRole->id, $roleIds);
 

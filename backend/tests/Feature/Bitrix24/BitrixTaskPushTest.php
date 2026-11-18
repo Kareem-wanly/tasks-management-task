@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixToken;
@@ -64,20 +66,6 @@ class BitrixTaskPushTest extends TestCase
         });
     }
 
-    private function bitrixTask(array $attributes = []): Task
-    {
-        return Task::forceCreate(array_merge([
-            'title' => 'T', 'status' => 'todo', 'priority' => 'medium', 'project_id' => $this->project->id,
-            'created_by' => $this->actor->id, 'assigned_to' => $this->assignee->id, 'bitrix_task_id' => 100,
-        ], $attributes));
-    }
-
-    /** @return list<string> Bitrix methods called, in order. */
-    private function calls(): array
-    {
-        return Http::recorded()->map(fn (array $pair) => basename(parse_url($pair[0]->url(), PHP_URL_PATH), '.json'))->all();
-    }
-
     public function test_new_task_is_created_in_bitrix_as_the_employee(): void
     {
         Sanctum::actingAs($this->actor);
@@ -86,7 +74,7 @@ class BitrixTaskPushTest extends TestCase
             'title' => 'Write docs', 'priority' => 'high', 'due_date' => '2026-12-01', 'assigned_to' => $this->assignee->id,
         ])->assertCreated();
 
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'tasks.task.add.json')
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.add.json')
             && $r['auth'] === 'actor-access'
             && $r['fields']['TITLE'] === 'Write docs'
             && $r['fields']['PRIORITY'] === 2
@@ -114,7 +102,7 @@ class BitrixTaskPushTest extends TestCase
 
         $this->postJson('/api/tasks', ['title' => 'Personal'])->assertCreated()->assertJsonPath('data.project', null);
 
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'tasks.task.add.json') && $r['fields']['GROUP_ID'] === 0);
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.add.json') && $r['fields']['GROUP_ID'] === 0);
         $this->assertNull(Task::sole()->project_id);
     }
 
@@ -125,7 +113,7 @@ class BitrixTaskPushTest extends TestCase
 
         $this->putJson("/api/tasks/{$task->id}", ['title' => 'Renamed', 'priority' => 'medium'])->assertOk();
 
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'tasks.task.update.json')
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.update.json')
             && $r['taskId'] === 100 && $r['fields'] === ['TITLE' => 'Renamed']);
         $this->assertSame('Renamed', $task->fresh()->title);
     }
@@ -171,7 +159,7 @@ class BitrixTaskPushTest extends TestCase
 
         $this->deleteJson("/api/tasks/{$task->id}")->assertOk();
 
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'tasks.task.delete.json') && $r['taskId'] === 100);
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.delete.json') && $r['taskId'] === 100);
         $this->assertSoftDeleted($task);
     }
 
@@ -247,5 +235,19 @@ class BitrixTaskPushTest extends TestCase
 
         Http::assertNothingSent();
         $this->assertNull(Task::sole()->bitrix_task_id);
+    }
+
+    private function bitrixTask(array $attributes = []): Task
+    {
+        return Task::forceCreate(array_merge([
+            'title' => 'T', 'status' => 'todo', 'priority' => 'medium', 'project_id' => $this->project->id,
+            'created_by' => $this->actor->id, 'assigned_to' => $this->assignee->id, 'bitrix_task_id' => 100,
+        ], $attributes));
+    }
+
+    /** @return list<string> Bitrix methods called, in order. */
+    private function calls(): array
+    {
+        return Http::recorded()->map(fn (array $pair): string => basename(parse_url($pair[0]->url(), PHP_URL_PATH), '.json'))->all();
     }
 }

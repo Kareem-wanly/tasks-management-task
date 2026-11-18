@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24;
 
 use App\Models\Task;
@@ -44,32 +46,6 @@ class BitrixFilePusher
     public function refresh(Task $task): void
     {
         $this->sync->sync($task, array_values($this->attachments($this->attachedIds($task))));
-    }
-
-    /**
-     * disk.attachedObject.get rows, 50 per batch.
-     *
-     * @param  list<int>  $attachedIds
-     * @return array<int, array<string, mixed>> By attached object ID.
-     */
-    private function attachments(array $attachedIds): array
-    {
-        $attachments = [];
-
-        foreach (array_chunk(array_values(array_unique($attachedIds)), BitrixClient::MAX_BATCH_COMMANDS) as $chunk) {
-            $commands = [];
-            foreach ($chunk as $id) {
-                $commands["a{$id}"] = ['disk.attachedObject.get', ['id' => $id]];
-            }
-            $batch = $this->bitrix->batchAsService($commands);
-            foreach ($chunk as $id) {
-                if (is_array($row = $batch['result']["a{$id}"] ?? null)) {
-                    $attachments[$id] = $row;
-                }
-            }
-        }
-
-        return $attachments;
     }
 
     /**
@@ -136,7 +112,7 @@ class BitrixFilePusher
 
         $diskFileId = (int) ($file['ID'] ?? 0) ?: throw BitrixException::cannotSync('Bitrix24 did not store the file.');
 
-        $this->whileChangingFiles($task, fn () => $this->bitrix->callAsUser($actor, 'tasks.task.files.attach', ['taskId' => $task->bitrix_task_id, 'fileId' => $diskFileId]));
+        $this->whileChangingFiles($task, fn (): array => $this->bitrix->callAsUser($actor, 'tasks.task.files.attach', ['taskId' => $task->bitrix_task_id, 'fileId' => $diskFileId]));
         $this->refresh($task);
     }
 
@@ -149,22 +125,12 @@ class BitrixFilePusher
         // Bitrix only takes the whole list (the detach method is undocumented), so
         // reading and writing it happen under a lock: two changes made here can't
         // overwrite each other's file.
-        $this->whileChangingFiles($task, fn () => $this->bitrix->callAsUser($actor, 'tasks.task.update', [
+        $this->whileChangingFiles($task, fn (): array => $this->bitrix->callAsUser($actor, 'tasks.task.update', [
             'taskId' => $task->bitrix_task_id,
             // The whole list: what is left after removing this one (empty clears it).
             'fields' => ['UF_TASK_WEBDAV_FILES' => array_values(array_diff($this->attachedIds($task), [$file->attached_object_id]))],
         ]));
         $this->refresh($task);
-    }
-
-    /** One change to a task's attachments at a time. */
-    private function whileChangingFiles(Task $task, callable $change): void
-    {
-        try {
-            Cache::lock("bitrix-task-files:{$task->id}", self::FILES_LOCK_SECONDS)->block(self::FILES_LOCK_SECONDS, $change);
-        } catch (LockTimeoutException) {
-            throw BitrixException::cannotSync('Another change to the files of this task is in progress. Try again in a moment.');
-        }
     }
 
     /**
@@ -184,6 +150,42 @@ class BitrixFilePusher
     public function open(string $url): StreamInterface
     {
         return $this->bitrix->openDownload($url);
+    }
+
+    /**
+     * disk.attachedObject.get rows, 50 per batch.
+     *
+     * @param  list<int>  $attachedIds
+     * @return array<int, array<string, mixed>> By attached object ID.
+     */
+    private function attachments(array $attachedIds): array
+    {
+        $attachments = [];
+
+        foreach (array_chunk(array_values(array_unique($attachedIds)), BitrixClient::MAX_BATCH_COMMANDS) as $chunk) {
+            $commands = [];
+            foreach ($chunk as $id) {
+                $commands["a{$id}"] = ['disk.attachedObject.get', ['id' => $id]];
+            }
+            $batch = $this->bitrix->batchAsService($commands);
+            foreach ($chunk as $id) {
+                if (is_array($row = $batch['result']["a{$id}"] ?? null)) {
+                    $attachments[$id] = $row;
+                }
+            }
+        }
+
+        return $attachments;
+    }
+
+    /** One change to a task's attachments at a time. */
+    private function whileChangingFiles(Task $task, callable $change): void
+    {
+        try {
+            Cache::lock("bitrix-task-files:{$task->id}", self::FILES_LOCK_SECONDS)->block(self::FILES_LOCK_SECONDS, $change);
+        } catch (LockTimeoutException) {
+            throw BitrixException::cannotSync('Another change to the files of this task is in progress. Try again in a moment.');
+        }
     }
 
     /** @return list<int> The task's attachments in Bitrix. */

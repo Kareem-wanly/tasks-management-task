@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24;
 
 use App\Integrations\Bitrix24\Mappers\BitrixUserMapper;
@@ -36,13 +38,13 @@ class BitrixUserSync
         $name = $this->mapper->name($row);
         $email = $this->mapper->email($row);
 
-        return DB::transaction(function () use ($attributes, $bitrixId, $name, $email, $linkByEmail) {
+        return DB::transaction(function () use ($attributes, $bitrixId, $name, $email, $linkByEmail): ?\App\Models\User {
             $user = $this->users->findByBitrixId($bitrixId);
 
             if (! $user && $email !== null) {
                 $unlinked = $this->users->findUnlinkedByEmail($email);
 
-                if ($unlinked && (! $linkByEmail || $unlinked->hasAdministrativeRights())) {
+                if ($unlinked instanceof User && (! $linkByEmail || $unlinked->hasAdministrativeRights())) {
                     Log::warning('Bitrix24 user not linked: a local account with the same email exists.', [
                         'bitrix_user_id' => $bitrixId,
                         'local_user_id' => $unlinked->id,
@@ -54,7 +56,7 @@ class BitrixUserSync
                 $user = $unlinked;
             }
 
-            if ($user) {
+            if ($user instanceof User) {
                 $this->update($user, $attributes, $name, $email);
 
                 return $user;
@@ -70,7 +72,7 @@ class BitrixUserSync
                 'password' => null,
             ]);
 
-            if ($member = $this->roles->findByName('Member')) {
+            if (($member = $this->roles->findByName('Member')) instanceof \App\Models\Role) {
                 $this->users->attachRole($user, $member->id);
             }
 

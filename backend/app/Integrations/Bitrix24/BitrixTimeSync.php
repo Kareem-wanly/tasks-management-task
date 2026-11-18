@@ -1,12 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24;
 
 use App\Models\Task;
 use App\Models\TaskElapsedItem;
 use App\Repositories\Contracts\TimeEntryRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
-use Carbon\Carbon;
 
 /**
  * Step 4.4: makes our copy of a task's time log match Bitrix's
@@ -26,7 +27,7 @@ class BitrixTimeSync
     public function sync(Task $task, array $rows): void
     {
         $ours = $this->entries->bitrixEntries($task);
-        $users = $this->users->idsByBitrixIds(array_map(fn ($r) => (int) ($r['USER_ID'] ?? 0), $rows));
+        $users = $this->users->idsByBitrixIds(array_map(fn (array $r): int => (int) ($r['USER_ID'] ?? 0), $rows));
         $seen = [];
 
         foreach ($rows as $row) {
@@ -39,7 +40,7 @@ class BitrixTimeSync
                 'seconds' => (int) ($row['SECONDS'] ?? 0),
                 'comment' => ($row['COMMENT_TEXT'] ?? '') !== '' ? (string) $row['COMMENT_TEXT'] : null,
                 // DATE_START/DATE_STOP come back shifted by the portal's offset; CREATED_DATE is right.
-                'created_date' => isset($row['CREATED_DATE']) ? Carbon::parse($row['CREATED_DATE'])->setTimezone(config('app.timezone')) : null,
+                'created_date' => isset($row['CREATED_DATE']) ? \Illuminate\Support\Facades\Date::parse($row['CREATED_DATE'])->setTimezone(config('app.timezone')) : null,
             ]);
 
             if (! $item->exists || $item->isDirty()) {

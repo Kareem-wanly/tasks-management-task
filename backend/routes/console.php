@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -12,6 +14,6 @@ Schedule::command('sanctum:prune-expired --hours=24')->daily();
 Schedule::command('bitrix:sync-changes')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('bitrix:import --sync')->dailyAt('03:00')->withoutOverlapping();
 
-Artisan::command('inspire', function () {
+Artisan::command('inspire', function (): void {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24\Mappers;
 
 use App\Models\TaskPriority;
@@ -35,7 +37,7 @@ class BitrixHistoryMapper
     {
         [$names, $ourIds] = $this->people($rows);
 
-        $entries = array_map(fn (array $row) => [
+        $entries = array_map(fn (array $row): array => [
             'id' => (int) ($row['id'] ?? 0),
             'field' => (string) ($row['field'] ?? ''),
             'from' => $this->value((string) ($row['field'] ?? ''), $row['value']['from'] ?? null, $names),
@@ -45,7 +47,7 @@ class BitrixHistoryMapper
         ], $rows);
 
         // Newest first, as the task page reads it.
-        usort($entries, fn (array $a, array $b) => [$b['created_at'], $b['id']] <=> [$a['created_at'], $a['id']]);
+        usort($entries, fn (array $a, array $b): int => [$b['created_at'], $b['id']] <=> [$a['created_at'], $a['id']]);
 
         return $entries;
     }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24;
 
 use App\Models\Task;
@@ -29,14 +31,14 @@ class BitrixChatSync
      */
     public function sync(Task $task, array $rows, array $files, bool $complete): void
     {
-        $rows = array_values(array_filter($rows, fn (array $row) => ! $this->isDeleted($row)));
+        $rows = array_values(array_filter($rows, fn (array $row): bool => ! $this->isDeleted($row)));
         // Bitrix pages newest first; saved oldest first, so messages of the same second keep their order.
-        usort($rows, fn (array $a, array $b) => (int) $a['id'] <=> (int) $b['id']);
-        $ids = array_map(fn (array $row) => (int) $row['id'], $rows);
+        usort($rows, fn (array $a, array $b): int => (int) $a['id'] <=> (int) $b['id']);
+        $ids = array_map(fn (array $row): int => (int) $row['id'], $rows);
         $from = $complete || $ids === [] ? null : min($ids);
 
         $ours = $this->messages->bitrixMessages($task, $from);
-        $authors = $this->users->idsByBitrixIds(array_map(fn (array $row) => (int) ($row['author_id'] ?? 0), $rows));
+        $authors = $this->users->idsByBitrixIds(array_map(fn (array $row): int => (int) ($row['author_id'] ?? 0), $rows));
         $filesById = [];
         foreach ($files as $file) {
             $filesById[(int) ($file['id'] ?? 0)] = $file;
@@ -86,7 +88,7 @@ class BitrixChatSync
             }
         }
 
-        return implode("\n", array_filter($parts, fn (string $part) => $part !== ''));
+        return implode("\n", array_filter($parts, fn (string $part): bool => $part !== ''));
     }
 
     /**
@@ -113,6 +115,6 @@ class BitrixChatSync
 
     private function time(mixed $value): ?Carbon
     {
-        return is_string($value) && $value !== '' ? Carbon::parse($value)->setTimezone(config('app.timezone')) : null;
+        return is_string($value) && $value !== '' ? \Illuminate\Support\Facades\Date::parse($value)->setTimezone(config('app.timezone')) : null;
     }
 }

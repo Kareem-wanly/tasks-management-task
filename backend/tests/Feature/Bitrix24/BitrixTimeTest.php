@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -30,6 +32,9 @@ class BitrixTimeTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** Access token => Bitrix user ID. */
+    private const TOKENS = ['actor-access' => 5, 'assignee-access' => 7, 'auditor-access' => 8];
+
     private User $actor;
 
     private Project $project;
@@ -43,9 +48,6 @@ class BitrixTimeTest extends TestCase
 
     /** null, 'unreachable' or 'refuse'. */
     private ?string $failure = null;
-
-    /** Access token => Bitrix user ID. */
-    private const TOKENS = ['actor-access' => 5, 'assignee-access' => 7, 'auditor-access' => 8];
 
     protected function setUp(): void
     {
@@ -70,58 +72,6 @@ class BitrixTimeTest extends TestCase
             return Http::response(['result' => $this->bitrix(basename(parse_url($request->url(), PHP_URL_PATH), '.json'), $request->data())]);
         });
         Sanctum::actingAs($this->actor);
-    }
-
-    private function user(int $bitrixId, string $name, Role $role): User
-    {
-        $user = User::factory()->create(['bitrix_user_id' => $bitrixId]);
-        $user->roles()->attach($role);
-        $user->storeBitrixToken(new BitrixToken("{$name}-access", "{$name}-refresh", CarbonImmutable::now()->addHour()));
-
-        return $user;
-    }
-
-    private function task(int $bitrixId, bool $tracking = true): Task
-    {
-        return Task::forceCreate([
-            'title' => "Task {$bitrixId}", 'status' => 'todo', 'priority' => 'medium', 'project_id' => $this->project->id,
-            'created_by' => $this->actor->id, 'assigned_to' => $this->actor->id, 'bitrix_task_id' => $bitrixId,
-            'allow_time_tracking' => $tracking,
-        ]);
-    }
-
-    private function bitrix(string $method, array $data): mixed
-    {
-        $id = (int) ($data['ITEMID'] ?? 0);
-        $mine = fn ($taskId) => array_values(array_filter($this->log, fn ($e) => $e['TASK_ID'] === (string) $taskId));
-
-        return match ($method) {
-            'task.elapseditem.getlist' => $mine($data['TASKID']),
-            'task.elapseditem.add' => $this->entry((int) $data['TASKID'], self::TOKENS[$data['auth']], $data['ARFIELDS']['SECONDS'], $data['ARFIELDS']['COMMENT_TEXT']),
-            'task.elapseditem.update' => (bool) ($this->log[$id] = [...$this->log[$id], 'SECONDS' => (string) $data['ARFIELDS']['SECONDS'], 'COMMENT_TEXT' => $data['ARFIELDS']['COMMENT_TEXT']]),
-            'task.elapseditem.delete' => (function () use ($id) {
-                unset($this->log[$id]);
-
-                return true;
-            })(),
-            'tasks.task.add' => ['task' => ['id' => '99', 'status' => '2']],
-            // Batch commands arrive as "method?query".
-            'batch' => ['result' => array_map(function (string $cmd) use ($mine) {
-                parse_str((string) parse_url($cmd, PHP_URL_QUERY), $params);
-
-                return $mine($params['TASKID']);
-            }, $data['cmd']), 'result_error' => []],
-            default => true,
-        };
-    }
-
-    private function entry(int $taskId, int $userId, int $seconds, string $comment = ''): int
-    {
-        $id = $this->nextId++;
-        $this->log[$id] = ['ID' => (string) $id, 'TASK_ID' => (string) $taskId, 'USER_ID' => (string) $userId, 'SECONDS' => (string) $seconds,
-            'COMMENT_TEXT' => $comment, 'CREATED_DATE' => '2026-11-16T11:23:52+00:00', 'DATE_START' => '2026-11-16T08:23:52+00:00'];
-
-        return $id;
     }
 
     public function test_opening_the_task_brings_in_the_bitrix_time_log(): void
@@ -154,7 +104,7 @@ class BitrixTimeTest extends TestCase
         $this->postJson("/api/tasks/{$this->task->id}/time", ['hours' => 1, 'minutes' => 30, 'comment' => 'Design'])
             ->assertOk()
             ->assertJsonPath('meta.time_spent', 5400);
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'task.elapseditem.add.json')
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'task.elapseditem.add.json')
             && $r['auth'] === 'actor-access' && $r['ARFIELDS'] === ['SECONDS' => 5400, 'COMMENT_TEXT' => 'Design']);
 
         $entry = TaskElapsedItem::sole();
@@ -170,7 +120,7 @@ class BitrixTimeTest extends TestCase
         $this->postJson("/api/tasks/{$this->task->id}/timer")->assertJsonValidationErrors('task');
 
         $this->putJson("/api/tasks/{$this->task->id}", ['allow_time_tracking' => true, 'time_estimate' => 7200])->assertOk();
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'tasks.task.update.json')
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.update.json')
             && $r['fields'] === ['ALLOW_TIME_TRACKING' => 'Y', 'TIME_ESTIMATE' => 7200]);
     }
 
@@ -178,7 +128,7 @@ class BitrixTimeTest extends TestCase
     {
         $this->postJson("/api/projects/{$this->project->id}/tasks", ['title' => 'New'])->assertCreated()->assertJsonPath('data.allow_time_tracking', true);
 
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'tasks.task.add.json') && $r['fields']['ALLOW_TIME_TRACKING'] === 'Y');
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.add.json') && $r['fields']['ALLOW_TIME_TRACKING'] === 'Y');
     }
 
     public function test_stopping_the_timer_logs_the_time_in_bitrix(): void
@@ -190,7 +140,7 @@ class BitrixTimeTest extends TestCase
             ->assertOk()
             ->assertJsonPath('meta.timer', null)
             ->assertJsonPath('meta.time_spent', 1500);
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'task.elapseditem.add.json') && $r['ARFIELDS'] === ['SECONDS' => 1500, 'COMMENT_TEXT' => 'Focus']);
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'task.elapseditem.add.json') && $r['ARFIELDS'] === ['SECONDS' => 1500, 'COMMENT_TEXT' => 'Focus']);
     }
 
     /** Review B2: a double click (or a second tab) on Stop logs the time once. */
@@ -202,7 +152,7 @@ class BitrixTimeTest extends TestCase
         $this->postJson("/api/tasks/{$this->task->id}/timer/stop")->assertOk();
         $this->postJson("/api/tasks/{$this->task->id}/timer/stop")->assertOk()->assertJsonPath('meta.timer', null);
 
-        $this->assertCount(1, Http::recorded(fn (Request $r) => str_ends_with($r->url(), 'task.elapseditem.add.json')));
+        $this->assertCount(1, Http::recorded(fn (Request $r): bool => str_ends_with($r->url(), 'task.elapseditem.add.json')));
     }
 
     /** Review B2: of two requests stopping the same timer at once, only one gets to log it. */
@@ -210,7 +160,7 @@ class BitrixTimeTest extends TestCase
     {
         $this->postJson("/api/tasks/{$this->task->id}/timer");
         $timer = RunningTimer::sole();
-        $entries = app(TimeEntryRepositoryInterface::class);
+        $entries = resolve(TimeEntryRepositoryInterface::class);
 
         $this->assertTrue($entries->claimTimer($timer));
         $this->assertFalse($entries->claimTimer($timer));
@@ -221,7 +171,7 @@ class BitrixTimeTest extends TestCase
     {
         RunningTimer::create(['user_id' => $this->actor->id, 'task_id' => $this->task->id, 'started_at' => now()]);
         // The other request's timer appears after this one looked for a running timer.
-        $entries = Mockery::mock(app(TimeEntryRepositoryInterface::class))->makePartial();
+        $entries = Mockery::mock(resolve(TimeEntryRepositoryInterface::class))->makePartial();
         $entries->shouldReceive('runningTimer')->andReturnNull();
         $this->app->instance(TimeEntryRepositoryInterface::class, $entries);
 
@@ -240,7 +190,7 @@ class BitrixTimeTest extends TestCase
         $this->postJson("/api/tasks/{$this->task->id}/timer/stop")->assertUnprocessable();
 
         $this->assertSame($other->id, RunningTimer::sole()->task_id);
-        Http::assertNotSent(fn (Request $r) => str_ends_with($r->url(), 'task.elapseditem.add.json'));
+        Http::assertNotSent(fn (Request $r): bool => str_ends_with($r->url(), 'task.elapseditem.add.json'));
     }
 
     public function test_starting_a_timer_stops_and_logs_the_running_one(): void
@@ -295,8 +245,60 @@ class BitrixTimeTest extends TestCase
     {
         $this->entry(15, 5, 900);
 
-        ImportBitrixTime::dispatchSync();
+        dispatch_sync(new ImportBitrixTime);
 
         $this->assertSame(900, $this->task->fresh()->time_spent);
+    }
+
+    private function user(int $bitrixId, string $name, Role $role): User
+    {
+        $user = User::factory()->create(['bitrix_user_id' => $bitrixId]);
+        $user->roles()->attach($role);
+        $user->storeBitrixToken(new BitrixToken("{$name}-access", "{$name}-refresh", CarbonImmutable::now()->addHour()));
+
+        return $user;
+    }
+
+    private function task(int $bitrixId, bool $tracking = true): Task
+    {
+        return Task::forceCreate([
+            'title' => "Task {$bitrixId}", 'status' => 'todo', 'priority' => 'medium', 'project_id' => $this->project->id,
+            'created_by' => $this->actor->id, 'assigned_to' => $this->actor->id, 'bitrix_task_id' => $bitrixId,
+            'allow_time_tracking' => $tracking,
+        ]);
+    }
+
+    private function bitrix(string $method, array $data): mixed
+    {
+        $id = (int) ($data['ITEMID'] ?? 0);
+        $mine = fn ($taskId): array => array_values(array_filter($this->log, fn (array $e): bool => $e['TASK_ID'] === (string) $taskId));
+
+        return match ($method) {
+            'task.elapseditem.getlist' => $mine($data['TASKID']),
+            'task.elapseditem.add' => $this->entry((int) $data['TASKID'], self::TOKENS[$data['auth']], $data['ARFIELDS']['SECONDS'], $data['ARFIELDS']['COMMENT_TEXT']),
+            'task.elapseditem.update' => (bool) ($this->log[$id] = [...$this->log[$id], 'SECONDS' => (string) $data['ARFIELDS']['SECONDS'], 'COMMENT_TEXT' => $data['ARFIELDS']['COMMENT_TEXT']]),
+            'task.elapseditem.delete' => (function () use ($id): true {
+                unset($this->log[$id]);
+
+                return true;
+            })(),
+            'tasks.task.add' => ['task' => ['id' => '99', 'status' => '2']],
+            // Batch commands arrive as "method?query".
+            'batch' => ['result' => array_map(function (string $cmd) use ($mine): array {
+                parse_str((string) parse_url($cmd, PHP_URL_QUERY), $params);
+
+                return $mine($params['TASKID']);
+            }, $data['cmd']), 'result_error' => []],
+            default => true,
+        };
+    }
+
+    private function entry(int $taskId, int $userId, int $seconds, string $comment = ''): int
+    {
+        $id = $this->nextId++;
+        $this->log[$id] = ['ID' => (string) $id, 'TASK_ID' => (string) $taskId, 'USER_ID' => (string) $userId, 'SECONDS' => (string) $seconds,
+            'COMMENT_TEXT' => $comment, 'CREATED_DATE' => '2026-11-16T11:23:52+00:00', 'DATE_START' => '2026-11-16T08:23:52+00:00'];
+
+        return $id;
     }
 }

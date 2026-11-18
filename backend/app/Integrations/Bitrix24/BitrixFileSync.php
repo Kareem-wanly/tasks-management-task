@@ -1,12 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24;
 
 use App\Models\Task;
 use App\Models\TaskFile;
 use App\Repositories\Contracts\TaskFileRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
-use Carbon\Carbon;
 use Symfony\Component\Mime\MimeTypes;
 
 /**
@@ -27,7 +28,7 @@ class BitrixFileSync
     public function sync(Task $task, array $attachments): void
     {
         $ours = $this->files->bitrixFiles($task);
-        $users = $this->users->idsByBitrixIds(array_map(fn ($a) => (int) ($a['CREATED_BY'] ?? 0), $attachments));
+        $users = $this->users->idsByBitrixIds(array_map(fn (array $a): int => (int) ($a['CREATED_BY'] ?? 0), $attachments));
         $seen = [];
 
         foreach ($attachments as $attachment) {
@@ -46,7 +47,7 @@ class BitrixFileSync
             ]);
 
             if (! $file->exists && isset($attachment['CREATE_TIME'])) {
-                $file->created_at = Carbon::parse($attachment['CREATE_TIME'])->setTimezone(config('app.timezone'));
+                $file->created_at = \Illuminate\Support\Facades\Date::parse($attachment['CREATE_TIME'])->setTimezone(config('app.timezone'));
             }
 
             if (! $file->exists || $file->isDirty()) {

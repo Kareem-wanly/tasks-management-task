@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24;
 
 use App\Models\Task;
@@ -72,9 +74,9 @@ class BitrixChecklistPusher
     {
         $task = $item->task;
 
-        if ($after !== null) {
+        if ($after instanceof TaskChecklistItem) {
             $this->call($actor, $task, 'task.checklistitem.moveafteritem', ['ITEMID' => $item->bitrix_item_id, 'AFTERITEMID' => $after->bitrix_item_id], refresh: false);
-        } elseif ($first && $first->id !== $item->id) {
+        } elseif ($first instanceof TaskChecklistItem && $first->id !== $item->id) {
             $this->call($actor, $task, 'task.checklistitem.moveafteritem', ['ITEMID' => $item->bitrix_item_id, 'AFTERITEMID' => $first->bitrix_item_id], refresh: false);
             $this->call($actor, $task, 'task.checklistitem.moveafteritem', ['ITEMID' => $first->bitrix_item_id, 'AFTERITEMID' => $item->bitrix_item_id], refresh: false);
         }

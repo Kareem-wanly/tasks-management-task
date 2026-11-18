@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Policies;
 
 use App\Models\Project;
@@ -7,11 +9,6 @@ use App\Models\User;
 
 class ProjectPolicy
 {
-    private function canAccess(User $user, Project $project): bool
-    {
-        return $project->hasMember($user);
-    }
-
     public function viewAny(User $user): bool
     {
         return $user->hasPermission('projects.view');
@@ -46,5 +43,10 @@ class ProjectPolicy
     {
         return $project->owner_id === $user->id
             || ($user->hasPermission('projects.manage_members') && $project->hasMember($user));
+    }
+
+    private function canAccess(User $user, Project $project): bool
+    {
+        return $project->hasMember($user);
     }
 }

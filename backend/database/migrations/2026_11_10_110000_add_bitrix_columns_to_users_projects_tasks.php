@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +13,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
+        Schema::table('users', function (Blueprint $table): void {
             $table->unsignedBigInteger('bitrix_user_id')->nullable()->unique()->after('id');
             // Encrypted columns are text: ciphertext is longer than the raw value.
             $table->text('bitrix_access_token')->nullable();
@@ -24,16 +26,16 @@ return new class extends Migration
         });
 
         // Employees imported from Bitrix have no local password.
-        Schema::table('users', function (Blueprint $table) {
+        Schema::table('users', function (Blueprint $table): void {
             $table->string('password')->nullable()->change();
         });
 
-        Schema::table('projects', function (Blueprint $table) {
+        Schema::table('projects', function (Blueprint $table): void {
             $table->unsignedBigInteger('bitrix_group_id')->nullable()->unique()->after('id');
             $table->timestamp('bitrix_synced_at')->nullable();
         });
 
-        Schema::table('tasks', function (Blueprint $table) {
+        Schema::table('tasks', function (Blueprint $table): void {
             $table->unsignedBigInteger('bitrix_task_id')->nullable()->unique()->after('id');
             $table->timestamp('bitrix_synced_at')->nullable();
         });
@@ -41,12 +43,12 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('tasks', function (Blueprint $table) {
+        Schema::table('tasks', function (Blueprint $table): void {
             $table->dropUnique(['bitrix_task_id']);
             $table->dropColumn(['bitrix_task_id', 'bitrix_synced_at']);
         });
 
-        Schema::table('projects', function (Blueprint $table) {
+        Schema::table('projects', function (Blueprint $table): void {
             $table->dropUnique(['bitrix_group_id']);
             $table->dropColumn(['bitrix_group_id', 'bitrix_synced_at']);
         });
@@ -57,11 +59,11 @@ return new class extends Migration
             fn (object $user) => DB::table('users')->where('id', $user->id)->update(['password' => Hash::make(Str::random(40))])
         );
 
-        Schema::table('users', function (Blueprint $table) {
+        Schema::table('users', function (Blueprint $table): void {
             $table->string('password')->nullable(false)->change();
         });
 
-        Schema::table('users', function (Blueprint $table) {
+        Schema::table('users', function (Blueprint $table): void {
             $table->dropUnique(['bitrix_user_id']);
             $table->dropColumn([
                 'bitrix_user_id',

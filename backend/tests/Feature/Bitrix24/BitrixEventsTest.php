@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -31,6 +33,8 @@ class BitrixEventsTest extends TestCase
 
     private array $users = [];
 
+    private bool $serviceIsAdmin = true;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -39,7 +43,7 @@ class BitrixEventsTest extends TestCase
 
         app()->instance(BitrixClient::SERVICE_ACCOUNT, new class implements HasBitrixToken
         {
-            public function bitrixToken(): ?BitrixToken
+            public function bitrixToken(): BitrixToken
             {
                 return new BitrixToken('service-access', 'service-refresh', CarbonImmutable::now()->addHour());
             }
@@ -70,25 +74,6 @@ class BitrixEventsTest extends TestCase
         });
     }
 
-    private bool $serviceIsAdmin = true;
-
-    private function event(string $event, array $data, string $token = 'app-token'): TestResponse
-    {
-        return $this->post('/api/bitrix/events', [
-            'event' => $event,
-            'data' => $data,
-            'auth' => ['application_token' => $token, 'member_id' => 'member-1', 'domain' => 'portal.test'],
-        ]);
-    }
-
-    private function bitrixTask(int $id, array $overrides = []): array
-    {
-        return array_merge([
-            'id' => (string) $id, 'title' => "Task {$id}", 'status' => '2', 'priority' => '1',
-            'createdBy' => '5', 'responsibleId' => '6', 'groupId' => '0',
-        ], $overrides);
-    }
-
     public function test_event_with_a_wrong_application_token_is_refused(): void
     {
         Queue::fake();
@@ -108,7 +93,7 @@ class BitrixEventsTest extends TestCase
         $this->event('ONTASKDELETE', ['FIELDS_BEFORE' => ['ID' => 16]])->assertOk();
 
         Queue::assertPushedOn('bitrix', SyncBitrixTask::class);
-        Queue::assertPushed(SyncBitrixTask::class, fn (SyncBitrixTask $job) => $job->bitrixTaskId === 15 && $job->delay !== null);
+        Queue::assertPushed(SyncBitrixTask::class, fn (SyncBitrixTask $job): bool => $job->bitrixTaskId === 15 && $job->delay !== null);
         Queue::assertPushed(SyncBitrixTask::class, 2);
     }
 
@@ -118,7 +103,7 @@ class BitrixEventsTest extends TestCase
 
         $this->event('ONSONETGROUPUPDATE', ['FIELDS' => ['ID' => '4']])->assertOk();
 
-        Queue::assertPushed(SyncBitrixProject::class, fn (SyncBitrixProject $job) => $job->bitrixGroupId === 4);
+        Queue::assertPushed(SyncBitrixProject::class, fn (SyncBitrixProject $job): bool => $job->bitrixGroupId === 4);
     }
 
     public function test_chat_message_event_queues_a_chat_fetch(): void
@@ -128,28 +113,28 @@ class BitrixEventsTest extends TestCase
         $this->event('ONTASKCOMMENTADD', ['FIELDS_AFTER' => ['ID' => 1, 'TASK_ID' => 15]])->assertOk();
 
         Queue::assertPushedOn('bitrix', SyncBitrixTaskChat::class);
-        Queue::assertPushed(SyncBitrixTaskChat::class, fn (SyncBitrixTaskChat $job) => $job->bitrixTaskId === 15 && $job->delay !== null);
+        Queue::assertPushed(SyncBitrixTaskChat::class, fn (SyncBitrixTaskChat $job): bool => $job->bitrixTaskId === 15 && $job->delay !== null);
     }
 
     public function test_task_job_creates_or_updates_the_task(): void
     {
         $this->tasks[15] = $this->bitrixTask(15, ['title' => 'From Bitrix']);
 
-        SyncBitrixTask::dispatchSync(15);
+        dispatch_sync(new SyncBitrixTask(15));
         $this->assertSame('From Bitrix', Task::where('bitrix_task_id', 15)->sole()->title);
 
         $this->tasks[15]['title'] = 'Renamed in Bitrix';
-        SyncBitrixTask::dispatchSync(15);
+        dispatch_sync(new SyncBitrixTask(15));
         $this->assertSame('Renamed in Bitrix', Task::where('bitrix_task_id', 15)->sole()->title);
     }
 
     public function test_task_job_deletes_a_task_gone_from_bitrix(): void
     {
         $this->tasks[15] = $this->bitrixTask(15);
-        SyncBitrixTask::dispatchSync(15);
+        dispatch_sync(new SyncBitrixTask(15));
 
         $this->tasks[15] = [];
-        SyncBitrixTask::dispatchSync(15);
+        dispatch_sync(new SyncBitrixTask(15));
 
         $this->assertSame(0, Task::count());
         $this->assertSame(1, Task::onlyTrashed()->count());
@@ -159,15 +144,15 @@ class BitrixEventsTest extends TestCase
     public function test_task_job_deletes_nothing_when_the_service_account_is_not_an_admin(): void
     {
         $this->tasks[15] = $this->bitrixTask(15);
-        SyncBitrixTask::dispatchSync(15);
+        dispatch_sync(new SyncBitrixTask(15));
 
         $this->tasks[15] = [];
         $this->serviceIsAdmin = false;
-        SyncBitrixTask::dispatchSync(15);
+        dispatch_sync(new SyncBitrixTask(15));
         $this->groups[4] = ['id' => '4', 'name' => 'G', 'ownerId' => '5', 'closed' => 'N'];
-        SyncBitrixProject::dispatchSync(4);
+        dispatch_sync(new SyncBitrixProject(4));
         unset($this->groups[4]);
-        SyncBitrixProject::dispatchSync(4);
+        dispatch_sync(new SyncBitrixProject(4));
 
         $this->assertSame(1, Task::count());
         $this->assertSame(1, Project::where('bitrix_group_id', 4)->count());
@@ -179,7 +164,7 @@ class BitrixEventsTest extends TestCase
         $this->groups[9] = ['id' => '9', 'name' => 'Fresh group', 'ownerId' => '5', 'closed' => 'N'];
         $this->tasks[15] = $this->bitrixTask(15, ['responsibleId' => '7', 'groupId' => '9']);
 
-        SyncBitrixTask::dispatchSync(15);
+        dispatch_sync(new SyncBitrixTask(15));
 
         $task = Task::where('bitrix_task_id', 15)->sole();
         $this->assertSame('Fresh group', $task->project->title);
@@ -189,11 +174,28 @@ class BitrixEventsTest extends TestCase
     public function test_project_job_follows_archiving_and_deletion(): void
     {
         $this->groups[4] = ['id' => '4', 'name' => 'Group', 'ownerId' => '5', 'closed' => 'Y'];
-        SyncBitrixProject::dispatchSync(4);
+        dispatch_sync(new SyncBitrixProject(4));
         $this->assertSame('archived', Project::sole()->status);
 
         unset($this->groups[4]);
-        SyncBitrixProject::dispatchSync(4);
+        dispatch_sync(new SyncBitrixProject(4));
         $this->assertSame(0, Project::count());
+    }
+
+    private function event(string $event, array $data, string $token = 'app-token'): TestResponse
+    {
+        return $this->post('/api/bitrix/events', [
+            'event' => $event,
+            'data' => $data,
+            'auth' => ['application_token' => $token, 'member_id' => 'member-1', 'domain' => 'portal.test'],
+        ]);
+    }
+
+    private function bitrixTask(int $id, array $overrides = []): array
+    {
+        return array_merge([
+            'id' => (string) $id, 'title' => "Task {$id}", 'status' => '2', 'priority' => '1',
+            'createdBy' => '5', 'responsibleId' => '6', 'groupId' => '0',
+        ], $overrides);
     }
 }

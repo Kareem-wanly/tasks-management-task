@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -56,26 +58,12 @@ class BitrixSubtasksTest extends TestCase
         Sanctum::actingAs($this->actor);
     }
 
-    private function task(array $attributes = []): Task
-    {
-        return Task::forceCreate([
-            'title' => 'T', 'status' => 'todo', 'priority' => 'medium', 'project_id' => $this->project->id,
-            'created_by' => $this->actor->id, 'assigned_to' => $this->actor->id, ...$attributes,
-        ]);
-    }
-
-    private function bitrixRow(int $id, int $parentId): array
-    {
-        return ['id' => (string) $id, 'title' => 'Child', 'status' => '2', 'priority' => '1', 'createdBy' => '5',
-            'responsibleId' => '5', 'groupId' => '3', 'parentId' => (string) $parentId, 'accomplices' => [], 'auditors' => [], 'allowTimeTracking' => 'Y'];
-    }
-
     public function test_a_subtask_is_created_under_its_parent_in_bitrix(): void
     {
         $this->postJson("/api/projects/{$this->project->id}/tasks", ['title' => 'Child', 'parent_id' => $this->parent->id])
             ->assertCreated();
 
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'tasks.task.add.json')
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.add.json')
             && $r['fields']['PARENT_ID'] === 50 && $r['fields']['GROUP_ID'] === 3);
         $this->assertSame($this->parent->id, Task::where('bitrix_task_id', 51)->sole()->parent_id);
     }
@@ -84,7 +72,7 @@ class BitrixSubtasksTest extends TestCase
     {
         $this->postJson("/api/projects/{$this->project->id}/tasks", ['title' => 'Alone'])->assertCreated();
 
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'tasks.task.add.json') && $r['fields']['PARENT_ID'] === 0);
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.add.json') && $r['fields']['PARENT_ID'] === 0);
     }
 
     public function test_taking_a_subtask_out_of_its_parent_sends_zero(): void
@@ -93,7 +81,7 @@ class BitrixSubtasksTest extends TestCase
 
         $this->putJson("/api/tasks/{$child->id}", ['parent_id' => null])->assertOk();
 
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'tasks.task.update.json') && $r['fields'] === ['PARENT_ID' => 0]);
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.update.json') && $r['fields'] === ['PARENT_ID' => 0]);
         $this->assertNull($child->fresh()->parent_id);
     }
 
@@ -136,7 +124,7 @@ class BitrixSubtasksTest extends TestCase
     {
         $this->bitrixTask = $this->bitrixRow(51, 50);
 
-        SyncBitrixTask::dispatchSync(51);
+        dispatch_sync(new SyncBitrixTask(51));
 
         $this->assertSame($this->parent->id, Task::where('bitrix_task_id', 51)->sole()->parent_id);
     }
@@ -145,7 +133,7 @@ class BitrixSubtasksTest extends TestCase
     {
         $this->bitrixTask = $this->bitrixRow(51, 999);
 
-        SyncBitrixTask::dispatchSync(51);
+        dispatch_sync(new SyncBitrixTask(51));
 
         $this->assertNull(Task::where('bitrix_task_id', 51)->sole()->parent_id);
     }
@@ -156,8 +144,22 @@ class BitrixSubtasksTest extends TestCase
             ->assertCreated();
         $this->bitrixTask = $this->bitrixRow(51, 50);
 
-        SyncBitrixTask::dispatchSync(51);
+        dispatch_sync(new SyncBitrixTask(51));
 
         $this->assertSame(BitrixOutboundOp::CONFIRMED, BitrixOutboundOp::sole()->status);
+    }
+
+    private function task(array $attributes = []): Task
+    {
+        return Task::forceCreate([
+            'title' => 'T', 'status' => 'todo', 'priority' => 'medium', 'project_id' => $this->project->id,
+            'created_by' => $this->actor->id, 'assigned_to' => $this->actor->id, ...$attributes,
+        ]);
+    }
+
+    private function bitrixRow(int $id, int $parentId): array
+    {
+        return ['id' => (string) $id, 'title' => 'Child', 'status' => '2', 'priority' => '1', 'createdBy' => '5',
+            'responsibleId' => '5', 'groupId' => '3', 'parentId' => (string) $parentId, 'accomplices' => [], 'auditors' => [], 'allowTimeTracking' => 'Y'];
     }
 }

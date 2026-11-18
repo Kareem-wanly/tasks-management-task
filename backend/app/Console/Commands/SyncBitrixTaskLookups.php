@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Console\Commands;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -64,7 +66,7 @@ class SyncBitrixTaskLookups extends Command
             $bitrixId = (int) $bitrixId;
             $lookup = $lookups->findSystem($model, $bitrixId);
 
-            if (! $lookup) {
+            if (! $lookup instanceof TaskLookup) {
                 $lookup = new $model(['key' => "bitrix_{$type}_{$bitrixId}", 'bitrix_id' => $bitrixId, 'color' => 'neutral']);
                 $lookup->is_system = true;
                 $lookup->sort = $lookups->nextSort($model);

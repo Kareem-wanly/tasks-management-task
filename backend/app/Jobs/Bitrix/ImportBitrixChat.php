@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs\Bitrix;
 
 use App\Integrations\Bitrix24\BitrixChatPusher;
@@ -34,7 +36,7 @@ class ImportBitrixChat implements ShouldQueue
         $total = $tasks->countInBitrix();
         $failed = 0;
 
-        $tasks->chunkInBitrix(self::CHUNK, function ($chunk) use ($chat, $cursor, $cursors, $total, &$failed) {
+        $tasks->chunkInBitrix(self::CHUNK, function ($chunk) use ($chat, $cursor, $cursors, $total, &$failed): void {
             foreach ($chunk as $task) {
                 try {
                     $chat->refresh($task, complete: true);

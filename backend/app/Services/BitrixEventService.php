@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Jobs\Bitrix\SyncBitrixProject;
@@ -28,7 +30,7 @@ class BitrixEventService
     {
         $portal = $this->portals->current();
 
-        return $portal !== null
+        return $portal instanceof \App\Models\BitrixPortal
             && is_string($applicationToken)
             && hash_equals((string) $portal->application_token, $applicationToken)
             && $memberId === $portal->member_id;

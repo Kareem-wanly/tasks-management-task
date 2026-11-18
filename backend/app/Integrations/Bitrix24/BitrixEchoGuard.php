@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24;
 
 use App\Models\BitrixOutboundOp;
@@ -63,7 +65,7 @@ class BitrixEchoGuard
             : $this->fingerprints->project((new Project)->forceFill([...$attributes, 'status' => $closed ? 'archived' : 'active']));
 
         // Deleting here archives the group, so a closed group answers our delete.
-        $answers = fn (BitrixOutboundOp $op) => $op->isDelete() && $closed;
+        $answers = fn (BitrixOutboundOp $op): bool => $op->isDelete() && $closed;
 
         return $this->settle($ops, $fingerprint, $this->projects->findByBitrixGroupId($bitrixGroupId, withTrashed: true), $answers);
     }
@@ -79,7 +81,7 @@ class BitrixEchoGuard
     private function settle(Collection $ops, ?string $fingerprint, Task|Project|null $record, ?callable $alsoAnswers = null): bool
     {
         // A delete is confirmed by the record being gone; anything else by an identical record.
-        $answered = $ops->first(fn (BitrixOutboundOp $op) => ($op->isDelete() ? $fingerprint === null : $fingerprint === $op->fingerprint)
+        $answered = $ops->first(fn (BitrixOutboundOp $op): bool => ($op->isDelete() ? $fingerprint === null : $fingerprint === $op->fingerprint)
             || ($alsoAnswers && $alsoAnswers($op)));
 
         if ($answered) {

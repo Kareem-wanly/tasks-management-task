@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Integrations\Bitrix24\Mappers;
+declare(strict_types=1);
 
-use Carbon\Carbon;
+namespace App\Integrations\Bitrix24\Mappers;
 
 /**
  * Turns a Bitrix24 workgroup (socialnetwork.api.workgroup.list, camelCase
@@ -79,7 +79,7 @@ class BitrixProjectMapper
     private function date(mixed $value): ?string
     {
         return is_string($value) && $value !== ''
-            ? Carbon::parse($value)->utc()->addHours(12)->toDateString()
+            ? \Illuminate\Support\Facades\Date::parse($value)->utc()->addHours(12)->toDateString()
             : null;
     }
 }

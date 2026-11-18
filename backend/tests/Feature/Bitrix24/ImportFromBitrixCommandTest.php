@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -37,7 +39,7 @@ class ImportFromBitrixCommandTest extends TestCase
 
         app()->instance(BitrixClient::SERVICE_ACCOUNT, new class implements HasBitrixToken
         {
-            public function bitrixToken(): ?BitrixToken
+            public function bitrixToken(): BitrixToken
             {
                 return new BitrixToken('service-access', 'service-refresh', CarbonImmutable::now()->addHour());
             }
@@ -128,7 +130,7 @@ class ImportFromBitrixCommandTest extends TestCase
         $this->artisan('bitrix:import')->assertSuccessful();
 
         Bus::assertChained([ImportBitrixUsers::class, ImportBitrixProjects::class, ImportBitrixTasks::class, ImportBitrixChecklists::class, ImportBitrixTime::class, ImportBitrixFiles::class, ImportBitrixResults::class, ImportBitrixChat::class]);
-        Bus::assertDispatched(ImportBitrixUsers::class, fn (ImportBitrixUsers $job) => $job->queue === 'bitrix' && ! $job->linkByEmail);
+        Bus::assertDispatched(ImportBitrixUsers::class, fn (ImportBitrixUsers $job): bool => $job->queue === 'bitrix' && ! $job->linkByEmail);
     }
 
     /** Review A3: linking by email only happens when an administrator asks for it. */
@@ -138,7 +140,7 @@ class ImportFromBitrixCommandTest extends TestCase
 
         $this->artisan('bitrix:import --only=users --link-by-email')->assertSuccessful();
 
-        Bus::assertDispatched(ImportBitrixUsers::class, fn (ImportBitrixUsers $job) => $job->linkByEmail);
+        Bus::assertDispatched(ImportBitrixUsers::class, fn (ImportBitrixUsers $job): bool => $job->linkByEmail);
     }
 
     public function test_unknown_only_value_is_rejected(): void
@@ -194,7 +196,7 @@ class ImportFromBitrixCommandTest extends TestCase
         $this->artisan('bitrix:sync-changes')->assertSuccessful();
 
         // A minute of overlap with the previous run.
-        Http::assertSent(fn (Request $r) => ($r['filter']['>CHANGED_DATE'] ?? null) === '2026-11-15T11:59:00+00:00');
+        Http::assertSent(fn (Request $r): bool => ($r['filter']['>CHANGED_DATE'] ?? null) === '2026-11-15T11:59:00+00:00');
         // The next run starts from when this one started.
         $this->assertSame('2026-11-15 12:05:00', BitrixSyncCursor::where('entity', 'tasks')->sole()->last_synced_at->utc()->toDateTimeString());
         $this->assertSame(2, Task::count());

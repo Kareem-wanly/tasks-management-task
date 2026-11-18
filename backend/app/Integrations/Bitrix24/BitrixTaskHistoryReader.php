@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24;
 
 use App\Integrations\Bitrix24\Mappers\BitrixHistoryMapper;

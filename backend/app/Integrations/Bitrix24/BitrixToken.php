@@ -1,21 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24;
 
 use Carbon\CarbonImmutable;
 
-final class BitrixToken
+final readonly class BitrixToken
 {
     /**
      * @param  list<string>  $scopes
      */
     public function __construct(
-        public readonly string $accessToken,
-        public readonly string $refreshToken,
-        public readonly CarbonImmutable $expiresAt,
-        public readonly ?string $domain = null,
-        public readonly ?string $memberId = null,
-        public readonly array $scopes = [],
+        public string $accessToken,
+        public string $refreshToken,
+        public CarbonImmutable $expiresAt,
+        public ?string $domain = null,
+        public ?string $memberId = null,
+        public array $scopes = [],
     ) {}
 
     /**

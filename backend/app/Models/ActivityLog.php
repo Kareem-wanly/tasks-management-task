@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,13 +24,6 @@ class ActivityLog extends Model
         'task_id',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'metadata' => 'array',
-        ];
-    }
-
     public function subject(): MorphTo
     {
         return $this->morphTo();
@@ -47,5 +42,12 @@ class ActivityLog extends Model
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class);
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'metadata' => 'array',
+        ];
     }
 }

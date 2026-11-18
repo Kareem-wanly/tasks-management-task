@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -37,7 +39,7 @@ class ImportBitrixProjectsTest extends TestCase
 
         app()->instance(BitrixClient::SERVICE_ACCOUNT, new class implements HasBitrixToken
         {
-            public function bitrixToken(): ?BitrixToken
+            public function bitrixToken(): BitrixToken
             {
                 return new BitrixToken('service-access', 'service-refresh', CarbonImmutable::now()->addHour());
             }
@@ -59,7 +61,7 @@ class ImportBitrixProjectsTest extends TestCase
             'https://portal.test/rest/socialnetwork.api.workgroup.list.json' => function (Request $request) {
                 // One group by ID (BitrixRecordFetcher::group) or the first page of the listing.
                 $groups = isset($request['filter']['ID'])
-                    ? array_values(array_filter($this->groups, fn (array $g) => (int) $g['id'] === (int) $request['filter']['ID']))
+                    ? array_values(array_filter($this->groups, fn (array $g): bool => (int) $g['id'] === (int) $request['filter']['ID']))
                     : array_slice($this->groups, 0, 50);
 
                 return Http::response(['result' => ['workgroups' => $groups], 'total' => count($this->groups)]);
@@ -76,29 +78,6 @@ class ImportBitrixProjectsTest extends TestCase
                 return Http::response(['result' => ['result' => $result, 'result_error' => $this->batchError ?? []]]);
             },
         ]);
-    }
-
-    private function group(int $id, array $overrides = []): array
-    {
-        return array_merge([
-            'id' => (string) $id,
-            'name' => "Group {$id}",
-            'description' => 'About it',
-            'ownerId' => '1',
-            'closed' => 'N',
-            'projectDateStart' => null,
-            'projectDateFinish' => null,
-        ], $overrides);
-    }
-
-    private function user(int $bitrixId): User
-    {
-        return User::where('bitrix_user_id', $bitrixId)->first();
-    }
-
-    private function import(): void
-    {
-        ImportBitrixProjects::dispatchSync();
     }
 
     public function test_group_is_imported_with_owner_dates_and_member_roles(): void
@@ -126,11 +105,11 @@ class ImportBitrixProjectsTest extends TestCase
         $this->assertSame('2026-12-31', $project->due_date->toDateString());
         $this->assertNotNull($project->bitrix_synced_at);
 
-        $roles = $project->members()->get()->mapWithKeys(fn (User $u) => [$u->bitrix_user_id => $u->pivot->role])->all();
+        $roles = $project->members()->get()->mapWithKeys(fn (User $u): array => [$u->bitrix_user_id => $u->pivot->role])->all();
         // A pending request (Z) is not a member.
         $this->assertSame([1 => 'owner', 2 => 'moderator', 3 => 'member'], $roles);
 
-        Http::assertSent(fn (Request $r) => str_contains($r->url(), 'workgroup.list') && $r['params']['IS_ADMIN'] === 'Y');
+        Http::assertSent(fn (Request $r): bool => str_contains($r->url(), 'workgroup.list') && $r['params']['IS_ADMIN'] === 'Y');
     }
 
     public function test_job_runs_on_the_bitrix_queue(): void
@@ -140,7 +119,7 @@ class ImportBitrixProjectsTest extends TestCase
 
     public function test_every_page_of_groups_is_imported(): void
     {
-        $this->groups = array_map(fn (int $id) => $this->group($id), range(1, 120));
+        $this->groups = array_map(fn (int $id): array => $this->group($id), range(1, 120));
 
         $this->import();
 
@@ -272,5 +251,28 @@ class ImportBitrixProjectsTest extends TestCase
         $this->import();
 
         $this->assertSame($updatedAt, Project::sole()->updated_at->toDateTimeString());
+    }
+
+    private function group(int $id, array $overrides = []): array
+    {
+        return array_merge([
+            'id' => (string) $id,
+            'name' => "Group {$id}",
+            'description' => 'About it',
+            'ownerId' => '1',
+            'closed' => 'N',
+            'projectDateStart' => null,
+            'projectDateFinish' => null,
+        ], $overrides);
+    }
+
+    private function user(int $bitrixId): User
+    {
+        return User::where('bitrix_user_id', $bitrixId)->first();
+    }
+
+    private function import(): void
+    {
+        dispatch_sync(new ImportBitrixProjects);
     }
 }

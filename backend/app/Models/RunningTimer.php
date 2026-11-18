@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -12,11 +14,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class RunningTimer extends Model
 {
     protected $fillable = ['user_id', 'task_id', 'started_at'];
-
-    protected function casts(): array
-    {
-        return ['started_at' => 'datetime'];
-    }
 
     public function task(): BelongsTo
     {
@@ -31,5 +28,10 @@ class RunningTimer extends Model
     public function seconds(): int
     {
         return max(0, (int) $this->started_at->diffInSeconds(now()));
+    }
+
+    protected function casts(): array
+    {
+        return ['started_at' => 'datetime'];
     }
 }

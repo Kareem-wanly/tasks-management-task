@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repositories\Eloquent;
 
 use App\Models\Project;
@@ -97,16 +99,6 @@ class ProjectRepository implements ProjectRepositoryInterface
         $project->members()->detach($userId);
     }
 
-    /** @return array<string|int, mixed> */
-    private function taskCounts(): array
-    {
-        return [
-            'tasks',
-            'tasks as completed_tasks_count' => fn ($q) => $q->finished(),
-            'tasks as in_progress_tasks_count' => fn ($q) => $q->where('status', 'in_progress'),
-        ];
-    }
-
     public function findByBitrixGroupId(int $bitrixGroupId, bool $withTrashed = false): ?Project
     {
         return Project::query()->when($withTrashed, fn ($q) => $q->withTrashed())->where('bitrix_group_id', $bitrixGroupId)->first();
@@ -141,7 +133,7 @@ class ProjectRepository implements ProjectRepositoryInterface
 
     public function allBitrixIds(): array
     {
-        return Project::whereNotNull('bitrix_group_id')->pluck('bitrix_group_id')->map(fn ($id) => (int) $id)->all();
+        return Project::whereNotNull('bitrix_group_id')->pluck('bitrix_group_id')->map(fn ($id): int => (int) $id)->all();
     }
 
     public function deleteByBitrixIds(array $bitrixGroupIds): int
@@ -150,5 +142,15 @@ class ProjectRepository implements ProjectRepositoryInterface
         $gone->each->delete();
 
         return $gone->count();
+    }
+
+    /** @return array<string|int, mixed> */
+    private function taskCounts(): array
+    {
+        return [
+            'tasks',
+            'tasks as completed_tasks_count' => fn ($q) => $q->finished(),
+            'tasks as in_progress_tasks_count' => fn ($q) => $q->where('status', 'in_progress'),
+        ];
     }
 }

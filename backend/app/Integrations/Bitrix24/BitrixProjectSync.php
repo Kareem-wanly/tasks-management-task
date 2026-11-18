@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24;
 
 use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;
@@ -41,7 +43,7 @@ class BitrixProjectSync
             return null;
         }
 
-        return DB::transaction(function () use ($group, $members, $attributes, $ownerId) {
+        return DB::transaction(function () use ($group, $members, $attributes, $ownerId): Project {
             $project = $this->projects->findByBitrixGroupId($attributes['bitrix_group_id'], withTrashed: true) ?? new Project;
 
             if ($project->trashed()) {
