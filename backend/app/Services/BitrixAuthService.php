@@ -10,14 +10,22 @@ use App\Integrations\Bitrix24\BitrixLoginCodes;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\BitrixUserSync;
 use App\Integrations\Bitrix24\TokenManager;
+use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use Carbon\CarbonImmutable;
 
 /**
- * Step 1.6: "Sign in with Bitrix24", by OAuth (our login button) or when
- * the app is opened inside Bitrix. Both end with a one-time code the
- * frontend trades for a Sanctum token (exchangeCode()); an API token never
- * travels in a URL. Failures throw BitrixSignInException with a reason code.
+ * Step 1.6: "Sign in with Bitrix24".
+ *
+ * - OAuth (our login button): ends with a one-time code bound to the nonce
+ *   the browser made, traded for a Sanctum token with that nonce
+ *   (exchangeCode()), so a code sent to another browser is useless.
+ * - The app opened inside Bitrix: the frontend sends the tokens Bitrix's JS
+ *   SDK gave it (signInFromFrame()). The POST Bitrix sends on open is not
+ *   trusted for sign-in: anyone can forge it.
+ *
+ * An API token never travels in a URL. Failures throw BitrixSignInException
+ * with a reason code.
  */
 class BitrixAuthService
 {
@@ -40,8 +48,8 @@ class BitrixAuthService
         ]);
     }
 
-    /** OAuth: the code Bitrix sent back, for our portal. Returns a one-time sign-in code. */
-    public function signInWithCode(string $code, mixed $domain): string
+    /** OAuth: the code Bitrix sent back, for our portal. Returns a one-time sign-in code bound to $nonce. */
+    public function signInWithCode(string $code, mixed $domain, string $nonce): string
     {
         if (! $this->isOurPortal($domain) || $code === '') {
             throw new BitrixSignInException('unknown_portal');
@@ -58,36 +66,42 @@ class BitrixAuthService
             throw new BitrixSignInException('unknown_portal');
         }
 
-        return $this->signIn($token);
+        return $this->codes->issue($this->authenticate($token), $nonce);
     }
 
     /**
-     * The app opened inside Bitrix: Bitrix posts AUTH_ID/REFRESH_ID.
+     * The app opened inside Bitrix: the tokens Bitrix's JS SDK gave the app
+     * page (the Bitrix user signed in around it). Returns a Sanctum token.
      *
-     * @param  array<string, mixed>  $params
+     * @param  array{access_token: string, refresh_token: string, expires_in?: int|null, domain: string, member_id?: string|null}  $auth
      */
-    public function signInFromAppOpen(array $params): string
+    public function signInFromFrame(array $auth): string
     {
-        if (! $this->isOurPortal($params['DOMAIN'] ?? null) || empty($params['AUTH_ID']) || empty($params['REFRESH_ID'])) {
+        if (! $this->isOurPortal($auth['domain'])) {
             throw new BitrixSignInException('unknown_portal');
         }
 
         // A valid token of another app on the portal is not a sign-in to ours.
-        if (! $this->isOurAppToken((string) $params['AUTH_ID'])) {
+        if (! $this->isOurAppToken($auth['access_token'])) {
             throw new BitrixSignInException('bitrix_rejected');
         }
 
-        return $this->signIn(new BitrixToken(
-            accessToken: (string) $params['AUTH_ID'],
-            refreshToken: (string) $params['REFRESH_ID'],
-            expiresAt: CarbonImmutable::now()->addSeconds((int) (($params['AUTH_EXPIRES'] ?? null) ?: 3600)),
-            domain: (string) $params['DOMAIN'],
-            memberId: $params['member_id'] ?? null,
+        $user = $this->authenticate(new BitrixToken(
+            accessToken: $auth['access_token'],
+            refreshToken: $auth['refresh_token'],
+            expiresAt: CarbonImmutable::now()->addSeconds((int) (($auth['expires_in'] ?? null) ?: 3600)),
+            domain: $auth['domain'],
+            memberId: $auth['member_id'] ?? null,
         ));
+
+        return $this->userRepository->createApiToken($user, self::TOKEN_NAME);
     }
 
-    /** user.current doubles as the check that Bitrix accepts the token. */
-    private function signIn(BitrixToken $token): string
+    /**
+     * The employee the token belongs to, with the token stored.
+     * user.current doubles as the check that Bitrix accepts the token.
+     */
+    private function authenticate(BitrixToken $token): User
     {
         try {
             $profile = $this->bitrix->callWithToken($token->accessToken, 'user.current')['result'] ?? [];
@@ -112,17 +126,17 @@ class BitrixAuthService
 
         $user->storeBitrixToken($token);
 
-        return $this->codes->issue($user);
+        return $user;
     }
 
     /**
-     * The one-time code from the callback, for a Sanctum token.
+     * The one-time code from the callback and this browser's nonce, for a Sanctum token.
      *
-     * @throws BusinessRuleException When the code is unknown, expired, already used or its user is inactive.
+     * @throws BusinessRuleException When the code is unknown, expired, already used, for another browser, or its user is inactive.
      */
-    public function exchangeCode(string $code): string
+    public function exchangeCode(string $code, string $nonce): string
     {
-        $user = $this->codes->redeem($code);
+        $user = $this->codes->redeem($code, $nonce);
 
         if ($user === null || ! $user->is_active) {
             throw new BusinessRuleException('The sign-in link expired or was already used. Please sign in again.');

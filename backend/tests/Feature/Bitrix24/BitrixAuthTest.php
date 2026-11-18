@@ -17,6 +17,11 @@ class BitrixAuthTest extends TestCase
 
     private const FRONTEND = 'http://localhost:5173/auth/bitrix/callback';
 
+    private const APP_PAGE = 'http://localhost:5173/auth/bitrix/app';
+
+    /** The nonce this browser made when the user clicked "Sign in with Bitrix24". */
+    private const NONCE = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -28,6 +33,7 @@ class BitrixAuthTest extends TestCase
             // Same host the test requests use, so redirect() doesn't hop.
             'bitrix.public_url' => config('app.url'),
             'bitrix.frontend_callback_url' => self::FRONTEND,
+            'bitrix.frontend_app_url' => self::APP_PAGE,
         ]);
         Role::create(['name' => 'Member', 'display_name' => 'Team Member', 'description' => 'x']);
     }
@@ -57,7 +63,7 @@ class BitrixAuthTest extends TestCase
 
     private function oauthCallback(array $query = []): TestResponse
     {
-        return $this->withSession(['bitrix_oauth_state' => 'good-state'])
+        return $this->withSession(['bitrix_oauth_state' => 'good-state', 'bitrix_login_nonce' => self::NONCE])
             ->get('/auth/bitrix/callback?'.http_build_query(array_merge([
                 'code' => 'auth-code',
                 'state' => 'good-state',
@@ -75,29 +81,37 @@ class BitrixAuthTest extends TestCase
         return substr($location, strlen(self::FRONTEND.'#code='));
     }
 
-    /** Signs in the way the frontend does: trades the code for an API token. */
+    /** Signs in the way the frontend does: trades the code and this browser's nonce for an API token. */
     private function tokenFrom(TestResponse $response): string
     {
-        return $this->postJson('/api/auth/bitrix/exchange', ['code' => $this->codeFrom($response)])
+        return $this->postJson('/api/auth/bitrix/exchange', ['code' => $this->codeFrom($response), 'nonce' => self::NONCE])
             ->assertOk()
             ->json('token');
     }
 
-    public function test_redirect_sends_the_user_to_bitrix_with_a_state(): void
+    public function test_redirect_sends_the_user_to_bitrix_with_a_state_and_keeps_the_nonce(): void
     {
-        $response = $this->get('/auth/bitrix/redirect');
+        $response = $this->get('/auth/bitrix/redirect?nonce='.self::NONCE);
 
         parse_str((string) parse_url($response->headers->get('Location'), PHP_URL_QUERY), $query);
         $this->assertSame(40, strlen($query['state']));
         $response->assertRedirect('https://portal.test/oauth/authorize/?client_id=app-id&state='.$query['state']);
         $response->assertSessionHas('bitrix_oauth_state', $query['state']);
+        $response->assertSessionHas('bitrix_login_nonce', self::NONCE);
     }
 
-    public function test_redirect_moves_to_the_public_host_first(): void
+    /** Review B1: a sign-in must start in our app, with the browser's nonce. */
+    public function test_redirect_without_a_nonce_is_refused(): void
+    {
+        $this->get('/auth/bitrix/redirect')->assertRedirect(self::FRONTEND.'#error=invalid_state');
+        $this->get('/auth/bitrix/redirect?nonce=short')->assertRedirect(self::FRONTEND.'#error=invalid_state');
+    }
+
+    public function test_redirect_moves_to_the_public_host_first_with_the_nonce(): void
     {
         config(['bitrix.public_url' => 'https://public.test']);
 
-        $this->get('/auth/bitrix/redirect')->assertRedirect('https://public.test/auth/bitrix/redirect');
+        $this->get('/auth/bitrix/redirect?nonce='.self::NONCE)->assertRedirect('https://public.test/auth/bitrix/redirect?nonce='.self::NONCE);
         $this->assertNull(session('bitrix_oauth_state'));
     }
 
@@ -105,7 +119,7 @@ class BitrixAuthTest extends TestCase
     {
         config(['bitrix.public_url' => 'https://public.test']);
 
-        $this->get('http://public.test/auth/bitrix/redirect')
+        $this->get('http://public.test/auth/bitrix/redirect?nonce='.self::NONCE)
             ->assertRedirectContains('https://portal.test/oauth/authorize/');
     }
 
@@ -219,21 +233,66 @@ class BitrixAuthTest extends TestCase
             ->assertRedirect(self::FRONTEND.'#error=invalid_state');
     }
 
-    public function test_opening_the_app_inside_bitrix_signs_the_user_in(): void
+    /**
+     * Review B1: anyone can forge the POST Bitrix sends when the app opens, so
+     * it signs no one in; the frame goes to our app page with what the Bitrix
+     * JS SDK needs.
+     */
+    public function test_opening_the_app_inside_bitrix_signs_no_one_in_from_the_post(): void
+    {
+        Http::fake();
+
+        $this->post('/auth/bitrix/callback?DOMAIN=portal.test&PROTOCOL=1&LANG=en&APP_SID=s', [
+            'AUTH_ID' => 'attacker-access',
+            'AUTH_EXPIRES' => '3600',
+            'REFRESH_ID' => 'attacker-refresh',
+            'member_id' => 'member-1',
+            'PLACEMENT' => 'DEFAULT',
+        ])->assertRedirect(self::APP_PAGE.'?DOMAIN=portal.test&PROTOCOL=1&LANG=en&APP_SID=s');
+
+        Http::assertNothingSent();
+        $this->assertDatabaseCount('users', 0);
+    }
+
+    private function appSession(array $overrides = []): TestResponse
+    {
+        return $this->postJson('/api/auth/bitrix/app-session', array_merge([
+            'access_token' => 'frame-access',
+            'refresh_token' => 'frame-refresh',
+            'expires_in' => 3600,
+            'domain' => 'portal.test',
+            'member_id' => 'member-1',
+        ], $overrides));
+    }
+
+    /** The app page signs in with the tokens Bitrix's JS SDK gave it; the API token comes back in the body. */
+    public function test_the_app_page_signs_in_with_the_tokens_from_bitrix(): void
     {
         $this->fakeBitrix();
 
-        $response = $this->post('/auth/bitrix/callback?DOMAIN=portal.test&PROTOCOL=1&LANG=en&APP_SID=s', [
-            'AUTH_ID' => 'frame-access',
-            'AUTH_EXPIRES' => '3600',
-            'REFRESH_ID' => 'frame-refresh',
-            'member_id' => 'member-1',
-            'PLACEMENT' => 'DEFAULT',
-        ]);
+        $token = $this->appSession()->assertOk()->json('token');
 
-        $this->tokenFrom($response);
+        $this->withToken($token)->getJson('/api/me')->assertOk()->assertJsonPath('user.id', User::sole()->id);
         $this->assertSame('frame-access', User::sole()->bitrixToken()->accessToken);
         Http::assertSent(fn (Request $r) => str_contains($r->url(), 'user.current') && $r['auth'] === 'frame-access');
+    }
+
+    public function test_the_app_page_refuses_another_portal_or_another_app(): void
+    {
+        $this->fakeBitrix(appCode: 'someone-elses-app');
+
+        $this->appSession(['domain' => 'evil.test'])->assertStatus(422)->assertJsonPath('reason', 'unknown_portal');
+        $this->appSession()->assertStatus(422)->assertJsonPath('reason', 'bitrix_rejected');
+
+        $this->assertDatabaseCount('users', 0);
+    }
+
+    public function test_the_app_page_never_takes_over_an_account_by_email(): void
+    {
+        User::factory()->create(['email' => 'sara@portal.test']);
+        $this->fakeBitrix();
+
+        $this->appSession()->assertStatus(422)->assertJsonPath('reason', 'account_not_linked');
     }
 
     /** Review B1: no API token ever travels in the URL; the code works once. */
@@ -243,8 +302,8 @@ class BitrixAuthTest extends TestCase
         $code = $this->codeFrom($this->oauthCallback());
 
         $this->assertSame(0, User::sole()->tokens()->count());
-        $this->postJson('/api/auth/bitrix/exchange', ['code' => $code])->assertOk()->assertJsonStructure(['token']);
-        $this->postJson('/api/auth/bitrix/exchange', ['code' => $code])->assertStatus(422);
+        $this->postJson('/api/auth/bitrix/exchange', ['code' => $code, 'nonce' => self::NONCE])->assertOk()->assertJsonStructure(['token']);
+        $this->postJson('/api/auth/bitrix/exchange', ['code' => $code, 'nonce' => self::NONCE])->assertStatus(422);
         $this->assertSame(1, User::sole()->tokens()->count());
     }
 
@@ -255,27 +314,33 @@ class BitrixAuthTest extends TestCase
 
         $this->travel(61)->seconds();
 
-        $this->postJson('/api/auth/bitrix/exchange', ['code' => $code])->assertStatus(422);
+        $this->postJson('/api/auth/bitrix/exchange', ['code' => $code, 'nonce' => self::NONCE])->assertStatus(422);
     }
 
-    /** Review B1: a valid token of another app on the portal does not sign anyone in. */
-    public function test_app_open_with_a_token_of_another_app_is_refused(): void
+    /**
+     * Review B1 follow-up: a code sent to another browser (no nonce, or that
+     * browser's own) gives no token, and is burned so it can't be retried.
+     */
+    public function test_a_code_only_works_in_the_browser_that_started_the_sign_in(): void
     {
-        $this->fakeBitrix(appCode: 'someone-elses-app');
+        $this->fakeBitrix();
+        $code = $this->codeFrom($this->oauthCallback());
 
-        $this->post('/auth/bitrix/callback?DOMAIN=portal.test', ['AUTH_ID' => 'other-app-access', 'REFRESH_ID' => 'other-app-refresh'])
-            ->assertRedirect(self::FRONTEND.'#error=bitrix_rejected');
+        $this->postJson('/api/auth/bitrix/exchange', ['code' => $code])->assertStatus(422)->assertJsonValidationErrors('nonce');
+        $this->postJson('/api/auth/bitrix/exchange', ['code' => $code, 'nonce' => 'ffffffff-0000-4000-8000-another-browser'])->assertStatus(422);
+        $this->postJson('/api/auth/bitrix/exchange', ['code' => $code, 'nonce' => self::NONCE])->assertStatus(422);
 
-        $this->assertDatabaseCount('users', 0);
+        $this->assertSame(0, User::sole()->tokens()->count());
     }
 
-    public function test_app_open_with_a_token_bitrix_rejects_is_refused(): void
+    public function test_a_callback_without_the_nonce_in_the_session_is_refused(): void
     {
-        Http::fake(['*' => Http::response(['error' => 'invalid_token'], 401)]);
+        Http::fake();
 
-        $this->post('/auth/bitrix/callback?DOMAIN=portal.test', ['AUTH_ID' => 'forged', 'REFRESH_ID' => 'forged'])
-            ->assertRedirect(self::FRONTEND.'#error=bitrix_rejected');
+        $this->withSession(['bitrix_oauth_state' => 'good-state'])
+            ->get('/auth/bitrix/callback?code=auth-code&state=good-state&domain=portal.test')
+            ->assertRedirect(self::FRONTEND.'#error=invalid_state');
 
-        $this->assertDatabaseCount('users', 0);
+        Http::assertNothingSent();
     }
 }
