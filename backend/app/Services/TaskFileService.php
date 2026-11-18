@@ -6,13 +6,13 @@ namespace App\Services;
 
 use App\DTOs\Task\FileDownloadDTO;
 use App\DTOs\Task\TaskFilesDTO;
+use App\DTOs\Task\UploadTaskFileDTO;
 use App\Integrations\Bitrix24\BitrixException;
 use App\Integrations\Bitrix24\BitrixFilePusher;
 use App\Models\Task;
 use App\Models\TaskFile;
 use App\Models\User;
 use App\Repositories\Contracts\TaskFileRepositoryInterface;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -51,8 +51,10 @@ class TaskFileService
         return $this->current($task, $stale);
     }
 
-    public function upload(User $actor, Task $task, UploadedFile $upload): TaskFilesDTO
+    public function upload(User $actor, Task $task, UploadTaskFileDTO $file): TaskFilesDTO
     {
+        $upload = $file->file;
+
         if ($this->bitrix->handles($task)) {
             $this->bitrix->upload($actor, $task, $upload);
         } else {

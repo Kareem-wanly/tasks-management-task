@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Concerns;
 
+use App\DTOs\Task\TimeEntryDTO;
 use Illuminate\Validation\Validator;
 
 /**
@@ -24,22 +25,18 @@ trait HasTimeEntryInput
     {
         return [
             function (Validator $validator): void {
-                if (! $validator->errors()->any() && $this->seconds() === 0) {
+                if (! $validator->errors()->any() && $this->toDto()->seconds === 0) {
                     $validator->errors()->add('minutes', 'Enter some time.');
                 }
             },
         ];
     }
 
-    public function seconds(): int
+    public function toDto(): TimeEntryDTO
     {
-        return (int) $this->input('hours') * 3600 + (int) $this->input('minutes') * 60;
-    }
+        /** @var array{hours: int|string, minutes: int|string, comment?: ?string} $input */
+        $input = $this->only(['hours', 'minutes', 'comment']);
 
-    public function comment(): ?string
-    {
-        $comment = trim((string) $this->input('comment', ''));
-
-        return $comment !== '' ? $comment : null;
+        return TimeEntryDTO::fromArray($input);
     }
 }

@@ -30,12 +30,12 @@ class TaskTimeController extends Controller
 
     public function store(LogTimeRequest $request, Task $task): TimeLogResource
     {
-        return new TimeLogResource($this->time->add($request->user(), $task, $request->seconds(), $request->comment()));
+        return new TimeLogResource($this->time->add($request->user(), $task, $request->toDto()));
     }
 
     public function update(UpdateTimeEntryRequest $request, TaskElapsedItem $entry): TimeLogResource
     {
-        return new TimeLogResource($this->time->update($request->user(), $entry, $request->seconds(), $request->comment()));
+        return new TimeLogResource($this->time->update($request->user(), $entry, $request->toDto()));
     }
 
     public function destroy(DeleteTimeEntryRequest $request, TaskElapsedItem $entry): TimeLogResource
@@ -50,8 +50,6 @@ class TaskTimeController extends Controller
 
     public function stop(StopTimerRequest $request, Task $task): TimeLogResource
     {
-        $comment = trim((string) $request->validated('comment'));
-
-        return new TimeLogResource($this->time->stopTimer($request->user(), $task, $comment !== '' ? $comment : null));
+        return new TimeLogResource($this->time->stopTimer($request->user(), $task, $request->toDto()));
     }
 }

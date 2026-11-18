@@ -23,12 +23,12 @@ class TaskPriorityController extends Controller
 
     public function store(StoreTaskPriorityLookupRequest $request): JsonResponse
     {
-        return response()->json(['data' => $this->lookups->create(TaskPriority::class, $request->validated())], 201);
+        return response()->json(['data' => $this->lookups->create(TaskPriority::class, $request->toDto())], 201);
     }
 
     public function update(UpdateTaskPriorityLookupRequest $request, TaskPriority $taskPriority): JsonResponse
     {
-        return response()->json(['data' => $this->lookups->update($taskPriority, $request->validated())]);
+        return response()->json(['data' => $this->lookups->update($taskPriority, $request->toDto())]);
     }
 
     public function destroy(DeleteTaskLookupRequest $request, TaskPriority $taskPriority): JsonResponse

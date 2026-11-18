@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Task\UploadTaskFileDTO;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Attaches a file to a task. */
@@ -28,5 +29,13 @@ class UploadTaskFileRequest extends FormRequest
     public function messages(): array
     {
         return ['file.max' => 'Files can be up to 20 MB.'];
+    }
+
+    public function toDto(): UploadTaskFileDTO
+    {
+        /** @var array{file: \Illuminate\Http\UploadedFile} $validated */
+        $validated = $this->validated();
+
+        return UploadTaskFileDTO::fromArray($validated);
     }
 }

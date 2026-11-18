@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Task\TaskResultDTO;
 use App\DTOs\Task\TaskResultsDTO;
 use App\Integrations\Bitrix24\BitrixException;
 use App\Integrations\Bitrix24\BitrixResultPusher;
@@ -42,8 +43,10 @@ class TaskResultService
         return $this->current($task, $stale);
     }
 
-    public function add(User $actor, Task $task, string $text): TaskResultsDTO
+    public function add(User $actor, Task $task, TaskResultDTO $result): TaskResultsDTO
     {
+        $text = $result->text;
+
         $this->bitrix->handles($task)
             ? $this->bitrix->add($actor, $task, $text)
             : $this->results->create($task, $actor->id, $text);
@@ -51,8 +54,9 @@ class TaskResultService
         return $this->current($task);
     }
 
-    public function update(User $actor, TaskResult $result, string $text): TaskResultsDTO
+    public function update(User $actor, TaskResult $result, TaskResultDTO $change): TaskResultsDTO
     {
+        $text = $change->text;
         $task = $result->task;
 
         // Decided by the result itself: one made here before the task was linked stays here.

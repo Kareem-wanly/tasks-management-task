@@ -28,7 +28,7 @@ class TaskFileController extends Controller
 
     public function store(UploadTaskFileRequest $request, Task $task): TaskFilesResource
     {
-        return new TaskFilesResource($this->files->upload($request->user(), $task, $request->file('file')));
+        return new TaskFilesResource($this->files->upload($request->user(), $task, $request->toDto()));
     }
 
     public function destroy(RemoveTaskFileRequest $request, TaskFile $file): TaskFilesResource

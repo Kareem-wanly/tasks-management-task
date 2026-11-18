@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\TaskLookup\SaveTaskLookupDTO;
 use App\Exceptions\BusinessRuleException;
 use App\Models\TaskLookup;
 use App\Repositories\Contracts\TaskLookupRepositoryInterface;
@@ -25,22 +26,22 @@ class TaskLookupService
 
     /**
      * @param  class-string<TaskLookup>  $model
-     * @param  array<string, mixed>  $data
      */
-    public function create(string $model, array $data): TaskLookup
+    public function create(string $model, SaveTaskLookupDTO $data): TaskLookup
     {
-        return $this->lookups->create($model, $data);
+        return $this->lookups->create($model, $data->toArray());
     }
 
-    /** @param  array<string, mixed>  $data */
-    public function update(TaskLookup $lookup, array $data): TaskLookup
+    public function update(TaskLookup $lookup, SaveTaskLookupDTO $data): TaskLookup
     {
+        $attributes = $data->toArray();
+
         // The Bitrix link of a Bitrix value is fixed; the sync command owns it.
         if ($lookup->is_system) {
-            unset($data['bitrix_id']);
+            unset($attributes['bitrix_id']);
         }
 
-        return $this->lookups->update($lookup, $data);
+        return $this->lookups->update($lookup, $attributes);
     }
 
     public function delete(TaskLookup $lookup): void

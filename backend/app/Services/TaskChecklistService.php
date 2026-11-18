@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Task\AddChecklistItemDTO;
+use App\DTOs\Task\MoveChecklistItemDTO;
 use App\DTOs\Task\TaskChecklistDTO;
+use App\DTOs\Task\UpdateChecklistItemDTO;
 use App\Exceptions\BusinessRuleException;
 use App\Integrations\Bitrix24\BitrixChecklistPusher;
 use App\Integrations\Bitrix24\BitrixException;
@@ -49,8 +52,10 @@ class TaskChecklistService
     }
 
     /** Adds an item to the given list, or to the first one. */
-    public function add(User $actor, Task $task, string $title, ?int $listId): TaskChecklistDTO
+    public function add(User $actor, Task $task, AddChecklistItemDTO $item): TaskChecklistDTO
     {
+        $title = $item->title;
+        $listId = $item->listId;
         $list = $listId ? $this->checklists->find($listId) : $this->checklists->firstList($task);
 
         if ($this->bitrix->handles($task)) {
@@ -62,21 +67,20 @@ class TaskChecklistService
         return $this->current($task);
     }
 
-    /** @param  array{title?: string, is_complete?: bool}  $changes */
-    public function update(User $actor, TaskChecklistItem $item, array $changes): TaskChecklistDTO
+    public function update(User $actor, TaskChecklistItem $item, UpdateChecklistItemDTO $changes): TaskChecklistDTO
     {
         $task = $item->task;
 
-        if (isset($changes['title'])) {
+        if ($changes->title !== null) {
             $this->bitrix->handles($task)
-                ? $this->bitrix->rename($actor, $item, $changes['title'])
-                : $this->checklists->update($item, ['title' => $changes['title']]);
+                ? $this->bitrix->rename($actor, $item, $changes->title)
+                : $this->checklists->update($item, ['title' => $changes->title]);
         }
 
-        if (isset($changes['is_complete'])) {
+        if ($changes->isComplete !== null) {
             $this->bitrix->handles($task)
-                ? $this->bitrix->toggle($actor, $this->checklists->find($item->id), $changes['is_complete'])
-                : $this->checklists->update($item, ['is_complete' => $changes['is_complete']]);
+                ? $this->bitrix->toggle($actor, $this->checklists->find($item->id), $changes->isComplete)
+                : $this->checklists->update($item, ['is_complete' => $changes->isComplete]);
         }
 
         return $this->current($task);
@@ -92,8 +96,10 @@ class TaskChecklistService
     }
 
     /** Puts an item right after another item of its list, or first ($afterId null). */
-    public function move(User $actor, TaskChecklistItem $item, ?int $afterId): TaskChecklistDTO
+    public function move(User $actor, TaskChecklistItem $item, MoveChecklistItemDTO $position): TaskChecklistDTO
     {
+        $afterId = $position->afterId;
+
         if ($item->isList()) {
             throw new BusinessRuleException('Lists cannot be moved.');
         }

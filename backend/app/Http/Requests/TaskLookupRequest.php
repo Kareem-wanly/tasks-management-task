@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\TaskLookup\SaveTaskLookupDTO;
 use App\Models\TaskLookup;
 use App\Services\TaskLookupService;
 use Illuminate\Foundation\Http\FormRequest;
@@ -49,6 +50,11 @@ abstract class TaskLookupRequest extends FormRequest
         }
 
         return array_map(fn (array $rule): array => ['sometimes', ...$rule], $rules);
+    }
+
+    public function toDto(): SaveTaskLookupDTO
+    {
+        return SaveTaskLookupDTO::fromArray($this->validated());
     }
 
     /** @return class-string<TaskLookup> */

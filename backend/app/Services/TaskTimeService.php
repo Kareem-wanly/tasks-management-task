@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Task\StopTimerDTO;
+use App\DTOs\Task\TimeEntryDTO;
 use App\DTOs\Task\TimeLogDTO;
 use App\Exceptions\BusinessRuleException;
 use App\Integrations\Bitrix24\BitrixException;
@@ -53,16 +55,18 @@ class TaskTimeService
         return $this->current($viewer, $task, $stale);
     }
 
-    public function add(User $actor, Task $task, int $seconds, ?string $comment): TimeLogDTO
+    public function add(User $actor, Task $task, TimeEntryDTO $time): TimeLogDTO
     {
         $this->ensureTracking($task);
-        $this->logTime($actor, $task, $seconds, $comment);
+        $this->logTime($actor, $task, $time->seconds, $time->comment);
 
         return $this->current($actor, $task);
     }
 
-    public function update(User $actor, TaskElapsedItem $entry, int $seconds, ?string $comment): TimeLogDTO
+    public function update(User $actor, TaskElapsedItem $entry, TimeEntryDTO $time): TimeLogDTO
     {
+        $seconds = $time->seconds;
+        $comment = $time->comment;
         $task = $entry->task;
 
         if ($this->bitrix->handles($task)) {
@@ -112,8 +116,9 @@ class TaskTimeService
     }
 
     /** Stops the actor's timer on this task; a second stop (double click, other tab) changes nothing. */
-    public function stopTimer(User $actor, Task $task, ?string $comment): TimeLogDTO
+    public function stopTimer(User $actor, Task $task, StopTimerDTO $stop): TimeLogDTO
     {
+        $comment = $stop->comment;
         $timer = $this->entries->runningTimer($actor);
 
         if ($timer instanceof RunningTimer && $timer->task_id !== $task->id) {
