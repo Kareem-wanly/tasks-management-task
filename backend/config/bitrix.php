@@ -26,6 +26,12 @@ return [
         env('FRONTEND_URL', 'http://localhost:5173').'/auth/bitrix/callback'
     ),
 
+    // The frontend page the app opens on inside Bitrix24 (it signs in through Bitrix's JS SDK).
+    'frontend_app_url' => env(
+        'BITRIX24_FRONTEND_APP_URL',
+        env('FRONTEND_URL', 'http://localhost:5173').'/auth/bitrix/app'
+    ),
+
     'timeout' => (int) env('BITRIX24_TIMEOUT', 30),
 
     // Public base URL Bitrix uses to reach us (the ngrok URL locally).

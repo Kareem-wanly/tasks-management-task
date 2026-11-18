@@ -25,6 +25,7 @@ Route::post('/bitrix/install', [BitrixInstallController::class, 'install']);
 // Verified by the application token inside the event, not by a user session.
 Route::post('/bitrix/events', [BitrixEventController::class, 'handle']);
 Route::post('/auth/bitrix/exchange', [BitrixAuthController::class, 'exchange'])->middleware('throttle:10,1');
+Route::post('/auth/bitrix/app-session', [BitrixAuthController::class, 'appSession'])->middleware('throttle:10,1');
 
 Route::middleware('auth:sanctum')->group(function () {
 
