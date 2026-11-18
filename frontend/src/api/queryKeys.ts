@@ -45,5 +45,6 @@ export const queryKeys = {
     files: (id: number) => ['tasks', 'files', id] as const,
     results: (id: number) => ['tasks', 'results', id] as const,
     chat: (id: number) => ['tasks', 'chat', id] as const,
+    history: (id: number) => ['tasks', 'history', id] as const,
   },
 };

@@ -21,6 +21,7 @@ import TaskDescription from './components/TaskDescription';
 import TaskDetailsHeader from './components/TaskDetailsHeader';
 import TaskFilesPanel from './components/TaskFilesPanel';
 import TaskFormDialog from './components/TaskFormDialog';
+import TaskHistoryPanel from './components/TaskHistoryPanel';
 import TaskPeoplePanel from './components/TaskPeoplePanel';
 import TaskResultsPanel from './components/TaskResultsPanel';
 import TaskSidebar from './components/TaskSidebar';
@@ -119,6 +120,7 @@ export default function TaskDetailsPage() {
           <TaskFilesPanel taskId={task.id} />
           <TaskResultsPanel taskId={task.id} />
           {can('comments.view') && <TaskChatPanel taskId={task.id} />}
+          <TaskHistoryPanel taskId={task.id} />
         </div>
 
         <div className="min-w-0 space-y-4 self-start">

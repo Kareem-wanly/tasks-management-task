@@ -117,3 +117,26 @@ export interface TaskChat {
   stale: boolean;
   can_post: boolean;
 }
+
+/**
+ * One change in a task's history, as Bitrix24 records it (step 4.8). Status
+ * and priority values are our keys; people are names; dates are ISO 8601.
+ */
+export interface TaskHistoryEntry {
+  id: number;
+  /** Bitrix's field code, e.g. STATUS, RESPONSIBLE_ID, CHECKLIST_ITEM_CREATE. */
+  field: string;
+  from: string | null;
+  to: string | null;
+  user: { id: number | null; name: string } | null;
+  created_at: string | null;
+}
+
+/** Why a task has no history to show. */
+export type TaskHistoryUnavailable = 'not_in_bitrix' | 'unreachable' | 'unavailable';
+
+/** A task's history, newest first, as GET /tasks/{id}/history answers. */
+export interface TaskHistory {
+  entries: TaskHistoryEntry[];
+  unavailableBecause: TaskHistoryUnavailable | null;
+}

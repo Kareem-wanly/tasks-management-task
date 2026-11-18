@@ -11,6 +11,7 @@ use App\Http\Controllers\TaskChatController;
 use App\Http\Controllers\TaskChecklistController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TaskFileController;
+use App\Http\Controllers\TaskHistoryController;
 use App\Http\Controllers\TaskMemberController;
 use App\Http\Controllers\TaskPriorityController;
 use App\Http\Controllers\TaskResultController;
@@ -99,6 +100,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/tasks/{task}/files', [TaskFileController::class, 'store']);
     Route::delete('/task-files/{file}', [TaskFileController::class, 'destroy']);
     Route::get('/task-files/{file}/download', [TaskFileController::class, 'download']);
+    Route::get('/tasks/{task}/history', [TaskHistoryController::class, 'index']);
     Route::get('/tasks/{task}/results', [TaskResultController::class, 'index']);
     Route::post('/tasks/{task}/results', [TaskResultController::class, 'store']);
     Route::put('/task-results/{result}', [TaskResultController::class, 'update']);
