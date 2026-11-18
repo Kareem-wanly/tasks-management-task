@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Bitrix24;
 
+use App\Enums\OutboundOpStatus;
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Jobs\Bitrix\SyncBitrixTask;
@@ -176,7 +177,7 @@ class BitrixTaskMembersTest extends TestCase
 
         dispatch_sync(new SyncBitrixTask(15));
 
-        $this->assertSame(BitrixOutboundOp::CONFIRMED, BitrixOutboundOp::sole()->status);
+        $this->assertSame(OutboundOpStatus::Confirmed, BitrixOutboundOp::sole()->status);
         $this->assertFalse(ActivityLog::where('action', 'bitrix_conflict')->exists());
     }
 
@@ -188,7 +189,7 @@ class BitrixTaskMembersTest extends TestCase
 
         dispatch_sync(new SyncBitrixTask(15));
 
-        $this->assertSame(BitrixOutboundOp::CONFLICT, BitrixOutboundOp::sole()->status);
+        $this->assertSame(OutboundOpStatus::Conflict, BitrixOutboundOp::sole()->status);
         $this->assertSame([$this->actor->id, $this->outsider->id], $this->people('auditors'));
     }
 

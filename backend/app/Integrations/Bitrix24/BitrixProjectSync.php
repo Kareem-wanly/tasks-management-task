@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24;
 
+use App\Enums\ProjectStatus;
 use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;
 use App\Models\Project;
 use App\Repositories\Contracts\ProjectRepositoryInterface;
@@ -78,13 +79,13 @@ class BitrixProjectSync
      * Bitrix only knows open/closed, so it decides archived vs not; our
      * other statuses (in_progress, on_hold, ...) stay local.
      */
-    private function status(Project $project, bool $closed): string
+    private function status(Project $project, bool $closed): ProjectStatus
     {
         if ($closed) {
-            return 'archived';
+            return ProjectStatus::Archived;
         }
 
-        return ! $project->exists || $project->status === 'archived' ? 'active' : $project->status;
+        return ! $project->exists || $project->status === ProjectStatus::Archived ? ProjectStatus::Active : $project->status;
     }
 
     /**

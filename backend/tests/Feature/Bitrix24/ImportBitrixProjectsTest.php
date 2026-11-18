@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Bitrix24;
 
+use App\Enums\ProjectStatus;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
@@ -100,7 +101,7 @@ class ImportBitrixProjectsTest extends TestCase
         $this->assertSame('Group 10', $project->title);
         $this->assertSame('About it', $project->description);
         $this->assertSame($this->user(1)->id, $project->owner_id);
-        $this->assertSame('active', $project->status);
+        $this->assertSame(ProjectStatus::Active, $project->status);
         $this->assertSame('2026-11-01', $project->start_date->toDateString());
         $this->assertSame('2026-12-31', $project->due_date->toDateString());
         $this->assertNotNull($project->bitrix_synced_at);
@@ -153,11 +154,11 @@ class ImportBitrixProjectsTest extends TestCase
     {
         $this->groups = [$this->group(10, ['closed' => 'Y'])];
         $this->import();
-        $this->assertSame('archived', Project::sole()->status);
+        $this->assertSame(ProjectStatus::Archived, Project::sole()->status);
 
         $this->groups = [$this->group(10)];
         $this->import();
-        $this->assertSame('active', Project::sole()->status);
+        $this->assertSame(ProjectStatus::Active, Project::sole()->status);
     }
 
     public function test_local_status_is_kept_while_the_group_is_open(): void
@@ -168,7 +169,7 @@ class ImportBitrixProjectsTest extends TestCase
 
         $this->import();
 
-        $this->assertSame('on_hold', Project::sole()->status);
+        $this->assertSame(ProjectStatus::OnHold, Project::sole()->status);
     }
 
     public function test_group_whose_owner_is_not_imported_is_skipped(): void

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Enums\SystemRole;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Models\Project;
@@ -45,7 +46,7 @@ class AppServiceProvider extends ServiceProvider
         DB::prohibitDestructiveCommands($this->app->isProduction());
 
         Gate::before(function (User $user, string $ability) {
-            if ($user->hasRole('Administrator')) {
+            if ($user->hasRole(SystemRole::Administrator)) {
                 return true;
             }
 

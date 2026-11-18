@@ -11,14 +11,14 @@ use App\Http\Requests\UpdateTaskResultRequest;
 use App\Http\Resources\TaskResultsResource;
 use App\Models\Task;
 use App\Models\TaskResult;
-use App\Services\TaskResultService;
+use App\Services\Contracts\TaskResultServiceInterface;
 
 /**
  * Step 4.6: a task's official results. Every answer is the whole list.
  */
 class TaskResultController extends Controller
 {
-    public function __construct(private readonly TaskResultService $results) {}
+    public function __construct(private readonly TaskResultServiceInterface $results) {}
 
     public function index(ShowTaskRequest $request, Task $task): TaskResultsResource
     {

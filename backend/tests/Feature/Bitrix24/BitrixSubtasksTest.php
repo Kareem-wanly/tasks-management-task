@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Bitrix24;
 
+use App\Enums\OutboundOpStatus;
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Jobs\Bitrix\SyncBitrixTask;
@@ -146,7 +147,7 @@ class BitrixSubtasksTest extends TestCase
 
         dispatch_sync(new SyncBitrixTask(51));
 
-        $this->assertSame(BitrixOutboundOp::CONFIRMED, BitrixOutboundOp::sole()->status);
+        $this->assertSame(OutboundOpStatus::Confirmed, BitrixOutboundOp::sole()->status);
     }
 
     private function task(array $attributes = []): Task

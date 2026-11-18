@@ -180,6 +180,19 @@ class FormRequestsTest extends TestCase
             ->assertJsonPath('meta.total', Task::count());
     }
 
+    public function test_project_status_is_still_a_plain_string_in_the_api(): void
+    {
+        $admin = $this->admin();
+        $project = $this->project($admin);
+        Sanctum::actingAs($admin);
+
+        $this->getJson("/api/projects/{$project->id}")->assertOk()->assertJsonPath('data.status', 'active');
+        $this->postJson("/api/projects/{$project->id}/archive")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'archived')
+            ->assertJsonPath('message', 'Project status changed to archived successfully');
+    }
+
     private function admin(): User
     {
         return User::where('email', 'admin@example.com')->first();

@@ -12,6 +12,7 @@ use App\Models\Task;
 use App\Models\TaskResult;
 use App\Models\User;
 use App\Repositories\Contracts\TaskResultRepositoryInterface;
+use App\Services\Contracts\TaskResultServiceInterface;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -19,11 +20,11 @@ use Illuminate\Support\Facades\Log;
  * so they are fetched from Bitrix each time the task is opened. Tasks in
  * Bitrix change there first; tasks of local-only projects change here only.
  */
-class TaskResultService
+final readonly class TaskResultService implements TaskResultServiceInterface
 {
     public function __construct(
-        private readonly TaskResultRepositoryInterface $results,
-        private readonly BitrixResultPusher $bitrix,
+        private TaskResultRepositoryInterface $results,
+        private BitrixResultPusher $bitrix,
     ) {}
 
     /** The results, fresh from Bitrix; our last copy when Bitrix can't be reached. */

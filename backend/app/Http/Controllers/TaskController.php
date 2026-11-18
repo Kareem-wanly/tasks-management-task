@@ -14,13 +14,13 @@ use App\Http\Requests\UpdateTaskStatusRequest;
 use App\Http\Resources\TaskResource;
 use App\Models\Project;
 use App\Models\Task;
-use App\Services\TaskService;
+use App\Services\Contracts\TaskServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class TaskController extends Controller
 {
-    public function __construct(private readonly TaskService $tasks) {}
+    public function __construct(private readonly TaskServiceInterface $tasks) {}
 
     public function index(ListTasksRequest $request): AnonymousResourceCollection
     {

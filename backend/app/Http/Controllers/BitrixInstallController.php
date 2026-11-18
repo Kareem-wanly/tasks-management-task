@@ -6,7 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\Bitrix\BitrixInstallRefusedException;
 use App\Http\Requests\BitrixInstallRequest;
-use App\Services\BitrixInstallService;
+use App\Services\Contracts\BitrixInstallServiceInterface;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -19,7 +19,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class BitrixInstallController extends Controller
 {
-    public function __construct(private readonly BitrixInstallService $installs) {}
+    public function __construct(private readonly BitrixInstallServiceInterface $installs) {}
 
     public function install(BitrixInstallRequest $request): Response
     {

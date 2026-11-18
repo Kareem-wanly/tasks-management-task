@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Bitrix;
 
+use App\Enums\QueueName;
 use App\Integrations\Bitrix24\BitrixFilePusher;
 use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
 use App\Repositories\Contracts\TaskRepositoryInterface;
@@ -27,7 +28,7 @@ class ImportBitrixFiles implements ShouldQueue
 
     public function __construct()
     {
-        $this->onQueue('bitrix');
+        $this->onQueue(QueueName::Bitrix);
     }
 
     public function handle(BitrixFilePusher $files, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $tasks): void

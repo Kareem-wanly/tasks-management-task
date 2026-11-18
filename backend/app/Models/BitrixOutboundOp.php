@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\OutboundOpStatus;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -14,12 +15,6 @@ use Illuminate\Database\Eloquent\Model;
  */
 class BitrixOutboundOp extends Model
 {
-    public const SENT = 'sent';
-
-    public const CONFIRMED = 'confirmed';
-
-    public const CONFLICT = 'conflict';
-
     public const TASK = 'task';
 
     public const PROJECT = 'project';
@@ -28,6 +23,8 @@ class BitrixOutboundOp extends Model
     public const WINDOW_SECONDS = 60;
 
     protected $fillable = ['entity', 'bitrix_id', 'action', 'fingerprint', 'status', 'user_id'];
+
+    protected $casts = ['status' => OutboundOpStatus::class];
 
     public function isDelete(): bool
     {

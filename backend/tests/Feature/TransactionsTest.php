@@ -15,7 +15,6 @@ use App\Repositories\Contracts\TaskRepositoryInterface;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
-use Mockery;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -99,12 +98,10 @@ class TransactionsTest extends TestCase
     /** Replaces one repository method with a failure, keeping the rest real. */
     private function failing(string $interface, string $method, ?callable $before = null): void
     {
-        $repository = Mockery::mock(resolve($interface))->makePartial();
-        $repository->shouldReceive($method)->andReturnUsing(function (...$args) use ($before): void {
+        $this->replaceMethod($interface, $method, function (...$args) use ($before): void {
             $before && $before(...$args);
 
             throw new RuntimeException('Simulated failure.');
         });
-        $this->app->instance($interface, $repository);
     }
 }

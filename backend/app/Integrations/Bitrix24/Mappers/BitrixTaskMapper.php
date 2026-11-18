@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24\Mappers;
 
+use App\Enums\TaskMemberRole;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
 use App\Repositories\Contracts\TaskLookupRepositoryInterface;
@@ -85,7 +86,7 @@ class BitrixTaskMapper
             return $ids;
         };
 
-        return ['accomplice' => $ids($task['accomplices'] ?? []), 'auditor' => $ids($task['auditors'] ?? [])];
+        return [TaskMemberRole::Accomplice->value => $ids($task['accomplices'] ?? []), TaskMemberRole::Auditor->value => $ids($task['auditors'] ?? [])];
     }
 
     /** 0 means the task is not a subtask. */

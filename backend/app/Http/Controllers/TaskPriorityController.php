@@ -9,12 +9,12 @@ use App\Http\Requests\ListTaskLookupsRequest;
 use App\Http\Requests\StoreTaskPriorityLookupRequest;
 use App\Http\Requests\UpdateTaskPriorityLookupRequest;
 use App\Models\TaskPriority;
-use App\Services\TaskLookupService;
+use App\Services\Contracts\TaskLookupServiceInterface;
 use Illuminate\Http\JsonResponse;
 
 class TaskPriorityController extends Controller
 {
-    public function __construct(private readonly TaskLookupService $lookups) {}
+    public function __construct(private readonly TaskLookupServiceInterface $lookups) {}
 
     public function index(ListTaskLookupsRequest $request): JsonResponse
     {

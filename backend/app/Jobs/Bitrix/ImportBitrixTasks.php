@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Jobs\Bitrix;
 
+use App\Enums\QueueName;
+use App\Enums\TaskMemberRole;
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixDeletionGuard;
 use App\Integrations\Bitrix24\BitrixRecordFetcher;
@@ -36,7 +38,7 @@ class ImportBitrixTasks implements ShouldQueue
 
     public function __construct(public readonly ?CarbonImmutable $changedSince = null)
     {
-        $this->onQueue('bitrix');
+        $this->onQueue(QueueName::Bitrix);
     }
 
     public function handle(BitrixClient $bitrix, BitrixTaskSync $tasks, BitrixTaskMapper $mapper, BitrixRecordFetcher $fetch, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $taskRepository, BitrixDeletionGuard $guard): void
@@ -61,7 +63,7 @@ class ImportBitrixTasks implements ShouldQueue
                     $people = [];
                     foreach ($rows as $row) {
                         $members = $mapper->members($row);
-                        array_push($people, $mapper->creatorBitrixId($row), $mapper->responsibleBitrixId($row), ...$members['accomplice'] ?? [], ...$members['auditor'] ?? []);
+                        array_push($people, $mapper->creatorBitrixId($row), $mapper->responsibleBitrixId($row), ...$members[TaskMemberRole::Accomplice->value] ?? [], ...$members[TaskMemberRole::Auditor->value] ?? []);
                     }
                     $fetch->importMissingUsers($people);
                 }

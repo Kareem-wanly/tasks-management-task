@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Bitrix24;
 
+use App\Enums\ProjectStatus;
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
@@ -175,7 +176,7 @@ class BitrixEventsTest extends TestCase
     {
         $this->groups[4] = ['id' => '4', 'name' => 'Group', 'ownerId' => '5', 'closed' => 'Y'];
         dispatch_sync(new SyncBitrixProject(4));
-        $this->assertSame('archived', Project::sole()->status);
+        $this->assertSame(ProjectStatus::Archived, Project::sole()->status);
 
         unset($this->groups[4]);
         dispatch_sync(new SyncBitrixProject(4));

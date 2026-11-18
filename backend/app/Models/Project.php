@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\ProjectStatus;
+use App\Enums\SystemRole;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -29,6 +31,7 @@ class Project extends Model
         'start_date' => 'date',
         'due_date' => 'date',
         'bitrix_synced_at' => 'datetime',
+        'status' => ProjectStatus::class,
     ];
 
     public function owner(): BelongsTo
@@ -81,7 +84,7 @@ class Project extends Model
 
     protected function scopeAccessibleBy(Builder $query, User $user): Builder
     {
-        if ($user->hasRole('Administrator')) {
+        if ($user->hasRole(SystemRole::Administrator)) {
             return $query;
         }
 

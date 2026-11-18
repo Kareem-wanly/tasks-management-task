@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24;
 
+use App\Enums\ProjectStatus;
+use App\Enums\TaskMemberRole;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskPriority;
@@ -47,8 +49,8 @@ class BitrixFingerprint
             $task->parent_id ? (int) $this->tasks->bitrixTaskIdOf($task->parent_id) : 0,
             (bool) $task->allow_time_tracking,
             (int) $task->time_estimate,
-            $members['accomplice'],
-            $members['auditor'],
+            $members[TaskMemberRole::Accomplice->value],
+            $members[TaskMemberRole::Auditor->value],
         ]);
     }
 
@@ -59,7 +61,7 @@ class BitrixFingerprint
             $project->description ?? '',
             $project->start_date?->toDateString(),
             $project->due_date?->toDateString(),
-            $project->status === 'archived',
+            $project->status === ProjectStatus::Archived,
         ]);
     }
 

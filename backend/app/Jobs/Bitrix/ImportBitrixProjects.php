@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Bitrix;
 
+use App\Enums\QueueName;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixDeletionGuard;
@@ -29,7 +30,7 @@ class ImportBitrixProjects implements ShouldQueue
 
     public function __construct()
     {
-        $this->onQueue('bitrix');
+        $this->onQueue(QueueName::Bitrix);
     }
 
     public function handle(BitrixClient $bitrix, BitrixProjectSync $projects, BitrixSyncCursorRepositoryInterface $cursors, ProjectRepositoryInterface $projectRepository, BitrixRecordFetcher $fetch, BitrixDeletionGuard $guard): void

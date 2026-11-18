@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\DTOs\Project\CreateProjectDTO;
+use App\Enums\ProjectStatus;
 use App\Models\Project;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreProjectRequest extends FormRequest
 {
@@ -20,7 +22,7 @@ class StoreProjectRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'status' => ['sometimes', 'string', 'in:active,in_progress,on_hold,completed'],
+            'status' => ['sometimes', 'string', Rule::in(ProjectStatus::choosable())],
             'start_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date', 'after_or_equal:start_date'],
         ];

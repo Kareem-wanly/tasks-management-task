@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\DTOs\Project;
 
+use App\Enums\ProjectMemberRole;
+
 final readonly class AddProjectMemberDTO
 {
     public function __construct(
         public int $userId,
         /** member or moderator. */
-        public string $role = 'member',
+        public ProjectMemberRole $role = ProjectMemberRole::Member,
     ) {}
 
     /**
@@ -19,7 +21,7 @@ final readonly class AddProjectMemberDTO
     {
         return new self(
             userId: (int) $data['user_id'],
-            role: $data['role'] ?? 'member',
+            role: isset($data['role']) ? ProjectMemberRole::from($data['role']) : ProjectMemberRole::Member,
         );
     }
 }

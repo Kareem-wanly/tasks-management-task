@@ -9,7 +9,7 @@ use App\Http\Requests\BitrixAppSessionRequest;
 use App\Http\Requests\BitrixSignInRequest;
 use App\Http\Requests\ExchangeBitrixLoginCodeRequest;
 use App\Integrations\Bitrix24\BitrixLoginCodes;
-use App\Services\BitrixAuthService;
+use App\Services\Contracts\BitrixAuthServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Str;
@@ -27,7 +27,7 @@ use Illuminate\Support\Str;
  *   Bitrix's JS SDK gives it.
  *
  * This controller keeps only the HTTP side (session state and redirects);
- * BitrixAuthService signs the user in.
+ * BitrixAuthServiceInterface signs the user in.
  */
 class BitrixAuthController extends Controller
 {
@@ -38,7 +38,7 @@ class BitrixAuthController extends Controller
     /** What Bitrix's JS SDK reads from the frame's address. */
     private const APP_FRAME_PARAMS = ['DOMAIN', 'PROTOCOL', 'LANG', 'APP_SID'];
 
-    public function __construct(private readonly BitrixAuthService $auth) {}
+    public function __construct(private readonly BitrixAuthServiceInterface $auth) {}
 
     public function redirect(BitrixSignInRequest $request): RedirectResponse
     {

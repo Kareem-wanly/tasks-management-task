@@ -9,7 +9,7 @@ use App\Models\TaskChecklistItem;
 use App\Repositories\Contracts\TaskChecklistRepositoryInterface;
 use Illuminate\Support\Collection;
 
-class TaskChecklistRepository implements TaskChecklistRepositoryInterface
+final class EloquentTaskChecklistRepository implements TaskChecklistRepositoryInterface
 {
     public function forTask(Task $task): Collection
     {

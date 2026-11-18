@@ -8,7 +8,7 @@ use App\Models\BitrixSyncCursor;
 use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
 use Illuminate\Support\Collection;
 
-class BitrixSyncCursorRepository implements BitrixSyncCursorRepositoryInterface
+final class EloquentBitrixSyncCursorRepository implements BitrixSyncCursorRepositoryInterface
 {
     public function forEntity(string $entity): BitrixSyncCursor
     {

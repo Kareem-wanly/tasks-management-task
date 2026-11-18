@@ -8,6 +8,8 @@ use App\DTOs\Project\AddProjectMemberDTO;
 use App\DTOs\Project\CreateProjectDTO;
 use App\DTOs\Project\ProjectFiltersDTO;
 use App\DTOs\Project\UpdateProjectDTO;
+use App\Enums\ProjectMemberRole;
+use App\Enums\ProjectStatus;
 use App\Exceptions\Project\ProjectHasUnfinishedTasksException;
 use App\Exceptions\Project\ProjectMemberAlreadyAddedException;
 use App\Exceptions\Project\ProjectMemberNotFoundException;
@@ -17,6 +19,7 @@ use App\Models\User;
 use App\Repositories\Contracts\ActivityLogRepositoryInterface;
 use App\Repositories\Contracts\ProjectRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Services\Contracts\ProjectServiceInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -26,16 +29,16 @@ use Illuminate\Support\Facades\DB;
  * Bitrix first (BitrixProjectPusher) and are saved here only when Bitrix
  * accepts them.
  */
-class ProjectService
+final readonly class ProjectService implements ProjectServiceInterface
 {
     /** Dropdowns never list more than this many projects. */
     private const OPTIONS_LIMIT = 1000;
 
     public function __construct(
-        private readonly ProjectRepositoryInterface $projects,
-        private readonly UserRepositoryInterface $users,
-        private readonly ActivityLogRepositoryInterface $activities,
-        private readonly BitrixProjectPusher $bitrix,
+        private ProjectRepositoryInterface $projects,
+        private UserRepositoryInterface $users,
+        private ActivityLogRepositoryInterface $activities,
+        private BitrixProjectPusher $bitrix,
     ) {}
 
     public function list(User $user, ProjectFiltersDTO $filters, int $perPage): LengthAwarePaginator
@@ -73,7 +76,7 @@ class ProjectService
         DB::transaction(function () use ($actor, $project): void {
             $this->projects->save($project);
             // The same role the Bitrix import gives the group owner.
-            $this->projects->attachMember($project, $actor->id, 'owner');
+            $this->projects->attachMember($project, $actor->id, ProjectMemberRole::Owner);
         });
 
         return $this->projects->freshWithMembers($project);
@@ -81,7 +84,7 @@ class ProjectService
 
     public function update(User $actor, Project $project, UpdateProjectDTO $data): Project
     {
-        if ($data->status === 'completed' && $this->projects->hasUnfinishedTasks($project)) {
+        if ($data->status === ProjectStatus::Completed && $this->projects->hasUnfinishedTasks($project)) {
             throw new ProjectHasUnfinishedTasksException;
         }
 
@@ -102,7 +105,7 @@ class ProjectService
     /** Archives an active project, or reopens an archived one. */
     public function toggleArchive(User $actor, Project $project): Project
     {
-        $project->status = $project->status === 'archived' ? 'active' : 'archived';
+        $project->status = $project->status === ProjectStatus::Archived ? ProjectStatus::Active : ProjectStatus::Archived;
         $this->bitrix->update($actor, $project);
         $this->projects->save($project);
 

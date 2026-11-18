@@ -9,7 +9,7 @@ use App\Models\TaskResult;
 use App\Repositories\Contracts\TaskResultRepositoryInterface;
 use Illuminate\Support\Collection;
 
-class TaskResultRepository implements TaskResultRepositoryInterface
+final class EloquentTaskResultRepository implements TaskResultRepositoryInterface
 {
     public function forTask(Task $task): Collection
     {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\DTOs\User\SyncUserRolesDTO;
+use App\Enums\SystemRole;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SyncUserRolesRequest extends FormRequest
@@ -18,7 +19,7 @@ class SyncUserRolesRequest extends FormRequest
         }
 
         abort_if(
-            $target->is($this->user()) && ! $this->user()->hasRole('Administrator'),
+            $target->is($this->user()) && ! $this->user()->hasRole(SystemRole::Administrator),
             403,
             'You cannot modify your own roles.'
         );

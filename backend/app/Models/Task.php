@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\TaskMemberRole;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -21,12 +22,6 @@ use Illuminate\Support\Facades\DB;
 class Task extends Model
 {
     use HasFactory, SoftDeletes;
-
-    /** task_members.role: works on the task besides the responsible person. */
-    public const ACCOMPLICE = 'accomplice';
-
-    /** task_members.role: follows the task. */
-    public const AUDITOR = 'auditor';
 
     protected $fillable = [
         'title',
@@ -72,12 +67,12 @@ class Task extends Model
 
     public function accomplices(): BelongsToMany
     {
-        return $this->members(self::ACCOMPLICE);
+        return $this->members(TaskMemberRole::Accomplice);
     }
 
     public function auditors(): BelongsToMany
     {
-        return $this->members(self::AUDITOR);
+        return $this->members(TaskMemberRole::Auditor);
     }
 
     public function hasMember(User $user): bool
@@ -198,10 +193,10 @@ class Task extends Model
     }
 
     /** People in one task_members role; sync() on it leaves the other role alone. */
-    private function members(string $role): BelongsToMany
+    private function members(TaskMemberRole $role): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'task_members')
-            ->withPivotValue('role', $role)
+            ->withPivotValue('role', $role->value)
             ->withTimestamps();
     }
 }

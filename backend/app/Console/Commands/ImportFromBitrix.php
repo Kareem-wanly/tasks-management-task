@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Enums\QueueName;
 use App\Jobs\Bitrix\ImportBitrixChat;
 use App\Jobs\Bitrix\ImportBitrixChecklists;
 use App\Jobs\Bitrix\ImportBitrixFiles;
@@ -98,7 +99,7 @@ class ImportFromBitrix extends Command
     {
         // A chain stops at the first failure, so tasks never run on missing users or projects.
         Bus::chain(array_map($this->job(...), $entities))
-            ->onQueue('bitrix')
+            ->onQueue(QueueName::Bitrix)
             ->dispatch();
 
         $this->info('Queued on "bitrix": '.implode(' → ', $entities).'.');

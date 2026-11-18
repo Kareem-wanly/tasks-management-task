@@ -11,12 +11,12 @@ use App\Http\Requests\StoreRoleRequest;
 use App\Http\Requests\SyncRolePermissionsRequest;
 use App\Http\Requests\UpdateRoleRequest;
 use App\Models\Role;
-use App\Services\RoleService;
+use App\Services\Contracts\RoleServiceInterface;
 use Illuminate\Http\JsonResponse;
 
 class RoleController extends Controller
 {
-    public function __construct(private readonly RoleService $roles) {}
+    public function __construct(private readonly RoleServiceInterface $roles) {}
 
     public function index(ListRolesRequest $request): JsonResponse
     {

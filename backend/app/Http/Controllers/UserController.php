@@ -11,12 +11,12 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Requests\UserOptionsRequest;
 use App\Models\User;
-use App\Services\UserService;
+use App\Services\Contracts\UserServiceInterface;
 use Illuminate\Http\JsonResponse;
 
 class UserController extends Controller
 {
-    public function __construct(private readonly UserService $users) {}
+    public function __construct(private readonly UserServiceInterface $users) {}
 
     public function index(ListUsersRequest $request): JsonResponse
     {

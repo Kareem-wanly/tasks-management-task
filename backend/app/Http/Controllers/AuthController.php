@@ -11,12 +11,12 @@ use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Http\Requests\AuthenticatedRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
-use App\Services\AuthService;
+use App\Services\Contracts\AuthServiceInterface;
 use Illuminate\Http\JsonResponse;
 
 class AuthController extends Controller
 {
-    public function __construct(private readonly AuthService $auth) {}
+    public function __construct(private readonly AuthServiceInterface $auth) {}
 
     public function register(RegisterRequest $request): JsonResponse
     {

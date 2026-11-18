@@ -8,7 +8,7 @@ use App\Models\Permission;
 use App\Repositories\Contracts\PermissionRepositoryInterface;
 use Illuminate\Support\Collection;
 
-class PermissionRepository implements PermissionRepositoryInterface
+final class EloquentPermissionRepository implements PermissionRepositoryInterface
 {
     public function all(): Collection
     {

@@ -8,11 +8,13 @@ use App\DTOs\Task\ChangeTaskStatusDTO;
 use App\DTOs\Task\CreateTaskDTO;
 use App\DTOs\Task\TaskFiltersDTO;
 use App\DTOs\Task\UpdateTaskDTO;
+use App\Enums\SystemRole;
 use App\Integrations\Bitrix24\BitrixTaskPusher;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use App\Repositories\Contracts\TaskRepositoryInterface;
+use App\Services\Contracts\TaskServiceInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
@@ -20,17 +22,17 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  * token) and are saved here only when Bitrix accepts them; a refusal throws
  * a BitrixException, rendered in bootstrap/app.php.
  */
-class TaskService
+final readonly class TaskService implements TaskServiceInterface
 {
     public function __construct(
-        private readonly TaskRepositoryInterface $tasks,
-        private readonly BitrixTaskPusher $bitrix,
+        private TaskRepositoryInterface $tasks,
+        private BitrixTaskPusher $bitrix,
     ) {}
 
     public function list(User $viewer, TaskFiltersDTO $filters, int $perPage): LengthAwarePaginator
     {
         // Administrators see every task; everyone else what they may see.
-        return $this->tasks->paginate($viewer->hasRole('Administrator') ? null : $viewer, $filters, $perPage);
+        return $this->tasks->paginate($viewer->hasRole(SystemRole::Administrator) ? null : $viewer, $filters, $perPage);
     }
 
     public function listForProject(Project $project, int $perPage): LengthAwarePaginator

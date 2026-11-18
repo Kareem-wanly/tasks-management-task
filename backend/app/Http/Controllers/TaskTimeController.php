@@ -13,7 +13,7 @@ use App\Http\Requests\UpdateTimeEntryRequest;
 use App\Http\Resources\TimeLogResource;
 use App\Models\Task;
 use App\Models\TaskElapsedItem;
-use App\Services\TaskTimeService;
+use App\Services\Contracts\TaskTimeServiceInterface;
 
 /**
  * Step 4.4: a task's time log and the employee's timer. Every answer is
@@ -21,7 +21,7 @@ use App\Services\TaskTimeService;
  */
 class TaskTimeController extends Controller
 {
-    public function __construct(private readonly TaskTimeService $time) {}
+    public function __construct(private readonly TaskTimeServiceInterface $time) {}
 
     public function index(ShowTaskRequest $request, Task $task): TimeLogResource
     {

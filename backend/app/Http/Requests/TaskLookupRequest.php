@@ -6,7 +6,7 @@ namespace App\Http\Requests;
 
 use App\DTOs\TaskLookup\SaveTaskLookupDTO;
 use App\Models\TaskLookup;
-use App\Services\TaskLookupService;
+use App\Services\Contracts\TaskLookupServiceInterface;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -32,7 +32,7 @@ abstract class TaskLookupRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'color' => ['nullable', Rule::in(TaskLookup::COLORS)],
             'sort' => ['integer', 'min:0', 'max:65535'],
-            'bitrix_id' => ['nullable', 'integer', Rule::in(resolve(TaskLookupService::class)->bitrixIdsForCustomValues($this->model()))],
+            'bitrix_id' => ['nullable', 'integer', Rule::in(resolve(TaskLookupServiceInterface::class)->bitrixIdsForCustomValues($this->model()))],
             ...$this->extraRules(),
         ];
 

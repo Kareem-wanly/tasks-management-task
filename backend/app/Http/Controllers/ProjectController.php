@@ -18,16 +18,16 @@ use App\Http\Requests\UpdateProjectRequest;
 use App\Http\Resources\ProjectResource;
 use App\Models\Project;
 use App\Models\User;
-use App\Services\ActivityLogService;
-use App\Services\ProjectService;
+use App\Services\Contracts\ActivityLogServiceInterface;
+use App\Services\Contracts\ProjectServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ProjectController extends Controller
 {
     public function __construct(
-        private readonly ProjectService $projects,
-        private readonly ActivityLogService $activityLog,
+        private readonly ProjectServiceInterface $projects,
+        private readonly ActivityLogServiceInterface $activityLog,
     ) {}
 
     public function index(ListProjectsRequest $request): AnonymousResourceCollection
@@ -90,7 +90,7 @@ class ProjectController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "Project status changed to {$project->status} successfully",
+            'message' => "Project status changed to {$project->status->value} successfully",
             'data' => $project,
         ]);
     }

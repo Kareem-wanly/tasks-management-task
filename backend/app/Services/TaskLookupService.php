@@ -9,15 +9,16 @@ use App\Exceptions\TaskLookup\LookupFromBitrixException;
 use App\Exceptions\TaskLookup\LookupInUseException;
 use App\Models\TaskLookup;
 use App\Repositories\Contracts\TaskLookupRepositoryInterface;
+use App\Services\Contracts\TaskLookupServiceInterface;
 use Illuminate\Support\Collection;
 
 /**
  * Task statuses and priorities. Values from Bitrix (is_system) keep their
  * key and Bitrix link; only our own values can be deleted.
  */
-class TaskLookupService
+final readonly class TaskLookupService implements TaskLookupServiceInterface
 {
-    public function __construct(private readonly TaskLookupRepositoryInterface $lookups) {}
+    public function __construct(private TaskLookupRepositoryInterface $lookups) {}
 
     /** @param  class-string<TaskLookup>  $model */
     public function list(string $model): Collection

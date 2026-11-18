@@ -11,7 +11,7 @@ use App\Models\User;
 use App\Repositories\Contracts\TimeEntryRepositoryInterface;
 use Illuminate\Support\Collection;
 
-class TimeEntryRepository implements TimeEntryRepositoryInterface
+final class EloquentTimeEntryRepository implements TimeEntryRepositoryInterface
 {
     public function forTask(Task $task): Collection
     {
