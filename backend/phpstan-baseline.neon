@@ -1,0 +1,781 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Cannot call method toDateTimeString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Console/Commands/ImportFromBitrix.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>error" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Console/Commands/ImportFromBitrix.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>processed" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Console/Commands/ImportFromBitrix.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>status" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Console/Commands/ImportFromBitrix.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>total" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Console/Commands/ImportFromBitrix.php
+
+		-
+			message: '#^Cannot call method toDateTimeString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Console/Commands/SyncBitrixChanges.php
+
+		-
+			message: '#^Cannot call method toImmutable\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Console/Commands/SyncBitrixChanges.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\TaskLookup\:\:\$is_system\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/SyncBitrixTaskLookups.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\TaskLookup\:\:\$key\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/SyncBitrixTaskLookups.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\TaskLookup\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Console/Commands/SyncBitrixTaskLookups.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\TaskLookup\:\:\$sort\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/SyncBitrixTaskLookups.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\TaskLookup\:\:\$is_system\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Requests/TaskLookupRequest.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\TaskLookup\:\:\$is_system\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Requests/UpdateTaskStatusLookupRequest.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ProjectResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ProjectResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ProjectResource\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ProjectResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ProjectResource\:\:\$due_date\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ProjectResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ProjectResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ProjectResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ProjectResource\:\:\$start_date\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ProjectResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ProjectResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ProjectResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ProjectResource\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ProjectResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\ProjectResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/ProjectResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskChatMessageResource\:\:\$author\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskChatMessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskChatMessageResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskChatMessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskChatMessageResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskChatMessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskChatMessageResource\:\:\$is_system\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskChatMessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskChatMessageResource\:\:\$task\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskChatMessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskChatMessageResource\:\:\$text\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskChatMessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskChatMessageResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskChatMessageResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskChecklistItemResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskChecklistItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskChecklistItemResource\:\:\$is_complete\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskChecklistItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskChecklistItemResource\:\:\$parent_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskChecklistItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskChecklistItemResource\:\:\$sort_index\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskChecklistItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskChecklistItemResource\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskChecklistItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskElapsedItemResource\:\:\$comment\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskElapsedItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskElapsedItemResource\:\:\$created_date\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskElapsedItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskElapsedItemResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskElapsedItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskElapsedItemResource\:\:\$seconds\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskElapsedItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskElapsedItemResource\:\:\$task\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskElapsedItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskElapsedItemResource\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskElapsedItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskFileResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskFileResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskFileResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskFileResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskFileResource\:\:\$mime\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskFileResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskFileResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskFileResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskFileResource\:\:\$size\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskFileResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskFileResource\:\:\$uploader\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskFileResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResource\:\:\$allow_time_tracking\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResource\:\:\$completed_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResource\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResource\:\:\$due_date\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResource\:\:\$is_overdue\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResource\:\:\$parent\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResource\:\:\$priority\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResource\:\:\$time_estimate\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResource\:\:\$time_spent\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResource\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResultResource\:\:\$author\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResultResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResultResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResultResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResultResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResultResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResultResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResultResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResultResource\:\:\$task\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResultResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResultResource\:\:\$text\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResultResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\TaskResultResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TaskResultResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/TimeLogResource.php
+
+		-
+			message: '#^Cannot call method toISOString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Resources/TimeLogResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\UserResource\:\:\$avatar_url\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\UserResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\UserResource\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\UserResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\UserResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\UserResource\:\:\$position\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\UserResource\:\:\$roles\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\UserResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/UserResource.php
+
+		-
+			message: '#^Parameter \#1 \$task of method App\\Integrations\\Bitrix24\\BitrixChecklistPusher\:\:refresh\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Integrations/Bitrix24/BitrixChecklistPusher.php
+
+		-
+			message: '#^Parameter \#2 \$task of method App\\Integrations\\Bitrix24\\BitrixChecklistPusher\:\:call\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 6
+			path: app/Integrations/Bitrix24/BitrixChecklistPusher.php
+
+		-
+			message: '#^Parameter \#1 \$array \(non\-empty\-list\<int\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Integrations/Bitrix24/BitrixDeletionGuard.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bitrix_task_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Integrations/Bitrix24/BitrixFilePusher.php
+
+		-
+			message: '#^Parameter \#1 \$task of method App\\Integrations\\Bitrix24\\BitrixFilePusher\:\:attachedIds\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Integrations/Bitrix24/BitrixFilePusher.php
+
+		-
+			message: '#^Parameter \#1 \$task of method App\\Integrations\\Bitrix24\\BitrixFilePusher\:\:refresh\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Integrations/Bitrix24/BitrixFilePusher.php
+
+		-
+			message: '#^Parameter \#1 \$task of method App\\Integrations\\Bitrix24\\BitrixFilePusher\:\:whileChangingFiles\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Integrations/Bitrix24/BitrixFilePusher.php
+
+		-
+			message: '#^Cannot call method utc\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Integrations/Bitrix24/BitrixFingerprint.php
+
+		-
+			message: '#^Parameter \#1 \$task of method App\\Integrations\\Bitrix24\\BitrixResultPusher\:\:refresh\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Integrations/Bitrix24/BitrixResultPusher.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bitrix_group_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Integrations/Bitrix24/BitrixTaskPusher.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Integrations/Bitrix24/BitrixTaskPusher.php
+
+		-
+			message: '#^Match expression does not handle remaining value\: string$#'
+			identifier: match.unhandled
+			count: 1
+			path: app/Integrations/Bitrix24/BitrixTaskPusher.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>bitrix_group_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Integrations/Bitrix24/BitrixTaskPusher.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>bitrix_user_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Integrations/Bitrix24/BitrixTaskPusher.php
+
+		-
+			message: '#^Parameter \#2 \$task of method App\\Integrations\\Bitrix24\\BitrixTimePusher\:\:call\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Integrations/Bitrix24/BitrixTimePusher.php
+
+		-
+			message: '#^Property App\\Models\\User\:\:\$bitrix_department_ids \(string\|null\) does not accept array\<int, int\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Integrations/Bitrix24/BitrixUserPusher.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>departments" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Integrations/Bitrix24/BitrixUserPusher.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:onlyTrashed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/Project.php
+
+		-
+			message: '#^Cannot call method diffInSeconds\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/RunningTimer.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:unfinished\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/Task.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:accessibleBy\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/Task.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:hasMember\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/Task.php
+
+		-
+			message: '#^Empty array passed to foreach\.$#'
+			identifier: foreach.emptyArray
+			count: 1
+			path: app/Models/TaskChatMessage.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$owner_id\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Policies/TaskPolicy.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:unfinished\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Repositories/Eloquent/ProjectRepository.php
+
+		-
+			message: '#^Method App\\Repositories\\Eloquent\\TaskChatMessageRepository\:\:bitrixMessages\(\) should return Illuminate\\Support\\Collection\<int, App\\Models\\TaskChatMessage\> but returns Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Illuminate\\Database\\Eloquent\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Repositories/Eloquent/TaskChatMessageRepository.php
+
+		-
+			message: '#^Method App\\Repositories\\Eloquent\\TaskChatMessageRepository\:\:create\(\) should return App\\Models\\TaskChatMessage but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 2
+			path: app/Repositories/Eloquent/TaskChatMessageRepository.php
+
+		-
+			message: '#^Method App\\Repositories\\Eloquent\\TaskChatMessageRepository\:\:latestForTask\(\) should return Illuminate\\Support\\Collection\<int, App\\Models\\TaskChatMessage\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Repositories/Eloquent/TaskChatMessageRepository.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:checklistItems\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Repositories/Eloquent/TaskChecklistRepository.php
+
+		-
+			message: '#^Method App\\Repositories\\Eloquent\\TaskChecklistRepository\:\:bitrixItems\(\) should return Illuminate\\Support\\Collection\<int, App\\Models\\TaskChecklistItem\> but returns Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Illuminate\\Database\\Eloquent\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Repositories/Eloquent/TaskChecklistRepository.php
+
+		-
+			message: '#^Method App\\Repositories\\Eloquent\\TaskChecklistRepository\:\:createList\(\) should return App\\Models\\TaskChecklistItem but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Repositories/Eloquent/TaskChecklistRepository.php
+
+		-
+			message: '#^Method App\\Repositories\\Eloquent\\TaskChecklistRepository\:\:firstItemOf\(\) should return App\\Models\\TaskChecklistItem\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Repositories/Eloquent/TaskChecklistRepository.php
+
+		-
+			message: '#^Method App\\Repositories\\Eloquent\\TaskChecklistRepository\:\:firstList\(\) should return App\\Models\\TaskChecklistItem\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Repositories/Eloquent/TaskChecklistRepository.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<App\\Models\\TaskChecklistItem\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Repositories/Eloquent/TaskChecklistRepository.php
+
+		-
+			message: '#^Method App\\Repositories\\Eloquent\\TaskFileRepository\:\:bitrixFiles\(\) should return Illuminate\\Support\\Collection\<int, App\\Models\\TaskFile\> but returns Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Illuminate\\Database\\Eloquent\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Repositories/Eloquent/TaskFileRepository.php
+
+		-
+			message: '#^Method App\\Repositories\\Eloquent\\TaskFileRepository\:\:createLocal\(\) should return App\\Models\\TaskFile but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Repositories/Eloquent/TaskFileRepository.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\TaskLookup\:\:\$key\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Repositories/Eloquent/TaskLookupRepository.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:finished\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Repositories/Eloquent/TaskRepository.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:unfinished\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Repositories/Eloquent/TaskRepository.php
+
+		-
+			message: '#^Method App\\Repositories\\Eloquent\\TaskResultRepository\:\:bitrixResults\(\) should return Illuminate\\Support\\Collection\<int, App\\Models\\TaskResult\> but returns Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Illuminate\\Database\\Eloquent\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Repositories/Eloquent/TaskResultRepository.php
+
+		-
+			message: '#^Method App\\Repositories\\Eloquent\\TaskResultRepository\:\:create\(\) should return App\\Models\\TaskResult but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Repositories/Eloquent/TaskResultRepository.php
+
+		-
+			message: '#^Method App\\Repositories\\Eloquent\\TimeEntryRepository\:\:bitrixEntries\(\) should return Illuminate\\Support\\Collection\<int, App\\Models\\TaskElapsedItem\> but returns Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Illuminate\\Database\\Eloquent\\Model\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Repositories/Eloquent/TimeEntryRepository.php
+
+		-
+			message: '#^Method App\\Repositories\\Eloquent\\TimeEntryRepository\:\:create\(\) should return App\\Models\\TaskElapsedItem but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Repositories/Eloquent/TimeEntryRepository.php
+
+		-
+			message: '#^Parameter \#1 \$task of method App\\Services\\TaskChatService\:\:current\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/TaskChatService.php
+
+		-
+			message: '#^Parameter \#1 \$list of method App\\Repositories\\Contracts\\TaskChecklistRepositoryInterface\:\:firstItemOf\(\) expects App\\Models\\TaskChecklistItem, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/TaskChecklistService.php
+
+		-
+			message: '#^Parameter \#1 \$task of method App\\Integrations\\Bitrix24\\BitrixChecklistPusher\:\:handles\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 4
+			path: app/Services/TaskChecklistService.php
+
+		-
+			message: '#^Parameter \#1 \$task of method App\\Services\\TaskChecklistService\:\:current\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Services/TaskChecklistService.php
+
+		-
+			message: '#^Parameter \#1 \$task of method App\\Services\\TaskFileService\:\:current\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/TaskFileService.php
+
+		-
+			message: '#^Parameter \#3 \$send of class App\\Data\\FileDownload constructor expects Closure\(\)\: void, Closure\(\)\: int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/TaskFileService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\TaskLookup\:\:\$is_system\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/TaskLookupService.php
+
+		-
+			message: '#^Parameter \#1 \$task of method App\\Services\\TaskResultService\:\:current\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/TaskResultService.php
+
+		-
+			message: '#^Parameter \#1 \$task of method App\\Integrations\\Bitrix24\\BitrixTimePusher\:\:handles\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/TaskTimeService.php
+
+		-
+			message: '#^Parameter \#1 \$task of method App\\Repositories\\Contracts\\TimeEntryRepositoryInterface\:\:updateTaskTotal\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/TaskTimeService.php
+
+		-
+			message: '#^Parameter \#2 \$task of method App\\Services\\TaskTimeService\:\:current\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/TaskTimeService.php
