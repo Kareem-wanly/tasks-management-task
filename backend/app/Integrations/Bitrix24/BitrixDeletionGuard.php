@@ -60,13 +60,32 @@ class BitrixDeletionGuard
             return [];
         }
 
-        return array_values(array_filter($bitrixIds, function (int $bitrixId) use ($existsInBitrix) {
+        return array_values(array_filter($bitrixIds, function (int $bitrixId) use ($existsInBitrix, $entity) {
             try {
-                return ! $existsInBitrix($bitrixId);
+                $gone = ! $existsInBitrix($bitrixId);
             } catch (BitrixException) {
                 // Bitrix didn't answer clearly: keep the record.
-                return false;
+                $gone = false;
             }
+
+            if (! $gone) {
+                Log::info("Bitrix24 {$entity} kept: missing from the listing but not confirmed gone.", ['bitrix_id' => $bitrixId]);
+            }
+
+            return $gone;
         }));
+    }
+
+    /**
+     * Notes what was deleted here because it is gone from Bitrix (IDs only).
+     *
+     * @param  list<int>  $bitrixIds
+     * @param  string  $via  'event' (a delete event) or 'import' (the nightly full listing).
+     */
+    public function recordDeleted(string $entity, array $bitrixIds, string $via): void
+    {
+        if ($bitrixIds !== []) {
+            Log::info("Bitrix24 {$entity} deleted here: gone from Bitrix.", ['bitrix_ids' => array_values($bitrixIds), 'via' => $via]);
+        }
     }
 }

@@ -49,7 +49,10 @@ class SyncBitrixTask implements ShouldBeUniqueUntilProcessing, ShouldQueue
         // service account sees every task, so "not found" proves nothing otherwise.
         if ($row === null) {
             if (! $echo->isTaskEcho($this->bitrixTaskId, null) && $guard->serviceAccountIsAdmin()) {
-                Task::where('bitrix_task_id', $this->bitrixTaskId)->first()?->delete();
+                if ($task = Task::where('bitrix_task_id', $this->bitrixTaskId)->first()) {
+                    $task->delete();
+                    $guard->recordDeleted('tasks', [$this->bitrixTaskId], 'event');
+                }
             }
 
             return;

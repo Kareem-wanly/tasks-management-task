@@ -83,6 +83,7 @@ class ImportBitrixProjects implements ShouldQueue
 
         $projects = Project::whereIn('bitrix_group_id', $gone)->get();
         $projects->each->delete();
+        $guard->recordDeleted('groups', $projects->pluck('bitrix_group_id')->map(fn ($id) => (int) $id)->all(), 'import');
 
         return $projects->count();
     }

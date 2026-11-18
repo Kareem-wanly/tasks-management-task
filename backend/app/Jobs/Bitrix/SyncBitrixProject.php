@@ -47,7 +47,10 @@ class SyncBitrixProject implements ShouldBeUniqueUntilProcessing, ShouldQueue
         // service account sees every group, so "not found" proves nothing otherwise.
         if ($group === null) {
             if (! $echo->isProjectEcho($this->bitrixGroupId, null, false) && $guard->serviceAccountIsAdmin()) {
-                Project::where('bitrix_group_id', $this->bitrixGroupId)->first()?->delete();
+                if ($project = Project::where('bitrix_group_id', $this->bitrixGroupId)->first()) {
+                    $project->delete();
+                    $guard->recordDeleted('groups', [$this->bitrixGroupId], 'event');
+                }
             }
 
             return;

@@ -111,6 +111,7 @@ class ImportBitrixTasks implements ShouldQueue
 
         $tasks = Task::whereIn('bitrix_task_id', $gone)->get();
         $tasks->each->delete();
+        $guard->recordDeleted('tasks', $tasks->pluck('bitrix_task_id')->map(fn ($id) => (int) $id)->all(), 'import');
 
         return $tasks->count();
     }
