@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -28,93 +30,6 @@ class BitrixInstallTest extends TestCase
         Sleep::fake();
     }
 
-    private function payload(array $auth = []): array
-    {
-        return [
-            'event' => 'ONAPPINSTALL',
-            'data' => ['VERSION' => '1', 'ACTIVE' => 'Y', 'INSTALLED' => 'Y', 'LANGUAGE_ID' => 'en'],
-            'ts' => '1731230000',
-            'auth' => array_merge([
-                'access_token' => 'install-access',
-                'refresh_token' => 'install-refresh',
-                'expires_in' => '3600',
-                'scope' => 'task,sonet_group,socialnetwork,user,im,disk,department',
-                'domain' => 'portal.test',
-                'server_endpoint' => 'https://oauth.bitrix.info/rest/',
-                'status' => 'L',
-                'client_endpoint' => 'https://portal.test/rest/',
-                'member_id' => 'member-1',
-                'application_token' => 'app-token-1',
-            ], $auth),
-        ];
-    }
-
-    /**
-     * Answers the details batch and the event.bind batch.
-     */
-    private function pageUrl(string $domain = 'portal.test'): string
-    {
-        return "/api/bitrix/install?DOMAIN={$domain}&PROTOCOL=1&LANG=en&APP_SID=sid-1";
-    }
-
-    /**
-     * What the admin's browser posts when Bitrix opens the install page.
-     */
-    private function pagePayload(array $overrides = []): array
-    {
-        return array_merge([
-            'AUTH_ID' => 'page-access',
-            'AUTH_EXPIRES' => '3600',
-            'REFRESH_ID' => 'page-refresh',
-            'SERVER_ENDPOINT' => 'https://oauth.bitrix.info/rest/',
-            'APPLICATION_TOKEN' => 'page-app-token',
-            'APPLICATION_SCOPE' => 'task,sonet_group,socialnetwork,user,im,disk,department',
-            'member_id' => 'member-1',
-            'status' => 'L',
-            'PLACEMENT' => 'DEFAULT',
-            'PLACEMENT_OPTIONS' => '{"any":"1\/"}',
-        ], $overrides);
-    }
-
-    /**
-     * @param  string  $appCode  What app.info names as the app (a local app's CODE is its client_id).
-     */
-    private function fakeBitrix(bool $isAdmin = true, array $bindErrors = [], string $appCode = 'app-id', bool $detailsFail = false): void
-    {
-        Http::fake(function (Request $request) use ($isAdmin, $bindErrors, $appCode, $detailsFail) {
-            if (str_contains($request->url(), '/rest/app.info.json')) {
-                return Http::response(['result' => ['ID' => 40, 'CODE' => $appCode, 'STATUS' => 'L', 'INSTALLED' => false]]);
-            }
-
-            if (str_contains($request->url(), '/rest/user.admin.json')) {
-                return Http::response(['result' => $isAdmin]);
-            }
-
-            if ($detailsFail) {
-                return Http::response(['error' => 'ACCESS_DENIED', 'error_description' => 'Access denied'], 403);
-            }
-
-            if (isset($request['cmd']['app'])) {
-                return Http::response(['result' => [
-                    'result' => [
-                        'app' => ['ID' => 40, 'STATUS' => 'L', 'INSTALLED' => true],
-                        'scope' => ['task', 'sonet_group', 'socialnetwork', 'user', 'im', 'disk', 'department'],
-                        'me' => ['ID' => '1', 'NAME' => 'Admin', 'LAST_NAME' => 'User', 'EMAIL' => 'admin@portal.test', 'PERSONAL_PHONE' => 'x'],
-                        'admin' => $isAdmin,
-                        'departments' => [['ID' => '1', 'NAME' => 'HQ', 'PARENT' => null, 'SORT' => '500', 'UF_HEAD' => '1']],
-                    ],
-                    'result_error' => [],
-                    'result_total' => ['departments' => 1],
-                ]]);
-            }
-
-            return Http::response(['result' => [
-                'result' => array_fill_keys(array_diff(BitrixInstallService::EVENTS, array_keys($bindErrors)), true),
-                'result_error' => $bindErrors,
-            ]]);
-        });
-    }
-
     public function test_install_saves_the_portal_and_binds_events(): void
     {
         $this->fakeBitrix();
@@ -135,9 +50,9 @@ class BitrixInstallTest extends TestCase
         $this->assertSame([['ID' => '1', 'NAME' => 'HQ', 'PARENT' => null, 'SORT' => '500']], $portal->departments);
         $this->assertSame('en', $portal->language);
 
-        Http::assertSent(fn (Request $r) => ($r['cmd']['OnTaskAdd'] ?? null)
+        Http::assertSent(fn (Request $r): bool => ($r['cmd']['OnTaskAdd'] ?? null)
             === 'event.bind?'.http_build_query(['event' => 'OnTaskAdd', 'handler' => 'https://public.test/api/bitrix/events']));
-        Http::assertSent(fn (Request $r) => count($r['cmd'] ?? []) === count(BitrixInstallService::EVENTS));
+        Http::assertSent(fn (Request $r): bool => count($r['cmd'] ?? []) === count(BitrixInstallService::EVENTS));
     }
 
     public function test_tokens_are_encrypted_at_rest(): void
@@ -258,8 +173,8 @@ class BitrixInstallTest extends TestCase
         $this->assertSame('page-refresh', $portal->refresh_token);
         $this->assertSame('en', $portal->language);
         $this->assertTrue($portal->installer_is_admin);
-        Http::assertSent(fn (Request $r) => str_contains($r->url(), '/rest/app.info.json') && $r['auth'] === 'page-access');
-        Http::assertSent(fn (Request $r) => isset($r['cmd']['OnTaskAdd']));
+        Http::assertSent(fn (Request $r): bool => str_contains($r->url(), '/rest/app.info.json') && $r['auth'] === 'page-access');
+        Http::assertSent(fn (Request $r): bool => isset($r['cmd']['OnTaskAdd']));
     }
 
     public function test_install_page_with_a_token_bitrix_rejects_is_refused(): void
@@ -306,8 +221,95 @@ class BitrixInstallTest extends TestCase
         $this->post('/api/bitrix/install', $this->payload())->assertOk();
 
         Http::fake(['https://portal.test/rest/*' => Http::response(['result' => []])]);
-        app(BitrixClient::class)->callAsService('event.get');
+        resolve(BitrixClient::class)->callAsService('event.get');
 
-        Http::assertSent(fn (Request $r) => str_contains($r->url(), '/rest/event.get.json') && $r['auth'] === 'install-access');
+        Http::assertSent(fn (Request $r): bool => str_contains($r->url(), '/rest/event.get.json') && $r['auth'] === 'install-access');
+    }
+
+    private function payload(array $auth = []): array
+    {
+        return [
+            'event' => 'ONAPPINSTALL',
+            'data' => ['VERSION' => '1', 'ACTIVE' => 'Y', 'INSTALLED' => 'Y', 'LANGUAGE_ID' => 'en'],
+            'ts' => '1731230000',
+            'auth' => array_merge([
+                'access_token' => 'install-access',
+                'refresh_token' => 'install-refresh',
+                'expires_in' => '3600',
+                'scope' => 'task,sonet_group,socialnetwork,user,im,disk,department',
+                'domain' => 'portal.test',
+                'server_endpoint' => 'https://oauth.bitrix.info/rest/',
+                'status' => 'L',
+                'client_endpoint' => 'https://portal.test/rest/',
+                'member_id' => 'member-1',
+                'application_token' => 'app-token-1',
+            ], $auth),
+        ];
+    }
+
+    /**
+     * Answers the details batch and the event.bind batch.
+     */
+    private function pageUrl(string $domain = 'portal.test'): string
+    {
+        return "/api/bitrix/install?DOMAIN={$domain}&PROTOCOL=1&LANG=en&APP_SID=sid-1";
+    }
+
+    /**
+     * What the admin's browser posts when Bitrix opens the install page.
+     */
+    private function pagePayload(array $overrides = []): array
+    {
+        return array_merge([
+            'AUTH_ID' => 'page-access',
+            'AUTH_EXPIRES' => '3600',
+            'REFRESH_ID' => 'page-refresh',
+            'SERVER_ENDPOINT' => 'https://oauth.bitrix.info/rest/',
+            'APPLICATION_TOKEN' => 'page-app-token',
+            'APPLICATION_SCOPE' => 'task,sonet_group,socialnetwork,user,im,disk,department',
+            'member_id' => 'member-1',
+            'status' => 'L',
+            'PLACEMENT' => 'DEFAULT',
+            'PLACEMENT_OPTIONS' => '{"any":"1\/"}',
+        ], $overrides);
+    }
+
+    /**
+     * @param  string  $appCode  What app.info names as the app (a local app's CODE is its client_id).
+     */
+    private function fakeBitrix(bool $isAdmin = true, array $bindErrors = [], string $appCode = 'app-id', bool $detailsFail = false): void
+    {
+        Http::fake(function (Request $request) use ($isAdmin, $bindErrors, $appCode, $detailsFail) {
+            if (str_contains($request->url(), '/rest/app.info.json')) {
+                return Http::response(['result' => ['ID' => 40, 'CODE' => $appCode, 'STATUS' => 'L', 'INSTALLED' => false]]);
+            }
+
+            if (str_contains($request->url(), '/rest/user.admin.json')) {
+                return Http::response(['result' => $isAdmin]);
+            }
+
+            if ($detailsFail) {
+                return Http::response(['error' => 'ACCESS_DENIED', 'error_description' => 'Access denied'], 403);
+            }
+
+            if (isset($request['cmd']['app'])) {
+                return Http::response(['result' => [
+                    'result' => [
+                        'app' => ['ID' => 40, 'STATUS' => 'L', 'INSTALLED' => true],
+                        'scope' => ['task', 'sonet_group', 'socialnetwork', 'user', 'im', 'disk', 'department'],
+                        'me' => ['ID' => '1', 'NAME' => 'Admin', 'LAST_NAME' => 'User', 'EMAIL' => 'admin@portal.test', 'PERSONAL_PHONE' => 'x'],
+                        'admin' => $isAdmin,
+                        'departments' => [['ID' => '1', 'NAME' => 'HQ', 'PARENT' => null, 'SORT' => '500', 'UF_HEAD' => '1']],
+                    ],
+                    'result_error' => [],
+                    'result_total' => ['departments' => 1],
+                ]]);
+            }
+
+            return Http::response(['result' => [
+                'result' => array_fill_keys(array_diff(BitrixInstallService::EVENTS, array_keys($bindErrors)), true),
+                'result_error' => $bindErrors,
+            ]]);
+        });
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Console\Commands;
 
 use App\Jobs\Bitrix\ImportBitrixProjects;
@@ -14,12 +16,12 @@ use Illuminate\Console\Command;
  */
 class SyncBitrixChanges extends Command
 {
+    /** Overlap with the previous run, against clock drift between us and Bitrix. */
+    private const OVERLAP_SECONDS = 60;
+
     protected $signature = 'bitrix:sync-changes';
 
     protected $description = 'Bring in the projects and tasks changed in Bitrix24 since the last sync';
-
-    /** Overlap with the previous run, against clock drift between us and Bitrix. */
-    private const OVERLAP_SECONDS = 60;
 
     public function handle(BitrixSyncCursorRepositoryInterface $cursors): int
     {
@@ -31,8 +33,8 @@ class SyncBitrixChanges extends Command
         }
 
         // Few groups, and no reliable change filter for them: always all of them.
-        ImportBitrixProjects::dispatchSync();
-        ImportBitrixTasks::dispatchSync($since->toImmutable()->subSeconds(self::OVERLAP_SECONDS));
+        dispatch_sync(new ImportBitrixProjects);
+        dispatch_sync(new ImportBitrixTasks($since->toImmutable()->subSeconds(self::OVERLAP_SECONDS)));
 
         $this->info("Bitrix24 changes synced since {$since->toDateTimeString()}.");
 

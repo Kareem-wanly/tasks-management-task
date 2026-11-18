@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24;
 
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
@@ -52,7 +54,7 @@ class TokenManager
     private function refreshUnderLock(HasBitrixToken $holder, BitrixToken $token, bool $force): BitrixToken
     {
         return Cache::lock($holder->bitrixTokenLockKey(), self::LOCK_SECONDS)
-            ->block(self::LOCK_SECONDS, function () use ($holder, $token, $force) {
+            ->block(self::LOCK_SECONDS, function () use ($holder, $token, $force): BitrixToken {
                 if ($holder instanceof Model && $holder->exists) {
                     $holder->refresh();
                 }

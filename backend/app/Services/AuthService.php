@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Exceptions\BusinessRuleException;
@@ -28,10 +30,10 @@ class AuthService
      */
     public function register(array $data): array
     {
-        $user = DB::transaction(function () use ($data) {
+        $user = DB::transaction(function () use ($data): User {
             $user = $this->users->create(['name' => $data['name'], 'email' => $data['email'], 'password' => $data['password']]);
 
-            if ($member = $this->roles->findByName('Member')) {
+            if (($member = $this->roles->findByName('Member')) instanceof \App\Models\Role) {
                 $this->users->attachRole($user, $member->id);
             }
 
@@ -46,7 +48,7 @@ class AuthService
     {
         $user = $this->users->findByEmail($email);
 
-        if (! $user || ! Hash::check($password, $user->password)) {
+        if (! $user instanceof User || ! Hash::check($password, $user->password)) {
             throw new BusinessRuleException('Invalid login credentials', 401);
         }
 

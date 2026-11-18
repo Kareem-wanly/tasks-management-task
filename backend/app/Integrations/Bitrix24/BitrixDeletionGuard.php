@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24;
 
 use Illuminate\Support\Facades\Log;
@@ -60,7 +62,7 @@ class BitrixDeletionGuard
             return [];
         }
 
-        return array_values(array_filter($bitrixIds, function (int $bitrixId) use ($existsInBitrix, $entity) {
+        return array_values(array_filter($bitrixIds, function (int $bitrixId) use ($existsInBitrix, $entity): bool {
             try {
                 $gone = ! $existsInBitrix($bitrixId);
             } catch (BitrixException) {

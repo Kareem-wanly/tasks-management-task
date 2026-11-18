@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -9,7 +11,7 @@ return new class extends Migration
     public function up(): void
     {
         // Bitrix24 step 4.6: a task's official results (what was achieved).
-        Schema::create('task_results', function (Blueprint $table) {
+        Schema::create('task_results', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('task_id')->constrained()->cascadeOnDelete();
             $table->unsignedBigInteger('bitrix_result_id')->nullable();

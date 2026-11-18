@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs\Bitrix;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -51,11 +53,11 @@ class ImportBitrixTasks implements ShouldQueue
                 'select' => BitrixTaskMapper::SELECT,
                 'filter' => $filter,
                 'order' => ['ID' => 'ASC'],
-            ], function (array $page, int $total) use ($tasks, $mapper, $fetch, $cursor, $cursors, $earlierTotal, &$skipped, &$seen) {
+            ], function (array $page, int $total) use ($tasks, $mapper, $fetch, $cursor, $cursors, $earlierTotal, &$skipped, &$seen): void {
                 $rows = $page['tasks'] ?? [];
 
                 // A full import runs after the users; a delta may meet someone new.
-                if ($this->changedSince) {
+                if ($this->changedSince instanceof CarbonImmutable) {
                     $people = [];
                     foreach ($rows as $row) {
                         $members = $mapper->members($row);
@@ -66,7 +68,7 @@ class ImportBitrixTasks implements ShouldQueue
 
                 foreach ($rows as $row) {
                     $seen[] = (int) $row['id'];
-                    if (! $tasks->upsert($row)) {
+                    if (! $tasks->upsert($row) instanceof \App\Models\Task) {
                         $skipped++;
                     }
                 }
@@ -75,10 +77,10 @@ class ImportBitrixTasks implements ShouldQueue
             });
         }
 
-        $deleted = $this->changedSince ? 0 : $this->deleteMissing($taskRepository, $seen, $fetch, $guard);
+        $deleted = $this->changedSince instanceof CarbonImmutable ? 0 : $this->deleteMissing($taskRepository, $seen, $fetch, $guard);
 
         $cursors->complete($cursor);
-        Log::info($this->changedSince ? 'Bitrix24 task changes synced.' : 'Bitrix24 tasks imported.', [
+        Log::info($this->changedSince instanceof CarbonImmutable ? 'Bitrix24 task changes synced.' : 'Bitrix24 tasks imported.', [
             'processed' => $cursor->processed, 'skipped' => $skipped, 'deleted' => $deleted, 'portal_total' => $earlierTotal,
         ]);
     }
@@ -86,7 +88,7 @@ class ImportBitrixTasks implements ShouldQueue
     /** @return list<array<string, mixed>> */
     private function filters(): array
     {
-        if ($this->changedSince) {
+        if ($this->changedSince instanceof CarbonImmutable) {
             return [['>CHANGED_DATE' => $this->changedSince->toIso8601String()]];
         }
 
@@ -109,7 +111,7 @@ class ImportBitrixTasks implements ShouldQueue
         // Compared here, not in SQL: a NOT IN with every Bitrix ID outgrows the placeholder limit.
         $missing = array_values(array_diff($tasks->allBitrixIds(), $seen));
 
-        $gone = $guard->confirmedGone($missing, fn (int $id) => $fetch->task($id) !== null, 'tasks');
+        $gone = $guard->confirmedGone($missing, fn (int $id): bool => $fetch->task($id) !== null, 'tasks');
         $deleted = $tasks->deleteByBitrixIds($gone);
         $guard->recordDeleted('tasks', $gone, 'import');
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -11,7 +13,7 @@ return new class extends Migration
         // Bitrix24 step 4.5: files attached to a task. In Bitrix a file lives
         // on the uploader's Drive (bitrix_disk_file_id) and is attached to the
         // task (attached_object_id). Tasks outside Bitrix keep theirs in `path`.
-        Schema::create('task_files', function (Blueprint $table) {
+        Schema::create('task_files', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('task_id')->constrained()->cascadeOnDelete();
             $table->unsignedBigInteger('bitrix_disk_file_id')->nullable();

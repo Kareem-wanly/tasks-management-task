@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs\Bitrix;
 
 use App\Integrations\Bitrix24\BitrixChecklistSync;
@@ -35,7 +37,7 @@ class ImportBitrixChecklists implements ShouldQueue
         $total = $taskRepository->countInBitrix();
         $failed = 0;
 
-        $taskRepository->chunkInBitrix(self::BATCH, function ($tasks) use ($bitrix, $checklists, $cursor, $cursors, $total, &$failed) {
+        $taskRepository->chunkInBitrix(self::BATCH, function ($tasks) use ($bitrix, $checklists, $cursor, $cursors, $total, &$failed): void {
             $commands = [];
             foreach ($tasks as $task) {
                 $commands["task_{$task->id}"] = ['task.checklistitem.getlist', ['TASKID' => $task->bitrix_task_id, 'ORDER' => ['SORT_INDEX' => 'asc']]];

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Exceptions\BusinessRuleException;
@@ -54,7 +56,7 @@ class UserService
         $user = new User(['name' => $data['name'], 'email' => $data['email'], 'password' => $data['password']]);
         $this->bitrix->invite($actor, $user);
 
-        DB::transaction(function () use ($user, $data) {
+        DB::transaction(function () use ($user, $data): void {
             $this->users->save($user);
             $this->users->attachRole($user, ! empty($data['role_id']) ? (int) $data['role_id'] : $this->roles->memberRole()->id);
         });

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
@@ -26,7 +28,7 @@ class TaskResource extends JsonResource
             'creator' => new UserResource($this->whenLoaded('creator')),
             'accomplices' => UserResource::collection($this->whenLoaded('accomplices')),
             'auditors' => UserResource::collection($this->whenLoaded('auditors')),
-            'parent' => $this->whenLoaded('parent', fn () => $this->parent ? ['id' => $this->parent->id, 'title' => $this->parent->title] : null),
+            'parent' => $this->whenLoaded('parent', fn (): ?array => $this->parent ? ['id' => $this->parent->id, 'title' => $this->parent->title] : null),
             'subtasks' => self::collection($this->whenLoaded('subtasks')),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

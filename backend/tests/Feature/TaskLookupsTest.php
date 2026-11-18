@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -28,34 +30,6 @@ class TaskLookupsTest extends TestCase
     {
         parent::setUp();
         $this->seed();
-    }
-
-    private function manager(): User
-    {
-        $role = Role::create(['name' => 'settings_'.uniqid(), 'display_name' => 'S', 'description' => 'x']);
-        $role->permissions()->sync(Permission::where('name', 'task_settings.manage')->pluck('id'));
-        $user = User::factory()->create();
-        $user->roles()->attach($role);
-
-        return $user;
-    }
-
-    private function member(): User
-    {
-        $user = User::factory()->create();
-        $user->roles()->attach(Role::where('name', 'Member')->first());
-
-        return $user;
-    }
-
-    private function task(array $attributes = []): Task
-    {
-        $owner = User::factory()->create();
-        $attributes['project_id'] ??= Project::forceCreate(['title' => 'P', 'status' => 'active', 'owner_id' => $owner->id])->id;
-
-        return Task::forceCreate($attributes + [
-            'title' => 'T', 'status' => 'todo', 'priority' => 'medium', 'created_by' => $owner->id,
-        ]);
     }
 
     public function test_migration_seeds_the_bitrix_defaults(): void
@@ -227,12 +201,40 @@ class TaskLookupsTest extends TestCase
         $this->assertSame('To Do', TaskStatus::where('key', 'todo')->value('name'));
     }
 
+    private function manager(): User
+    {
+        $role = Role::create(['name' => 'settings_'.uniqid(), 'display_name' => 'S', 'description' => 'x']);
+        $role->permissions()->sync(Permission::where('name', 'task_settings.manage')->pluck('id'));
+        $user = User::factory()->create();
+        $user->roles()->attach($role);
+
+        return $user;
+    }
+
+    private function member(): User
+    {
+        $user = User::factory()->create();
+        $user->roles()->attach(Role::where('name', 'Member')->first());
+
+        return $user;
+    }
+
+    private function task(array $attributes = []): Task
+    {
+        $owner = User::factory()->create();
+        $attributes['project_id'] ??= Project::forceCreate(['title' => 'P', 'status' => 'active', 'owner_id' => $owner->id])->id;
+
+        return Task::forceCreate($attributes + [
+            'title' => 'T', 'status' => 'todo', 'priority' => 'medium', 'created_by' => $owner->id,
+        ]);
+    }
+
     private function fakeServiceAccount(): void
     {
         config(['bitrix.portal' => 'portal.test']);
         $this->app->instance(BitrixClient::SERVICE_ACCOUNT, new class implements HasBitrixToken
         {
-            public function bitrixToken(): ?BitrixToken
+            public function bitrixToken(): BitrixToken
             {
                 return new BitrixToken('access', 'refresh', CarbonImmutable::now()->addHour());
             }

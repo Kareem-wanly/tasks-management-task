@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use App\Data\TaskFiles;
@@ -14,7 +16,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class TaskFilesResource extends JsonResource
 {
-    public static $wrap = null;
+    public static $wrap;
 
     public function toArray(Request $request): array
     {

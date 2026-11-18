@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -13,6 +15,7 @@ use App\Models\Task;
 use App\Models\TaskChatMessage;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Closure;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
@@ -49,7 +52,7 @@ class BitrixTaskChatTest extends TestCase
     private bool $unreachable = false;
 
     /** Runs as Bitrix creates a message, e.g. a page poll storing it before our request does. */
-    private ?\Closure $beforeAdd = null;
+    private ?Closure $beforeAdd = null;
 
     protected function setUp(): void
     {
@@ -83,60 +86,6 @@ class BitrixTaskChatTest extends TestCase
         Sanctum::actingAs($this->actor);
     }
 
-    private function user(int $bitrixId, string $name, Role $role): User
-    {
-        $user = User::factory()->create(['bitrix_user_id' => $bitrixId, 'name' => ucfirst($name)]);
-        $user->roles()->attach($role);
-        $user->storeBitrixToken(new BitrixToken("{$name}-access", "{$name}-refresh", CarbonImmutable::now()->addHour()));
-
-        return $user;
-    }
-
-    private function bitrix(string $method, array $data): mixed
-    {
-        return match ($method) {
-            'tasks.task.get' => ['item' => ['id' => 15, 'chatId' => self::CHAT]],
-            'im.dialog.messages.get' => $this->page($data),
-            'im.message.add' => $this->say(self::TOKENS[$data['auth']], $data['MESSAGE']),
-            'im.message.update' => (bool) ($this->messages[(int) $data['ID']]['text'] = $data['MESSAGE']),
-            'im.message.delete' => (function () use ($data) {
-                unset($this->messages[(int) $data['ID']]);
-
-                return true;
-            })(),
-            'disk.file.get' => ['ID' => $data['id'], 'DOWNLOAD_URL' => "https://portal.test/download/disk/{$data['id']}?auth=secret"],
-            default => true,
-        };
-    }
-
-    /** im.dialog.messages.get: newest first, older than LAST_ID, LIMIT of them. */
-    private function page(array $data): array
-    {
-        $rows = collect($this->messages)->sortKeysDesc()
-            ->filter(fn ($row, $id) => ! isset($data['LAST_ID']) || $id < (int) $data['LAST_ID'])
-            ->take((int) ($data['LIMIT'] ?? 20))
-            ->values()->all();
-
-        return ['chat_id' => self::CHAT, 'messages' => $rows, 'users' => [], 'files' => $this->files];
-    }
-
-    private function say(int $authorBitrixId, string $text, array $params = []): int
-    {
-        $id = ($this->messages === [] ? 1000 : max(array_keys($this->messages))) + 1;
-        $this->messages[$id] = ['id' => $id, 'chat_id' => self::CHAT, 'author_id' => $authorBitrixId,
-            'date' => '2026-11-17T09:00:00+00:00', 'text' => $text, 'params' => $params];
-        if ($this->beforeAdd) {
-            ($this->beforeAdd)($id);
-        }
-
-        return $id;
-    }
-
-    private function chat(): TestResponse
-    {
-        return $this->getJson("/api/tasks/{$this->task->id}/chat");
-    }
-
     public function test_opening_the_task_brings_in_its_bitrix_chat(): void
     {
         $this->say(6, 'Hello from Bitrix');
@@ -167,7 +116,7 @@ class BitrixTaskChatTest extends TestCase
             ->assertJsonPath('data.0.text', 'On it')
             ->assertJsonPath('data.0.can_edit', true);
 
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'im.message.add.json')
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'im.message.add.json')
             && $r['auth'] === 'colleague-access' && $r['DIALOG_ID'] === 'chat'.self::CHAT && $r['MESSAGE'] === 'On it');
         $this->assertSame(1001, TaskChatMessage::sole()->bitrix_message_id);
 
@@ -180,7 +129,7 @@ class BitrixTaskChatTest extends TestCase
     public function test_a_message_a_refresh_stored_first_is_not_saved_twice(): void
     {
         Sanctum::actingAs($this->colleague);
-        $this->beforeAdd = function (int $bitrixId) {
+        $this->beforeAdd = function (int $bitrixId): void {
             TaskChatMessage::create(['task_id' => $this->task->id, 'bitrix_message_id' => $bitrixId, 'author_id' => $this->colleague->id, 'text' => 'On it']);
         };
 
@@ -196,10 +145,10 @@ class BitrixTaskChatTest extends TestCase
         $message = TaskChatMessage::sole();
 
         $this->putJson("/api/task-chat-messages/{$message->id}", ['text' => 'Final'])->assertOk()->assertJsonPath('data.0.text', 'Final');
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'im.message.update.json') && $r['auth'] === 'colleague-access' && $r['ID'] === 1001);
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'im.message.update.json') && $r['auth'] === 'colleague-access' && $r['ID'] === 1001);
 
         $this->deleteJson("/api/task-chat-messages/{$message->id}")->assertOk()->assertJsonCount(0, 'data');
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'im.message.delete.json') && $r['ID'] === 1001);
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'im.message.delete.json') && $r['ID'] === 1001);
         $this->assertSame([], $this->messages);
     }
 
@@ -219,7 +168,7 @@ class BitrixTaskChatTest extends TestCase
         $this->putJson("/api/task-chat-messages/{$system->id}", ['text' => 'x'])->assertForbidden();
         $this->deleteJson("/api/task-chat-messages/{$system->id}")->assertForbidden();
 
-        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'im.message.update') || str_contains($r->url(), 'im.message.delete'));
+        Http::assertNotSent(fn (Request $r): bool => str_contains($r->url(), 'im.message.update') || str_contains($r->url(), 'im.message.delete'));
     }
 
     public function test_edits_and_deletes_made_in_bitrix_show_on_the_next_open(): void
@@ -268,7 +217,7 @@ class BitrixTaskChatTest extends TestCase
 
         $response->assertOk()->assertHeader('content-disposition', 'attachment; filename=plan.png');
         $this->assertSame('file-bytes', $response->streamedContent());
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'disk.file.get.json') && $r['auth'] === 'actor-access');
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'disk.file.get.json') && $r['auth'] === 'actor-access');
 
         // Only files of that message.
         $this->get("/api/task-chat-messages/{$message->id}/files/999/download")->assertForbidden();
@@ -300,5 +249,59 @@ class BitrixTaskChatTest extends TestCase
 
         $this->assertSame(59, TaskChatMessage::count());
         $this->assertNull(TaskChatMessage::where('bitrix_message_id', 1001)->first());
+    }
+
+    private function user(int $bitrixId, string $name, Role $role): User
+    {
+        $user = User::factory()->create(['bitrix_user_id' => $bitrixId, 'name' => ucfirst($name)]);
+        $user->roles()->attach($role);
+        $user->storeBitrixToken(new BitrixToken("{$name}-access", "{$name}-refresh", CarbonImmutable::now()->addHour()));
+
+        return $user;
+    }
+
+    private function bitrix(string $method, array $data): mixed
+    {
+        return match ($method) {
+            'tasks.task.get' => ['item' => ['id' => 15, 'chatId' => self::CHAT]],
+            'im.dialog.messages.get' => $this->page($data),
+            'im.message.add' => $this->say(self::TOKENS[$data['auth']], $data['MESSAGE']),
+            'im.message.update' => (bool) ($this->messages[(int) $data['ID']]['text'] = $data['MESSAGE']),
+            'im.message.delete' => (function () use ($data): true {
+                unset($this->messages[(int) $data['ID']]);
+
+                return true;
+            })(),
+            'disk.file.get' => ['ID' => $data['id'], 'DOWNLOAD_URL' => "https://portal.test/download/disk/{$data['id']}?auth=secret"],
+            default => true,
+        };
+    }
+
+    /** im.dialog.messages.get: newest first, older than LAST_ID, LIMIT of them. */
+    private function page(array $data): array
+    {
+        $rows = collect($this->messages)->sortKeysDesc()
+            ->filter(fn ($row, $id): bool => ! isset($data['LAST_ID']) || $id < (int) $data['LAST_ID'])
+            ->take((int) ($data['LIMIT'] ?? 20))
+            ->values()->all();
+
+        return ['chat_id' => self::CHAT, 'messages' => $rows, 'users' => [], 'files' => $this->files];
+    }
+
+    private function say(int $authorBitrixId, string $text, array $params = []): int
+    {
+        $id = ($this->messages === [] ? 1000 : max(array_keys($this->messages))) + 1;
+        $this->messages[$id] = ['id' => $id, 'chat_id' => self::CHAT, 'author_id' => $authorBitrixId,
+            'date' => '2026-11-17T09:00:00+00:00', 'text' => $text, 'params' => $params];
+        if ($this->beforeAdd instanceof Closure) {
+            ($this->beforeAdd)($id);
+        }
+
+        return $id;
+    }
+
+    private function chat(): TestResponse
+    {
+        return $this->getJson("/api/tasks/{$this->task->id}/chat");
     }
 }

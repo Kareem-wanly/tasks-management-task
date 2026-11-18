@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Exceptions\BusinessRuleException;
@@ -65,7 +67,7 @@ class ProjectService
 
         $this->bitrix->create($actor, $project);
 
-        DB::transaction(function () use ($actor, $project) {
+        DB::transaction(function () use ($actor, $project): void {
             $this->projects->save($project);
             // The same role the Bitrix import gives the group owner.
             $this->projects->attachMember($project, $actor->id, 'owner');

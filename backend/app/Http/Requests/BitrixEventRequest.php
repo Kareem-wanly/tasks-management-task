@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests;
 
 use App\Services\BitrixEventService;
@@ -14,7 +16,7 @@ class BitrixEventRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return app(BitrixEventService::class)->isFromOurPortal($this->input('auth.application_token'), $this->input('auth.member_id'));
+        return resolve(BitrixEventService::class)->isFromOurPortal($this->input('auth.application_token'), $this->input('auth.member_id'));
     }
 
     public function rules(): array

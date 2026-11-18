@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24;
 
 use App\Models\Task;
@@ -26,7 +28,7 @@ class BitrixResultSync
     public function sync(Task $task, array $items): void
     {
         $ours = $this->results->bitrixResults($task);
-        $authors = $this->users->idsByBitrixIds(array_map(fn ($i) => (int) ($i['authorId'] ?? 0), $items));
+        $authors = $this->users->idsByBitrixIds(array_map(fn (array $i): int => (int) ($i['authorId'] ?? 0), $items));
         $seen = [];
 
         foreach ($items as $item) {
@@ -54,6 +56,6 @@ class BitrixResultSync
 
     private function time(mixed $value): ?Carbon
     {
-        return is_string($value) && $value !== '' ? Carbon::parse($value)->setTimezone(config('app.timezone')) : null;
+        return is_string($value) && $value !== '' ? \Illuminate\Support\Facades\Date::parse($value)->setTimezone(config('app.timezone')) : null;
     }
 }

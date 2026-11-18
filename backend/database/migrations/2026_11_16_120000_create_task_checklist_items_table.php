@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -10,7 +12,7 @@ return new class extends Migration
     {
         // Bitrix24 step 4.3: checklists. As in Bitrix, a checklist is an item
         // without a parent and its items hang under it.
-        Schema::create('task_checklist_items', function (Blueprint $table) {
+        Schema::create('task_checklist_items', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('task_id')->constrained()->cascadeOnDelete();
             $table->unsignedBigInteger('bitrix_item_id')->nullable();

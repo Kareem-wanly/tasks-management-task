@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
@@ -21,6 +23,15 @@ abstract class TaskLookup extends Model
     /** The tasks column that holds this lookup's key. */
     abstract public static function taskColumn(): string;
 
+    /**
+     * The Bitrix value to look a row up by. Statuses map Bitrix's legacy
+     * "New" to Pending (TaskStatus); priorities use the value as it is.
+     */
+    public static function normalizeBitrixId(int $bitrixId): int
+    {
+        return $bitrixId;
+    }
+
     protected function casts(): array
     {
         return [
@@ -30,17 +41,8 @@ abstract class TaskLookup extends Model
         ];
     }
 
-    public function scopeOrdered(Builder $query): Builder
+    protected function scopeOrdered(Builder $query): Builder
     {
         return $query->orderBy('sort')->orderBy('id');
-    }
-
-    /**
-     * The Bitrix value to look a row up by. Statuses map Bitrix's legacy
-     * "New" to Pending (TaskStatus); priorities use the value as it is.
-     */
-    public static function normalizeBitrixId(int $bitrixId): int
-    {
-        return $bitrixId;
     }
 }

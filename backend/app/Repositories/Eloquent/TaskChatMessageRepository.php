@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repositories\Eloquent;
 
 use App\Models\Task;
@@ -13,8 +15,7 @@ class TaskChatMessageRepository implements TaskChatMessageRepositoryInterface
     public function latestForTask(Task $task, int $limit): Collection
     {
         return $task->chatMessages()
-            ->with(['author:id,name,avatar_url', 'task'])
-            ->orderByDesc('created_at')->orderByDesc('id')
+            ->with(['author:id,name,avatar_url', 'task'])->latest()->orderByDesc('id')
             ->limit($limit)
             ->get()
             ->reverse()

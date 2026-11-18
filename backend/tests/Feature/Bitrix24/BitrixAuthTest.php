@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Models\Role;
@@ -36,57 +38,6 @@ class BitrixAuthTest extends TestCase
             'bitrix.frontend_app_url' => self::APP_PAGE,
         ]);
         Role::create(['name' => 'Member', 'display_name' => 'Team Member', 'description' => 'x']);
-    }
-
-    private function fakeBitrix(array $profile = [], string $tokenDomain = 'portal.test', string $appCode = 'app-id'): void
-    {
-        Http::fake([
-            // A local app's CODE is its client_id.
-            'https://portal.test/rest/app.info.json' => Http::response(['result' => ['ID' => 40, 'CODE' => $appCode]]),
-            'https://oauth.bitrix.info/*' => Http::response([
-                'access_token' => 'user-access',
-                'refresh_token' => 'user-refresh',
-                'expires_in' => 3600,
-                'client_endpoint' => "https://{$tokenDomain}/rest/",
-                'member_id' => 'member-1',
-            ]),
-            'https://portal.test/rest/user.current.json' => Http::response(['result' => array_merge([
-                'ID' => '42',
-                'NAME' => 'Sara',
-                'LAST_NAME' => 'Ali',
-                'EMAIL' => 'Sara@Portal.test',
-                'PERSONAL_PHOTO' => 'https://portal.test/photo.jpg',
-                'WORK_POSITION' => 'Engineer',
-            ], $profile)]),
-        ]);
-    }
-
-    private function oauthCallback(array $query = []): TestResponse
-    {
-        return $this->withSession(['bitrix_oauth_state' => 'good-state', 'bitrix_login_nonce' => self::NONCE])
-            ->get('/auth/bitrix/callback?'.http_build_query(array_merge([
-                'code' => 'auth-code',
-                'state' => 'good-state',
-                'domain' => 'portal.test',
-                'member_id' => 'member-1',
-            ], $query)));
-    }
-
-    /** The one-time code the callback hands the frontend. */
-    private function codeFrom(TestResponse $response): string
-    {
-        $location = (string) $response->headers->get('Location');
-        $this->assertStringStartsWith(self::FRONTEND.'#code=', $location);
-
-        return substr($location, strlen(self::FRONTEND.'#code='));
-    }
-
-    /** Signs in the way the frontend does: trades the code and this browser's nonce for an API token. */
-    private function tokenFrom(TestResponse $response): string
-    {
-        return $this->postJson('/api/auth/bitrix/exchange', ['code' => $this->codeFrom($response), 'nonce' => self::NONCE])
-            ->assertOk()
-            ->json('token');
     }
 
     public function test_redirect_sends_the_user_to_bitrix_with_a_state_and_keeps_the_nonce(): void
@@ -213,7 +164,7 @@ class BitrixAuthTest extends TestCase
         $this->assertSame('user-access', $user->bitrixToken()->accessToken);
         $this->assertSame('user-refresh', $user->bitrixToken()->refreshToken);
         $this->assertNotSame('user-access', DB::table('users')->value('bitrix_access_token'));
-        Http::assertSent(fn (Request $r) => str_contains($r->url(), 'oauth/token') && $r['code'] === 'auth-code' && $r['grant_type'] === 'authorization_code');
+        Http::assertSent(fn (Request $r): bool => str_contains($r->url(), 'oauth/token') && $r['code'] === 'auth-code' && $r['grant_type'] === 'authorization_code');
     }
 
     public function test_inactive_employee_cannot_sign_in(): void
@@ -254,17 +205,6 @@ class BitrixAuthTest extends TestCase
         $this->assertDatabaseCount('users', 0);
     }
 
-    private function appSession(array $overrides = []): TestResponse
-    {
-        return $this->postJson('/api/auth/bitrix/app-session', array_merge([
-            'access_token' => 'frame-access',
-            'refresh_token' => 'frame-refresh',
-            'expires_in' => 3600,
-            'domain' => 'portal.test',
-            'member_id' => 'member-1',
-        ], $overrides));
-    }
-
     /** The app page signs in with the tokens Bitrix's JS SDK gave it; the API token comes back in the body. */
     public function test_the_app_page_signs_in_with_the_tokens_from_bitrix(): void
     {
@@ -274,7 +214,7 @@ class BitrixAuthTest extends TestCase
 
         $this->withToken($token)->getJson('/api/me')->assertOk()->assertJsonPath('user.id', User::sole()->id);
         $this->assertSame('frame-access', User::sole()->bitrixToken()->accessToken);
-        Http::assertSent(fn (Request $r) => str_contains($r->url(), 'user.current') && $r['auth'] === 'frame-access');
+        Http::assertSent(fn (Request $r): bool => str_contains($r->url(), 'user.current') && $r['auth'] === 'frame-access');
     }
 
     /** Bitrix's JS SDK gives expires_in as the expiry time (Unix seconds or milliseconds), not seconds left. */
@@ -354,5 +294,67 @@ class BitrixAuthTest extends TestCase
             ->assertRedirect(self::FRONTEND.'#error=invalid_state');
 
         Http::assertNothingSent();
+    }
+
+    private function fakeBitrix(array $profile = [], string $tokenDomain = 'portal.test', string $appCode = 'app-id'): void
+    {
+        Http::fake([
+            // A local app's CODE is its client_id.
+            'https://portal.test/rest/app.info.json' => Http::response(['result' => ['ID' => 40, 'CODE' => $appCode]]),
+            'https://oauth.bitrix.info/*' => Http::response([
+                'access_token' => 'user-access',
+                'refresh_token' => 'user-refresh',
+                'expires_in' => 3600,
+                'client_endpoint' => "https://{$tokenDomain}/rest/",
+                'member_id' => 'member-1',
+            ]),
+            'https://portal.test/rest/user.current.json' => Http::response(['result' => array_merge([
+                'ID' => '42',
+                'NAME' => 'Sara',
+                'LAST_NAME' => 'Ali',
+                'EMAIL' => 'Sara@Portal.test',
+                'PERSONAL_PHOTO' => 'https://portal.test/photo.jpg',
+                'WORK_POSITION' => 'Engineer',
+            ], $profile)]),
+        ]);
+    }
+
+    private function oauthCallback(array $query = []): TestResponse
+    {
+        return $this->withSession(['bitrix_oauth_state' => 'good-state', 'bitrix_login_nonce' => self::NONCE])
+            ->get('/auth/bitrix/callback?'.http_build_query(array_merge([
+                'code' => 'auth-code',
+                'state' => 'good-state',
+                'domain' => 'portal.test',
+                'member_id' => 'member-1',
+            ], $query)));
+    }
+
+    /** The one-time code the callback hands the frontend. */
+    private function codeFrom(TestResponse $response): string
+    {
+        $location = (string) $response->headers->get('Location');
+        $this->assertStringStartsWith(self::FRONTEND.'#code=', $location);
+
+        return substr($location, strlen(self::FRONTEND.'#code='));
+    }
+
+    /** Signs in the way the frontend does: trades the code and this browser's nonce for an API token. */
+    private function tokenFrom(TestResponse $response): string
+    {
+        return $this->postJson('/api/auth/bitrix/exchange', ['code' => $this->codeFrom($response), 'nonce' => self::NONCE])
+            ->assertOk()
+            ->json('token');
+    }
+
+    private function appSession(array $overrides = []): TestResponse
+    {
+        return $this->postJson('/api/auth/bitrix/app-session', array_merge([
+            'access_token' => 'frame-access',
+            'refresh_token' => 'frame-refresh',
+            'expires_in' => 3600,
+            'domain' => 'portal.test',
+            'member_id' => 'member-1',
+        ], $overrides));
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -34,51 +36,6 @@ class BitrixClientTest extends TestCase
         Sleep::fake();
     }
 
-    private function holder(?BitrixToken $token): HasBitrixToken
-    {
-        return new class($token) implements HasBitrixToken
-        {
-            public function __construct(public ?BitrixToken $token) {}
-
-            public function bitrixToken(): ?BitrixToken
-            {
-                return $this->token;
-            }
-
-            public function storeBitrixToken(BitrixToken $token): void
-            {
-                $this->token = $token;
-            }
-
-            public function bitrixTokenLockKey(): string
-            {
-                return 'bitrix-token:test';
-            }
-        };
-    }
-
-    private function token(int $expiresInSeconds = 3600, string $access = 'old-access', string $refresh = 'old-refresh'): BitrixToken
-    {
-        return new BitrixToken($access, $refresh, CarbonImmutable::now()->addSeconds($expiresInSeconds));
-    }
-
-    private function oauthResponse(): array
-    {
-        return [
-            'access_token' => 'new-access',
-            'refresh_token' => 'new-refresh',
-            'expires_in' => 3600,
-            'client_endpoint' => 'https://portal.test/rest/',
-            'member_id' => 'member-1',
-            'scope' => 'task,user',
-        ];
-    }
-
-    private function client(): BitrixClient
-    {
-        return app(BitrixClient::class);
-    }
-
     public function test_token_about_to_expire_is_refreshed_and_stored(): void
     {
         Http::fake([
@@ -93,11 +50,11 @@ class BitrixClientTest extends TestCase
         $this->assertSame('new-refresh', $holder->token->refreshToken);
         $this->assertSame('portal.test', $holder->token->domain);
         $this->assertSame(['task', 'user'], $holder->token->scopes);
-        Http::assertSent(fn (Request $r) => str_starts_with($r->url(), 'https://oauth.bitrix.info/oauth/token/')
+        Http::assertSent(fn (Request $r): bool => str_starts_with($r->url(), 'https://oauth.bitrix.info/oauth/token/')
             && $r['grant_type'] === 'refresh_token'
             && $r['refresh_token'] === 'old-refresh'
             && $r['client_secret'] === 'app-secret');
-        Http::assertSent(fn (Request $r) => str_contains($r->url(), '/rest/user.current.json') && $r['auth'] === 'new-access');
+        Http::assertSent(fn (Request $r): bool => str_contains($r->url(), '/rest/user.current.json') && $r['auth'] === 'new-access');
     }
 
     /** Review C11: waiting too long for another process's refresh is "Bitrix unreachable" (503), not a 500. */
@@ -124,7 +81,7 @@ class BitrixClientTest extends TestCase
         $this->client()->callAsUser($this->holder($this->token()), 'user.current');
 
         Http::assertSentCount(1);
-        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'oauth.bitrix.info'));
+        Http::assertNotSent(fn (Request $r): bool => str_contains($r->url(), 'oauth.bitrix.info'));
     }
 
     public function test_expired_token_reply_refreshes_once_and_retries(): void
@@ -209,7 +166,7 @@ class BitrixClientTest extends TestCase
 
         $this->client()->callAsService('event.get');
 
-        Http::assertSent(fn (Request $r) => str_contains($r->url(), '/rest/event.get.json') && $r['auth'] === 'service-access');
+        Http::assertSent(fn (Request $r): bool => str_contains($r->url(), '/rest/event.get.json') && $r['auth'] === 'service-access');
     }
 
     public function test_call_as_service_is_refused_without_a_bound_account(): void
@@ -256,12 +213,12 @@ class BitrixClientTest extends TestCase
 
     public function test_unreachable_bitrix_never_quotes_the_token_or_secret(): void
     {
-        Http::fake(fn (Request $r) => throw new ConnectionException("cURL error 28: timed out for {$r->url()}?auth=secret-token&client_secret=app-secret"));
+        Http::fake(fn (Request $r): never => throw new ConnectionException("cURL error 28: timed out for {$r->url()}?auth=secret-token&client_secret=app-secret"));
 
         $calls = [
-            fn () => $this->client()->callAsUser($this->holder($this->token(access: 'secret-token')), 'user.current'),
-            fn () => $this->client()->streamDownload('https://portal.test/download/1?auth=secret-token', fn () => null),
-            fn () => app(TokenManager::class)->exchangeCode('secret-token'),
+            fn (): array => $this->client()->callAsUser($this->holder($this->token(access: 'secret-token')), 'user.current'),
+            fn () => $this->client()->streamDownload('https://portal.test/download/1?auth=secret-token', fn (): null => null),
+            fn () => resolve(TokenManager::class)->exchangeCode('secret-token'),
         ];
 
         foreach ($calls as $call) {
@@ -287,7 +244,7 @@ class BitrixClientTest extends TestCase
         ]);
 
         $this->assertSame(['ID' => '1'], $result['result']['me']);
-        Http::assertSent(fn (Request $r) => str_contains($r->url(), '/rest/batch.json')
+        Http::assertSent(fn (Request $r): bool => str_contains($r->url(), '/rest/batch.json')
             && $r['halt'] === 0
             && $r['cmd'] === ['me' => 'user.current', 'dept' => 'department.get?ID=5']);
     }
@@ -309,7 +266,7 @@ class BitrixClientTest extends TestCase
         $this->assertSame([], $result['result_error']);
         $this->assertSame(['a' => 1, 'b' => 2], $result['result_total']);
         Http::assertSentCount(2);
-        Http::assertSent(fn (Request $r) => $r['cmd'] === ['b' => 'user.get']);
+        Http::assertSent(fn (Request $r): bool => $r['cmd'] === ['b' => 'user.get']);
     }
 
     public function test_batch_gives_up_on_rate_limits_after_three_retries(): void
@@ -350,11 +307,11 @@ class BitrixClientTest extends TestCase
     {
         Http::fake([self::OAUTH => Http::response($this->oauthResponse())]);
 
-        $token = app(TokenManager::class)->exchangeCode('auth-code');
+        $token = resolve(TokenManager::class)->exchangeCode('auth-code');
 
         $this->assertSame('new-access', $token->accessToken);
         $this->assertSame('member-1', $token->memberId);
-        Http::assertSent(fn (Request $r) => $r['grant_type'] === 'authorization_code' && $r['code'] === 'auth-code');
+        Http::assertSent(fn (Request $r): bool => $r['grant_type'] === 'authorization_code' && $r['code'] === 'auth-code');
     }
 
     public function test_oauth_error_is_raised(): void
@@ -362,10 +319,55 @@ class BitrixClientTest extends TestCase
         Http::fake([self::OAUTH => Http::response(['error' => 'invalid_grant', 'error_description' => 'Invalid grant'], 400)]);
 
         try {
-            app(TokenManager::class)->exchangeCode('stale-code');
+            resolve(TokenManager::class)->exchangeCode('stale-code');
             $this->fail('Expected a BitrixException.');
         } catch (BitrixException $e) {
             $this->assertSame('invalid_grant', $e->errorCode);
         }
+    }
+
+    private function holder(?BitrixToken $token): HasBitrixToken
+    {
+        return new class($token) implements HasBitrixToken
+        {
+            public function __construct(public ?BitrixToken $token) {}
+
+            public function bitrixToken(): ?BitrixToken
+            {
+                return $this->token;
+            }
+
+            public function storeBitrixToken(BitrixToken $token): void
+            {
+                $this->token = $token;
+            }
+
+            public function bitrixTokenLockKey(): string
+            {
+                return 'bitrix-token:test';
+            }
+        };
+    }
+
+    private function token(int $expiresInSeconds = 3600, string $access = 'old-access', string $refresh = 'old-refresh'): BitrixToken
+    {
+        return new BitrixToken($access, $refresh, CarbonImmutable::now()->addSeconds($expiresInSeconds));
+    }
+
+    private function oauthResponse(): array
+    {
+        return [
+            'access_token' => 'new-access',
+            'refresh_token' => 'new-refresh',
+            'expires_in' => 3600,
+            'client_endpoint' => 'https://portal.test/rest/',
+            'member_id' => 'member-1',
+            'scope' => 'task,user',
+        ];
+    }
+
+    private function client(): BitrixClient
+    {
+        return resolve(BitrixClient::class);
     }
 }

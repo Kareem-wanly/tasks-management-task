@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
@@ -10,8 +12,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * @property Carbon|null $bitrix_synced_at
+ */
 class Task extends Model
 {
     use HasFactory, SoftDeletes;
@@ -38,39 +44,6 @@ class Task extends Model
     ];
 
     protected $appends = ['is_overdue'];
-
-    protected function casts(): array
-    {
-        return [
-            'due_date' => 'datetime',
-            'completed_at' => 'datetime',
-            'bitrix_synced_at' => 'datetime',
-            'bitrix_chat_id' => 'integer',
-            'allow_time_tracking' => 'boolean',
-            'time_estimate' => 'integer',
-            'time_spent' => 'integer',
-        ];
-    }
-
-    protected function isOverdue(): Attribute
-    {
-        return Attribute::make(
-            get: fn () => $this->due_date
-                && ! $this->isFinished()
-                && $this->due_date < now()
-        );
-    }
-
-    protected static function booted(): void
-    {
-        static::saving(function (Task $task) {
-            if ($task->isDirty('status') || ! $task->exists) {
-                $task->completed_at = $task->isFinished()
-                    ? ($task->completed_at ?? now())
-                    : null;
-            }
-        });
-    }
 
     public function project(): BelongsTo
     {
@@ -105,14 +78,6 @@ class Task extends Model
     public function auditors(): BelongsToMany
     {
         return $this->members(self::AUDITOR);
-    }
-
-    /** People in one task_members role; sync() on it leaves the other role alone. */
-    private function members(string $role): BelongsToMany
-    {
-        return $this->belongsToMany(User::class, 'task_members')
-            ->withPivotValue('role', $role)
-            ->withTimestamps();
     }
 
     public function hasMember(User $user): bool
@@ -157,16 +122,6 @@ class Task extends Model
         return in_array($this->status, TaskStatus::finalKeys(), true);
     }
 
-    public function scopeFinished(Builder $query): Builder
-    {
-        return $query->whereIn('status', TaskStatus::finalKeys());
-    }
-
-    public function scopeUnfinished(Builder $query): Builder
-    {
-        return $query->whereNotIn('status', TaskStatus::finalKeys());
-    }
-
     /**
      * Project members see a project's tasks. As in Bitrix, the people on a
      * task always see it, in a project or not: its creator, responsible
@@ -181,12 +136,55 @@ class Task extends Model
             || $this->hasMember($user);
     }
 
+    protected function casts(): array
+    {
+        return [
+            'due_date' => 'datetime',
+            'completed_at' => 'datetime',
+            'bitrix_synced_at' => 'datetime',
+            'bitrix_chat_id' => 'integer',
+            'allow_time_tracking' => 'boolean',
+            'time_estimate' => 'integer',
+            'time_spent' => 'integer',
+        ];
+    }
+
+    protected function isOverdue(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): bool => $this->due_date
+                && ! $this->isFinished()
+                && $this->due_date < now()
+        );
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (Task $task): void {
+            if ($task->isDirty('status') || ! $task->exists) {
+                $task->completed_at = $task->isFinished()
+                    ? ($task->completed_at ?? now())
+                    : null;
+            }
+        });
+    }
+
+    protected function scopeFinished(Builder $query): Builder
+    {
+        return $query->whereIn('status', TaskStatus::finalKeys());
+    }
+
+    protected function scopeUnfinished(Builder $query): Builder
+    {
+        return $query->whereNotIn('status', TaskStatus::finalKeys());
+    }
+
     /**
      * Query form of isVisibleTo(), for non-admin task lists.
      */
-    public function scopeVisibleTo(Builder $query, User $user): Builder
+    protected function scopeVisibleTo(Builder $query, User $user): Builder
     {
-        return $query->where(function (Builder $q) use ($user) {
+        return $query->where(function (Builder $q) use ($user): void {
             $q->whereHas('project', fn (Builder $p) => $p->accessibleBy($user))
                 ->orWhere('created_by', $user->id)
                 ->orWhere('assigned_to', $user->id)
@@ -194,8 +192,16 @@ class Task extends Model
         });
     }
 
-    public function scopeOverdue(Builder $query): Builder
+    protected function scopeOverdue(Builder $query): Builder
     {
         return $query->where('due_date', '<', now())->unfinished();
+    }
+
+    /** People in one task_members role; sync() on it leaves the other role alone. */
+    private function members(string $role): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'task_members')
+            ->withPivotValue('role', $role)
+            ->withTimestamps();
     }
 }

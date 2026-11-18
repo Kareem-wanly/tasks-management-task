@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Exceptions\BusinessRuleException;
@@ -37,7 +39,7 @@ class RoleService
     public function create(User $actor, array $data): Role
     {
         // A refused permission must not leave the new role behind.
-        $role = $this->database->transaction(function () use ($actor, $data) {
+        $role = $this->database->transaction(function () use ($actor, $data): Role {
             $role = $this->roles->create([
                 'name' => $data['name'],
                 'display_name' => $data['display_name'] ?? $data['name'],
@@ -69,7 +71,7 @@ class RoleService
             throw BusinessRuleException::forbidden('Cannot rename a role to a reserved system role name.');
         }
 
-        $this->database->transaction(function () use ($actor, $role, $data) {
+        $this->database->transaction(function () use ($actor, $role, $data): void {
             $this->roles->update($role, array_intersect_key($data, array_flip(['name', 'display_name', 'description'])));
 
             if (array_key_exists('permissions', $data)) {

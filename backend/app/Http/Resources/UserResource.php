@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
@@ -15,17 +17,13 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'avatar_url' => $this->avatar_url,
             'position' => $this->position ?: null,
-            'roles' => $this->whenLoaded('roles', function () {
-                return $this->roles->pluck('name');
-            }),
+            'roles' => $this->whenLoaded('roles', fn () => $this->roles->pluck('name')),
 
             'effective_permissions' => $this->when(
                 $request->is('api/me', 'api/login', 'api/register'),
-                function () {
-                    return method_exists($this->resource, 'permissionNames')
-                        ? $this->resource->permissionNames()->values()
-                        : [];
-                }
+                fn () => method_exists($this->resource, 'permissionNames')
+                    ? $this->resource->permissionNames()->values()
+                    : []
             ),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -35,7 +37,7 @@ class ImportBitrixTasksTest extends TestCase
 
         app()->instance(BitrixClient::SERVICE_ACCOUNT, new class implements HasBitrixToken
         {
-            public function bitrixToken(): ?BitrixToken
+            public function bitrixToken(): BitrixToken
             {
                 return new BitrixToken('service-access', 'service-refresh', CarbonImmutable::now()->addHour());
             }
@@ -57,7 +59,7 @@ class ImportBitrixTasksTest extends TestCase
         Http::fake([
             'https://portal.test/rest/tasks.task.list.json' => function (Request $request) {
                 $closed = array_key_exists('STATUS', $request['filter']);
-                $rows = array_values(array_filter($this->tasks, fn (array $t) => ($t['status'] === '5') === $closed));
+                $rows = array_values(array_filter($this->tasks, fn (array $t): bool => ($t['status'] === '5') === $closed));
 
                 return Http::response(['result' => ['tasks' => $rows], 'total' => count($rows)]);
             },
@@ -65,39 +67,12 @@ class ImportBitrixTasksTest extends TestCase
             'https://portal.test/rest/tasks.task.get.json' => function (Request $request) {
                 $id = (int) $request['taskId'];
                 $found = in_array($id, $this->stillThere, true)
-                    || array_filter($this->tasks, fn (array $t) => (int) $t['id'] === $id) !== [];
+                    || array_filter($this->tasks, fn (array $t): bool => (int) $t['id'] === $id) !== [];
 
                 return Http::response(['result' => $found ? ['task' => $this->task($id)] : []]);
             },
             'https://portal.test/rest/user.admin.json' => fn () => Http::response(['result' => $this->serviceIsAdmin]),
         ]);
-    }
-
-    private function task(int $id, array $overrides = []): array
-    {
-        return array_merge([
-            'id' => (string) $id,
-            'title' => "Task {$id}",
-            'description' => '',
-            'status' => '2',
-            'priority' => '1',
-            'responsibleId' => '6',
-            'createdBy' => '5',
-            'groupId' => '3',
-            'deadline' => '2026-11-19T19:00:00+03:00',
-            'createdDate' => '2026-11-12T15:27:12+03:00',
-            'closedDate' => null,
-        ], $overrides);
-    }
-
-    private function user(int $bitrixId): User
-    {
-        return User::where('bitrix_user_id', $bitrixId)->first();
-    }
-
-    private function import(): void
-    {
-        ImportBitrixTasks::dispatchSync();
     }
 
     public function test_task_fields_are_mapped(): void
@@ -139,7 +114,7 @@ class ImportBitrixTasksTest extends TestCase
         $closed = Task::where('bitrix_task_id', 19)->sole();
         $this->assertSame('completed', $closed->status);
         $this->assertSame('2026-11-12 12:30:46', $closed->completed_at->utc()->toDateTimeString());
-        Http::assertSent(fn (Request $r) => ($r['filter']['!STATUS'] ?? null) === 5);
+        Http::assertSent(fn (Request $r): bool => ($r['filter']['!STATUS'] ?? null) === 5);
     }
 
     public function test_legacy_new_status_is_treated_as_pending(): void
@@ -245,7 +220,7 @@ class ImportBitrixTasksTest extends TestCase
     /** Review A4: a mass deletion is far more likely a fault, so a run deletes at most 20. */
     public function test_too_many_missing_tasks_deletes_none(): void
     {
-        $this->tasks = array_map(fn (int $id) => $this->task($id), range(100, 125));
+        $this->tasks = array_map(fn (int $id): array => $this->task($id), range(100, 125));
         $this->import();
 
         $this->tasks = [$this->task(100)];
@@ -271,11 +246,11 @@ class ImportBitrixTasksTest extends TestCase
         $this->import();
 
         $this->tasks = [$this->task(15, ['title' => 'Changed in Bitrix'])];
-        ImportBitrixTasks::dispatchSync(CarbonImmutable::parse('2026-11-15 12:00:00', 'UTC'));
+        dispatch_sync(new ImportBitrixTasks(CarbonImmutable::parse('2026-11-15 12:00:00', 'UTC')));
 
         $this->assertSame('Changed in Bitrix', Task::where('bitrix_task_id', 15)->sole()->title);
         $this->assertSame(2, Task::count());
-        Http::assertSent(fn (Request $r) => ($r['filter']['>CHANGED_DATE'] ?? null) === '2026-11-15T12:00:00+00:00');
+        Http::assertSent(fn (Request $r): bool => ($r['filter']['>CHANGED_DATE'] ?? null) === '2026-11-15T12:00:00+00:00');
     }
 
     public function test_re_importing_an_unchanged_task_keeps_its_updated_at(): void
@@ -290,5 +265,32 @@ class ImportBitrixTasksTest extends TestCase
         $task = Task::sole();
         $this->assertSame($updatedAt, $task->updated_at->toDateTimeString());
         $this->assertSame(now()->toDateTimeString(), $task->bitrix_synced_at->toDateTimeString());
+    }
+
+    private function task(int $id, array $overrides = []): array
+    {
+        return array_merge([
+            'id' => (string) $id,
+            'title' => "Task {$id}",
+            'description' => '',
+            'status' => '2',
+            'priority' => '1',
+            'responsibleId' => '6',
+            'createdBy' => '5',
+            'groupId' => '3',
+            'deadline' => '2026-11-19T19:00:00+03:00',
+            'createdDate' => '2026-11-12T15:27:12+03:00',
+            'closedDate' => null,
+        ], $overrides);
+    }
+
+    private function user(int $bitrixId): User
+    {
+        return User::where('bitrix_user_id', $bitrixId)->first();
+    }
+
+    private function import(): void
+    {
+        dispatch_sync(new ImportBitrixTasks);
     }
 }

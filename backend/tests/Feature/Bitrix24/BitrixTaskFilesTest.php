@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -91,48 +93,6 @@ class BitrixTaskFilesTest extends TestCase
         Sanctum::actingAs($this->actor);
     }
 
-    private function user(int $bitrixId, string $name, Role $role): User
-    {
-        $user = User::factory()->create(['bitrix_user_id' => $bitrixId]);
-        $user->roles()->attach($role);
-        $user->storeBitrixToken(new BitrixToken("{$name}-access", "{$name}-refresh", CarbonImmutable::now()->addHour()));
-
-        return $user;
-    }
-
-    private function bitrix(string $method, array $data): mixed
-    {
-        return match ($method) {
-            'tasks.task.get' => ['task' => ['id' => '15', 'ufTaskWebdavFiles' => array_keys($this->attached)]],
-            'disk.attachedObject.get' => $this->attached[(int) $data['id']] ?? null,
-            'disk.storage.getlist' => [['ID' => '9', 'ROOT_OBJECT_ID' => '38']],
-            'disk.storage.getchildren' => $this->driveChildren,
-            // Without fileContent Bitrix answers where to send the file.
-            'disk.folder.uploadfile' => ['field' => 'file', 'uploadUrl' => 'https://portal.test/rest/upload.json?auth=upload-auth&token=t1'],
-            'tasks.task.files.attach' => ['attachmentId' => $this->attach(24, 197, 'report.pdf', 5)],
-            'tasks.task.update' => (function () use ($data) {
-                $this->attached = array_intersect_key($this->attached, array_flip($data['fields']['UF_TASK_WEBDAV_FILES']));
-
-                return true;
-            })(),
-            // Batch commands arrive as "method?query".
-            'batch' => ['result' => array_map(function (string $cmd) {
-                parse_str((string) parse_url($cmd, PHP_URL_QUERY), $params);
-
-                return $this->bitrix((string) parse_url($cmd, PHP_URL_PATH), $params);
-            }, $data['cmd']), 'result_error' => []],
-            default => true,
-        };
-    }
-
-    private function attach(int $attachedId, int $diskFileId, string $name, int $createdBy): int
-    {
-        $this->attached[$attachedId] = ['ID' => (string) $attachedId, 'OBJECT_ID' => (string) $diskFileId, 'NAME' => $name, 'SIZE' => '2048',
-            'CREATED_BY' => (string) $createdBy, 'CREATE_TIME' => '2026-11-16T13:27:33+00:00', 'DOWNLOAD_URL' => "https://portal.test/download/{$attachedId}?auth=secret"];
-
-        return $attachedId;
-    }
-
     public function test_opening_the_task_brings_in_its_bitrix_files(): void
     {
         $this->attach(24, 197, 'plan.pdf', 5);
@@ -155,19 +115,19 @@ class BitrixTaskFilesTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.name', 'report.pdf');
 
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'disk.folder.uploadfile.json')
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'disk.folder.uploadfile.json')
             && $r['auth'] === 'actor-access' && $r['id'] === 41 && ! isset($r['fileContent']) && $r['generateUniqueName'] === true);
         // Review C4: the file goes as multipart streamed from disk, not as base64 in JSON.
-        Http::assertSent(fn (Request $r) => str_starts_with($r->url(), 'https://portal.test/rest/upload.json')
+        Http::assertSent(fn (Request $r): bool => str_starts_with($r->url(), 'https://portal.test/rest/upload.json')
             && $r->isMultipart() && collect($r->data())->firstWhere('name', 'file')['filename'] === 'report.pdf');
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'tasks.task.files.attach.json') && $r['taskId'] === 15 && $r['fileId'] === 197);
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.files.attach.json') && $r['taskId'] === 15 && $r['fileId'] === 197);
     }
 
     public function test_without_an_uploaded_files_folder_the_file_goes_to_the_drive_root(): void
     {
         $this->post("/api/tasks/{$this->task->id}/files", ['file' => UploadedFile::fake()->create('a.txt', 1)], ['Accept' => 'application/json'])->assertOk();
 
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'disk.folder.uploadfile.json') && $r['id'] === 38);
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'disk.folder.uploadfile.json') && $r['id'] === 38);
     }
 
     public function test_files_are_limited_to_20_mb(): void
@@ -187,8 +147,8 @@ class BitrixTaskFilesTest extends TestCase
         $file = TaskFile::where('attached_object_id', 24)->sole();
         $this->deleteJson("/api/task-files/{$file->id}")->assertOk()->assertJsonCount(1, 'data');
 
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'tasks.task.update.json') && $r['fields'] === ['UF_TASK_WEBDAV_FILES' => [25]]);
-        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'disk.file.delete'));
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.update.json') && $r['fields'] === ['UF_TASK_WEBDAV_FILES' => [25]]);
+        Http::assertNotSent(fn (Request $r): bool => str_contains($r->url(), 'disk.file.delete'));
     }
 
     /** Review C6: the list is read and written whole, so two changes to a task's files take turns. */
@@ -201,7 +161,7 @@ class BitrixTaskFilesTest extends TestCase
 
         $this->deleteJson('/api/task-files/'.TaskFile::sole()->id)->assertUnprocessable();
 
-        Http::assertNotSent(fn (Request $r) => str_ends_with($r->url(), 'tasks.task.update.json'));
+        Http::assertNotSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.update.json'));
         $this->assertSame(1, TaskFile::count());
     }
 
@@ -216,13 +176,13 @@ class BitrixTaskFilesTest extends TestCase
 
         $response->assertOk()->assertHeader('content-disposition', 'attachment; filename=plan.pdf');
         $this->assertSame('file-bytes', $response->streamedContent());
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'disk.attachedObject.get.json') && $r['auth'] === 'actor-access');
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'disk.attachedObject.get.json') && $r['auth'] === 'actor-access');
     }
 
     public function test_a_failed_download_never_leaks_the_token_in_the_link(): void
     {
         $logged = [];
-        Event::listen(MessageLogged::class, function (MessageLogged $log) use (&$logged) {
+        Event::listen(MessageLogged::class, function (MessageLogged $log) use (&$logged): void {
             $logged[] = $log->message;
             foreach ($log->context as $value) {
                 for ($e = $value instanceof Throwable ? $value : null; $e; $e = $e->getPrevious()) {
@@ -302,8 +262,50 @@ class BitrixTaskFilesTest extends TestCase
     {
         $this->attach(24, 197, 'from-bitrix.docx', 5);
 
-        ImportBitrixFiles::dispatchSync();
+        dispatch_sync(new ImportBitrixFiles);
 
         $this->assertSame(['from-bitrix.docx'], TaskFile::pluck('name')->all());
+    }
+
+    private function user(int $bitrixId, string $name, Role $role): User
+    {
+        $user = User::factory()->create(['bitrix_user_id' => $bitrixId]);
+        $user->roles()->attach($role);
+        $user->storeBitrixToken(new BitrixToken("{$name}-access", "{$name}-refresh", CarbonImmutable::now()->addHour()));
+
+        return $user;
+    }
+
+    private function bitrix(string $method, array $data): mixed
+    {
+        return match ($method) {
+            'tasks.task.get' => ['task' => ['id' => '15', 'ufTaskWebdavFiles' => array_keys($this->attached)]],
+            'disk.attachedObject.get' => $this->attached[(int) $data['id']] ?? null,
+            'disk.storage.getlist' => [['ID' => '9', 'ROOT_OBJECT_ID' => '38']],
+            'disk.storage.getchildren' => $this->driveChildren,
+            // Without fileContent Bitrix answers where to send the file.
+            'disk.folder.uploadfile' => ['field' => 'file', 'uploadUrl' => 'https://portal.test/rest/upload.json?auth=upload-auth&token=t1'],
+            'tasks.task.files.attach' => ['attachmentId' => $this->attach(24, 197, 'report.pdf', 5)],
+            'tasks.task.update' => (function () use ($data): true {
+                $this->attached = array_intersect_key($this->attached, array_flip($data['fields']['UF_TASK_WEBDAV_FILES']));
+
+                return true;
+            })(),
+            // Batch commands arrive as "method?query".
+            'batch' => ['result' => array_map(function (string $cmd) {
+                parse_str((string) parse_url($cmd, PHP_URL_QUERY), $params);
+
+                return $this->bitrix((string) parse_url($cmd, PHP_URL_PATH), $params);
+            }, $data['cmd']), 'result_error' => []],
+            default => true,
+        };
+    }
+
+    private function attach(int $attachedId, int $diskFileId, string $name, int $createdBy): int
+    {
+        $this->attached[$attachedId] = ['ID' => (string) $attachedId, 'OBJECT_ID' => (string) $diskFileId, 'NAME' => $name, 'SIZE' => '2048',
+            'CREATED_BY' => (string) $createdBy, 'CREATE_TIME' => '2026-11-16T13:27:33+00:00', 'DOWNLOAD_URL' => "https://portal.test/download/{$attachedId}?auth=secret"];
+
+        return $attachedId;
     }
 }

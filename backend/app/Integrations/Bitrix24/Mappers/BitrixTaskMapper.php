@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24\Mappers;
 
 use App\Models\TaskPriority;
@@ -48,7 +50,7 @@ class BitrixTaskMapper
             'completed_at' => $this->dateTime($task['closedDate'] ?? null),
         ];
 
-        if ($created = $this->dateTime($task['createdDate'] ?? null)) {
+        if (($created = $this->dateTime($task['createdDate'] ?? null)) instanceof Carbon) {
             $attributes['created_at'] = $created;
         }
 
@@ -101,7 +103,7 @@ class BitrixTaskMapper
     private function dateTime(mixed $value): ?Carbon
     {
         return is_string($value) && $value !== ''
-            ? Carbon::parse($value)->setTimezone(config('app.timezone'))
+            ? \Illuminate\Support\Facades\Date::parse($value)->setTimezone(config('app.timezone'))
             : null;
     }
 }

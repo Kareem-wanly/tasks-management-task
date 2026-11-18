@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +14,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('tasks', function (Blueprint $table) {
+        Schema::table('tasks', function (Blueprint $table): void {
             $table->foreignId('project_id')->nullable()->change();
         });
     }
@@ -24,7 +26,7 @@ return new class extends Migration
             throw new RuntimeException('Tasks without a project exist; move or delete them before rolling back.');
         }
 
-        Schema::table('tasks', function (Blueprint $table) {
+        Schema::table('tasks', function (Blueprint $table): void {
             $table->foreignId('project_id')->nullable(false)->change();
         });
     }

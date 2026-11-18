@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Integrations\Bitrix24\BitrixTaskMemberPusher;
@@ -34,7 +36,7 @@ class TaskMemberService
         if ($this->bitrix->handles($task)) {
             $this->bitrix->setMembers($actor, $task, $accompliceIds, $auditorIds);
         } else {
-            $this->database->transaction(function () use ($task, $accompliceIds, $auditorIds) {
+            $this->database->transaction(function () use ($task, $accompliceIds, $auditorIds): void {
                 $this->tasks->syncAccomplices($task, $accompliceIds);
                 $this->tasks->syncAuditors($task, $auditorIds);
             });
@@ -63,7 +65,7 @@ class TaskMemberService
         if ($this->bitrix->handles($task)) {
             $this->bitrix->delegate($actor, $task, $to);
         } else {
-            $this->database->transaction(function () use ($actor, $task, $to) {
+            $this->database->transaction(function () use ($actor, $task, $to): void {
                 $task->assigned_to = $to->id;
                 $this->tasks->save($task);
                 $this->tasks->addAuditor($task, $actor->id);

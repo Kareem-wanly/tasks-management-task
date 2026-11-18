@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Data\TimeLog;
@@ -96,7 +98,7 @@ class TaskTimeService
         $stopped = null;
 
         if ($running?->task_id !== $task->id) {
-            $stopped = $running ? $this->stopRunning($actor, $running, null) : null;
+            $stopped = $running instanceof RunningTimer ? $this->stopRunning($actor, $running, null) : null;
 
             try {
                 $this->entries->startTimer($actor, $task);
@@ -114,11 +116,11 @@ class TaskTimeService
     {
         $timer = $this->entries->runningTimer($actor);
 
-        if ($timer && $timer->task_id !== $task->id) {
+        if ($timer instanceof RunningTimer && $timer->task_id !== $task->id) {
             throw new BusinessRuleException('Your timer is running on another task. Stop it there.');
         }
 
-        if ($timer) {
+        if ($timer instanceof RunningTimer) {
             $this->stopRunning($actor, $timer, $comment);
             $this->tasks->reload($task);
         }
@@ -145,7 +147,7 @@ class TaskTimeService
         $task = $this->tasks->find($timer->task_id);
 
         // A task deleted meanwhile has nowhere to log to.
-        if ($task && $seconds > 0) {
+        if ($task instanceof Task && $seconds > 0) {
             try {
                 $this->logTime($actor, $task, $seconds, $comment);
             } catch (Throwable $e) {

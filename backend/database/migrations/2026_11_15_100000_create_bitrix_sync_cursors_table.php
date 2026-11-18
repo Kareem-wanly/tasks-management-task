@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -10,7 +12,7 @@ return new class extends Migration
     {
         // One row per synced entity (users, projects, tasks): progress of the
         // current/last import, and when it last finished.
-        Schema::create('bitrix_sync_cursors', function (Blueprint $table) {
+        Schema::create('bitrix_sync_cursors', function (Blueprint $table): void {
             $table->id();
             $table->string('entity')->unique();
             $table->string('status')->nullable();

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BitrixAuthController;
 use App\Http\Controllers\BitrixEventController;
@@ -21,7 +23,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserRoleController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('throttle:5,1')->group(function () {
+Route::middleware('throttle:5,1')->group(function (): void {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
 });
@@ -33,7 +35,7 @@ Route::post('/bitrix/events', [BitrixEventController::class, 'handle']);
 Route::post('/auth/bitrix/exchange', [BitrixAuthController::class, 'exchange'])->middleware('throttle:10,1');
 Route::post('/auth/bitrix/app-session', [BitrixAuthController::class, 'appSession'])->middleware('throttle:10,1');
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::get('/users/options', [UserController::class, 'options']);
     Route::get('/projects/options', [ProjectController::class, 'options']);

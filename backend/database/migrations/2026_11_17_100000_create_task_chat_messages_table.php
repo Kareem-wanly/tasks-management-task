@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -13,11 +15,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('tasks', function (Blueprint $table) {
+        Schema::table('tasks', function (Blueprint $table): void {
             $table->unsignedBigInteger('bitrix_chat_id')->nullable()->after('bitrix_task_id');
         });
 
-        Schema::create('task_chat_messages', function (Blueprint $table) {
+        Schema::create('task_chat_messages', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('task_id')->constrained()->cascadeOnDelete();
             $table->unsignedBigInteger('bitrix_message_id')->nullable()->unique();
@@ -42,7 +44,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::create('comments', function (Blueprint $table) {
+        Schema::create('comments', function (Blueprint $table): void {
             $table->id();
             $table->text('body');
             $table->foreignId('task_id')->constrained()->onDelete('cascade');
@@ -58,7 +60,7 @@ return new class extends Migration
 
         Schema::dropIfExists('task_chat_messages');
 
-        Schema::table('tasks', function (Blueprint $table) {
+        Schema::table('tasks', function (Blueprint $table): void {
             $table->dropColumn('bitrix_chat_id');
         });
     }

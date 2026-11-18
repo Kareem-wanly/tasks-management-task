@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Data\TaskChecklist;
@@ -103,7 +105,7 @@ class TaskChecklistService
             $this->bitrix->move($actor, $item, $after, $this->checklists->firstItemOf($item->parent));
         } else {
             $siblings = $this->checklists->siblingsOf($item)->all();
-            $position = $after === null ? 0 : array_search($after->id, array_map(fn ($s) => $s->id, $siblings), true) + 1;
+            $position = $after instanceof TaskChecklistItem ? array_search($after->id, array_map(fn ($s) => $s->id, $siblings), true) + 1 : 0;
             array_splice($siblings, $position, 0, [$item]);
             $this->database->transaction(fn () => $this->checklists->reorder($siblings));
         }

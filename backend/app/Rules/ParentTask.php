@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Rules;
 
 use App\Models\Task;
@@ -21,7 +23,7 @@ class ParentTask implements ValidationRule
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        $parent = app(TaskRepositoryInterface::class)->find((int) $value);
+        $parent = resolve(TaskRepositoryInterface::class)->find((int) $value);
 
         if (! $parent || ! $this->user->can('view', $parent)) {
             $fail('The selected parent task does not exist.');
@@ -29,7 +31,7 @@ class ParentTask implements ValidationRule
             return;
         }
 
-        if ($this->task && $this->isOwnSubtree($parent)) {
+        if ($this->task instanceof Task && $this->isOwnSubtree($parent)) {
             $fail('A task cannot be a subtask of itself or of its own subtasks.');
         }
     }

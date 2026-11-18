@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -54,25 +56,14 @@ class BitrixEchoTest extends TestCase
         ]);
         $this->bitrixTask = ['id' => '15', 'title' => 'T', 'status' => '2', 'priority' => '1', 'createdBy' => '5', 'responsibleId' => '5', 'groupId' => '0'];
 
-        Http::fake(function (Request $request) {
-            return Http::response(['result' => match (basename(parse_url($request->url(), PHP_URL_PATH), '.json')) {
-                'tasks.task.get' => $this->bitrixTask === [] ? [] : ['task' => $this->bitrixTask],
-                'socialnetwork.api.workgroup.list' => ['workgroups' => array_values(array_filter([$this->bitrixGroup]))],
-                'sonet_group.user.get' => [['USER_ID' => '5', 'ROLE' => 'A']],
-                'sonet_group.create' => 40,
-                default => true,
-            }]);
-        });
+        Http::fake(fn (Request $request) => Http::response(['result' => match (basename(parse_url($request->url(), PHP_URL_PATH), '.json')) {
+            'tasks.task.get' => $this->bitrixTask === [] ? [] : ['task' => $this->bitrixTask],
+            'socialnetwork.api.workgroup.list' => ['workgroups' => array_values(array_filter([$this->bitrixGroup]))],
+            'sonet_group.user.get' => [['USER_ID' => '5', 'ROLE' => 'A']],
+            'sonet_group.create' => 40,
+            default => true,
+        }]));
         Sanctum::actingAs($this->actor);
-    }
-
-    /** Bitrix methods called that change something (not get/list). */
-    private function writes(): array
-    {
-        return Http::recorded()
-            ->map(fn (array $pair) => basename(parse_url($pair[0]->url(), PHP_URL_PATH), '.json'))
-            ->reject(fn (string $method) => str_ends_with($method, '.get') || str_ends_with($method, '.list'))
-            ->values()->all();
     }
 
     public function test_the_echo_of_our_change_is_confirmed_and_never_loops(): void
@@ -81,7 +72,7 @@ class BitrixEchoTest extends TestCase
         $this->bitrixTask['title'] = 'Ours';
         $logs = ActivityLog::count();
 
-        SyncBitrixTask::dispatchSync(15);
+        dispatch_sync(new SyncBitrixTask(15));
 
         $this->assertSame(BitrixOutboundOp::CONFIRMED, BitrixOutboundOp::sole()->status);
         $this->assertSame($logs, ActivityLog::count());
@@ -95,7 +86,7 @@ class BitrixEchoTest extends TestCase
         // Someone renamed it in Bitrix right after us.
         $this->bitrixTask['title'] = 'Theirs';
 
-        SyncBitrixTask::dispatchSync(15);
+        dispatch_sync(new SyncBitrixTask(15));
 
         $this->assertSame('Theirs', $this->task->fresh()->title);
         $this->assertSame(BitrixOutboundOp::CONFLICT, BitrixOutboundOp::sole()->status);
@@ -108,7 +99,7 @@ class BitrixEchoTest extends TestCase
         $this->putJson("/api/tasks/{$this->task->id}", ['priority' => 'urgent'])->assertOk();
         $this->bitrixTask['priority'] = '2';
 
-        SyncBitrixTask::dispatchSync(15);
+        dispatch_sync(new SyncBitrixTask(15));
 
         $this->assertSame('urgent', $this->task->fresh()->priority);
     }
@@ -118,7 +109,7 @@ class BitrixEchoTest extends TestCase
         $this->task->forceFill(['priority' => 'urgent'])->save();
         $this->bitrixTask = [...$this->bitrixTask, 'priority' => '2', 'title' => 'Renamed in Bitrix'];
 
-        SyncBitrixTask::dispatchSync(15);
+        dispatch_sync(new SyncBitrixTask(15));
 
         $task = $this->task->fresh();
         $this->assertSame(['Renamed in Bitrix', 'urgent'], [$task->title, $task->priority]);
@@ -130,7 +121,7 @@ class BitrixEchoTest extends TestCase
         $this->travel(BitrixOutboundOp::WINDOW_SECONDS + 1)->seconds();
         $this->bitrixTask['title'] = 'Later Bitrix edit';
 
-        SyncBitrixTask::dispatchSync(15);
+        dispatch_sync(new SyncBitrixTask(15));
 
         $this->assertSame('Later Bitrix edit', $this->task->fresh()->title);
         $this->assertSame(BitrixOutboundOp::SENT, BitrixOutboundOp::sole()->status);
@@ -142,7 +133,7 @@ class BitrixEchoTest extends TestCase
         $this->deleteJson("/api/tasks/{$this->task->id}")->assertOk();
         $this->bitrixTask = [];
 
-        SyncBitrixTask::dispatchSync(15);
+        dispatch_sync(new SyncBitrixTask(15));
 
         $this->assertSame(BitrixOutboundOp::CONFIRMED, BitrixOutboundOp::sole()->status);
     }
@@ -153,7 +144,7 @@ class BitrixEchoTest extends TestCase
         $this->deleteJson("/api/projects/{$project->id}")->assertOk();
         $this->bitrixGroup = ['id' => '40', 'name' => 'P', 'ownerId' => '5', 'closed' => 'Y'];
 
-        SyncBitrixProject::dispatchSync(40);
+        dispatch_sync(new SyncBitrixProject(40));
 
         $this->assertSame(BitrixOutboundOp::CONFIRMED, BitrixOutboundOp::where('entity', 'project')->sole()->status);
         $this->assertSoftDeleted($project);
@@ -165,7 +156,7 @@ class BitrixEchoTest extends TestCase
         // Bitrix keeps the day as portal-midnight and returns it in UTC.
         $this->bitrixGroup = ['id' => '40', 'name' => 'Launch', 'description' => '', 'ownerId' => '5', 'closed' => 'N', 'projectDateStart' => '2026-11-30T21:00:00+00:00'];
 
-        SyncBitrixProject::dispatchSync(40);
+        dispatch_sync(new SyncBitrixProject(40));
 
         $this->assertSame(BitrixOutboundOp::CONFIRMED, BitrixOutboundOp::where('entity', 'project')->sole()->status);
     }
@@ -177,8 +168,8 @@ class BitrixEchoTest extends TestCase
         // By the time the first event is handled, Bitrix already has the second change.
         $this->bitrixTask['title'] = 'Second';
 
-        SyncBitrixTask::dispatchSync(15);
-        SyncBitrixTask::dispatchSync(15);
+        dispatch_sync(new SyncBitrixTask(15));
+        dispatch_sync(new SyncBitrixTask(15));
 
         $this->assertSame([BitrixOutboundOp::CONFIRMED, BitrixOutboundOp::CONFIRMED], BitrixOutboundOp::orderBy('id')->pluck('status')->all());
         $this->assertFalse(ActivityLog::where('action', 'bitrix_conflict')->exists());
@@ -192,9 +183,18 @@ class BitrixEchoTest extends TestCase
         // Fetched before our second change reached Bitrix.
         $this->bitrixTask['title'] = 'First';
 
-        SyncBitrixTask::dispatchSync(15);
+        dispatch_sync(new SyncBitrixTask(15));
 
         $this->assertSame([BitrixOutboundOp::CONFIRMED, BitrixOutboundOp::SENT], BitrixOutboundOp::orderBy('id')->pluck('status')->all());
         $this->assertSame('Second', $this->task->fresh()->title);
+    }
+
+    /** Bitrix methods called that change something (not get/list). */
+    private function writes(): array
+    {
+        return Http::recorded()
+            ->map(fn (array $pair): string => basename(parse_url($pair[0]->url(), PHP_URL_PATH), '.json'))
+            ->reject(fn (string $method): bool => str_ends_with($method, '.get') || str_ends_with($method, '.list'))
+            ->values()->all();
     }
 }

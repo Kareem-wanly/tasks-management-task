@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs\Bitrix;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -41,7 +43,7 @@ class ImportBitrixProjects implements ShouldQueue
             'order' => ['ID' => 'ASC'],
             // Without it the list is limited to groups the service user can see.
             'params' => ['IS_ADMIN' => 'Y'],
-        ], function (array $page, int $total) use ($bitrix, $projects, $cursor, $cursors, &$skipped, &$seen) {
+        ], function (array $page, int $total) use ($bitrix, $projects, $cursor, $cursors, &$skipped, &$seen): void {
             $groups = $page['workgroups'] ?? [];
 
             if ($groups !== []) {
@@ -49,7 +51,7 @@ class ImportBitrixProjects implements ShouldQueue
 
                 foreach ($groups as $group) {
                     $seen[] = (int) $group['id'];
-                    if (! $projects->upsert($group, $members[(int) $group['id']])) {
+                    if (! $projects->upsert($group, $members[(int) $group['id']]) instanceof \App\Models\Project) {
                         $skipped++;
                     }
                 }
@@ -80,7 +82,7 @@ class ImportBitrixProjects implements ShouldQueue
 
         $missing = array_values(array_diff($projects->allBitrixIds(), $seen));
 
-        $gone = $guard->confirmedGone($missing, fn (int $id) => $fetch->group($id) !== null, 'groups');
+        $gone = $guard->confirmedGone($missing, fn (int $id): bool => $fetch->group($id) !== null, 'groups');
         $deleted = $projects->deleteByBitrixIds($gone);
         $guard->recordDeleted('groups', $gone, 'import');
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs\Bitrix;
 
 use App\Integrations\Bitrix24\BitrixChatPusher;
@@ -40,7 +42,7 @@ class SyncBitrixTaskChat implements ShouldBeUniqueUntilProcessing, ShouldQueue
     {
         $task = $tasks->findByBitrixId($this->bitrixTaskId);
 
-        if ($task !== null && $chat->handles($task)) {
+        if ($task instanceof \App\Models\Task && $chat->handles($task)) {
             $chat->refresh($task);
         }
     }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -64,87 +66,6 @@ class BitrixChecklistTest extends TestCase
         Sanctum::actingAs($this->actor);
     }
 
-    private function user(int $bitrixId, string $name, Role $role): User
-    {
-        $user = User::factory()->create(['bitrix_user_id' => $bitrixId]);
-        $user->roles()->attach($role);
-        $user->storeBitrixToken(new BitrixToken("{$name}-access", "{$name}-refresh", CarbonImmutable::now()->addHour()));
-
-        return $user;
-    }
-
-    /** A small Bitrix checklist: the first item creates "BX_CHECKLIST_1", moves renumber the list. */
-    private function bitrix(string $method, array $data): mixed
-    {
-        $id = (int) ($data['ITEMID'] ?? 0);
-
-        switch ($method) {
-            case 'task.checklistitem.getlist':
-                $rows = array_values($this->items);
-                usort($rows, fn ($a, $b) => $a['SORT_INDEX'] <=> $b['SORT_INDEX']);
-
-                return $rows;
-            case 'task.checklistitem.add':
-                $parent = $data['FIELDS']['PARENT_ID'] ?? $this->firstList() ?? $this->row('BX_CHECKLIST_1', 0);
-
-                return $this->row($data['FIELDS']['TITLE'], $parent);
-            case 'task.checklistitem.update':
-                $this->items[$id]['TITLE'] = $data['FIELDS']['TITLE'];
-                break;
-            case 'task.checklistitem.complete':
-            case 'task.checklistitem.renew':
-                $this->items[$id]['IS_COMPLETE'] = $method === 'task.checklistitem.complete' ? 'Y' : 'N';
-                break;
-            case 'task.checklistitem.delete':
-                unset($this->items[$id]);
-                break;
-            case 'task.checklistitem.moveafteritem':
-                $this->moveAfter($id, (int) $data['AFTERITEMID']);
-                break;
-            case 'batch':
-                return ['result' => array_map(fn ($cmd) => array_values($this->items), $data['cmd']), 'result_error' => []];
-        }
-
-        return true;
-    }
-
-    private function row(string $title, int $parent): int
-    {
-        $id = $this->nextId++;
-        $siblings = array_filter($this->items, fn ($i) => $i['PARENT_ID'] === $parent);
-        $this->items[$id] = ['ID' => (string) $id, 'PARENT_ID' => $parent, 'TITLE' => $title, 'SORT_INDEX' => count($siblings) + ($parent ? 1 : 0), 'IS_COMPLETE' => 'N'];
-
-        return $id;
-    }
-
-    private function firstList(): ?int
-    {
-        $lists = array_filter($this->items, fn ($i) => $i['PARENT_ID'] === 0);
-
-        return $lists ? (int) array_key_first($lists) : null;
-    }
-
-    private function moveAfter(int $id, int $after): void
-    {
-        $order = array_keys(array_filter($this->items, fn ($i) => $i['PARENT_ID'] === $this->items[$id]['PARENT_ID'] && $i['ID'] !== (string) $id));
-        usort($order, fn ($a, $b) => $this->items[$a]['SORT_INDEX'] <=> $this->items[$b]['SORT_INDEX']);
-        array_splice($order, array_search($after, $order, true) + 1, 0, [$id]);
-        foreach ($order as $index => $itemId) {
-            $this->items[$itemId]['SORT_INDEX'] = $index + 1;
-        }
-    }
-
-    /** @return list<string> Item titles of the first list, in order. */
-    private function titles(): array
-    {
-        return TaskChecklistItem::whereNotNull('parent_id')->orderBy('sort_index')->pluck('title')->all();
-    }
-
-    private function local(string $title): TaskChecklistItem
-    {
-        return TaskChecklistItem::where('title', $title)->sole();
-    }
-
     public function test_opening_the_task_brings_in_the_bitrix_checklist(): void
     {
         $list = $this->row('BX_CHECKLIST_1', 0);
@@ -185,7 +106,7 @@ class BitrixChecklistTest extends TestCase
     public function test_adding_ticking_renaming_and_deleting_go_to_bitrix_as_the_employee(): void
     {
         $this->postJson("/api/tasks/{$this->task->id}/checklist", ['title' => 'First'])->assertOk()->assertJsonCount(2, 'data');
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'task.checklistitem.add.json') && $r['auth'] === 'actor-access' && $r['TASKID'] === 15);
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'task.checklistitem.add.json') && $r['auth'] === 'actor-access' && $r['TASKID'] === 15);
 
         $item = $this->local('First');
         $this->patchJson("/api/checklist-items/{$item->id}", ['is_complete' => true])->assertJsonPath('data.1.is_complete', true);
@@ -234,7 +155,7 @@ class BitrixChecklistTest extends TestCase
 
         Sanctum::actingAs($assignee);
         $this->postJson("/api/tasks/{$this->task->id}/checklist", ['title' => 'Mine'])->assertOk();
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'task.checklistitem.add.json') && $r['auth'] === 'assignee-access');
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'task.checklistitem.add.json') && $r['auth'] === 'assignee-access');
     }
 
     public function test_a_task_outside_bitrix_keeps_its_checklist_here(): void
@@ -255,8 +176,89 @@ class BitrixChecklistTest extends TestCase
     {
         $this->row('From Bitrix', $this->row('BX_CHECKLIST_1', 0));
 
-        ImportBitrixChecklists::dispatchSync();
+        dispatch_sync(new ImportBitrixChecklists);
 
         $this->assertSame(['From Bitrix'], $this->titles());
+    }
+
+    private function user(int $bitrixId, string $name, Role $role): User
+    {
+        $user = User::factory()->create(['bitrix_user_id' => $bitrixId]);
+        $user->roles()->attach($role);
+        $user->storeBitrixToken(new BitrixToken("{$name}-access", "{$name}-refresh", CarbonImmutable::now()->addHour()));
+
+        return $user;
+    }
+
+    /** A small Bitrix checklist: the first item creates "BX_CHECKLIST_1", moves renumber the list. */
+    private function bitrix(string $method, array $data): mixed
+    {
+        $id = (int) ($data['ITEMID'] ?? 0);
+
+        switch ($method) {
+            case 'task.checklistitem.getlist':
+                $rows = array_values($this->items);
+                usort($rows, fn (array $a, array $b): int => $a['SORT_INDEX'] <=> $b['SORT_INDEX']);
+
+                return $rows;
+            case 'task.checklistitem.add':
+                $parent = $data['FIELDS']['PARENT_ID'] ?? $this->firstList() ?? $this->row('BX_CHECKLIST_1', 0);
+
+                return $this->row($data['FIELDS']['TITLE'], $parent);
+            case 'task.checklistitem.update':
+                $this->items[$id]['TITLE'] = $data['FIELDS']['TITLE'];
+                break;
+            case 'task.checklistitem.complete':
+            case 'task.checklistitem.renew':
+                $this->items[$id]['IS_COMPLETE'] = $method === 'task.checklistitem.complete' ? 'Y' : 'N';
+                break;
+            case 'task.checklistitem.delete':
+                unset($this->items[$id]);
+                break;
+            case 'task.checklistitem.moveafteritem':
+                $this->moveAfter($id, (int) $data['AFTERITEMID']);
+                break;
+            case 'batch':
+                return ['result' => array_map(fn ($cmd): array => array_values($this->items), $data['cmd']), 'result_error' => []];
+        }
+
+        return true;
+    }
+
+    private function row(string $title, int $parent): int
+    {
+        $id = $this->nextId++;
+        $siblings = array_filter($this->items, fn (array $i): bool => $i['PARENT_ID'] === $parent);
+        $this->items[$id] = ['ID' => (string) $id, 'PARENT_ID' => $parent, 'TITLE' => $title, 'SORT_INDEX' => count($siblings) + ($parent ? 1 : 0), 'IS_COMPLETE' => 'N'];
+
+        return $id;
+    }
+
+    private function firstList(): ?int
+    {
+        $lists = array_filter($this->items, fn (array $i): bool => $i['PARENT_ID'] === 0);
+
+        return $lists !== [] ? array_key_first($lists) : null;
+    }
+
+    private function moveAfter(int $id, int $after): void
+    {
+        $order = array_keys(array_filter($this->items, fn (array $i): bool => $i['PARENT_ID'] === $this->items[$id]['PARENT_ID'] && $i['ID'] !== (string) $id));
+        usort($order, fn ($a, $b): int => $this->items[$a]['SORT_INDEX'] <=> $this->items[$b]['SORT_INDEX']);
+        array_splice($order, array_search($after, $order, true) + 1, 0, [$id]);
+        foreach ($order as $index => $itemId) {
+            $this->items[$itemId]['SORT_INDEX'] = $index + 1;
+        }
+    }
+
+    /** @return list<string> Item titles of the first list, in order. */
+    private function titles(): array
+    {
+        return TaskChecklistItem::whereNotNull('parent_id')->orderBy('sort_index')->pluck('title')->all();
+    }
+
+    private function local(string $title): TaskChecklistItem
+    {
+        return TaskChecklistItem::where('title', $title)->sole();
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Rules;
 
 use App\Models\Project;
@@ -12,7 +14,7 @@ class ProjectMember implements ValidationRule
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        if (! $this->project) {
+        if (! $this->project instanceof Project) {
             return;
         }
 

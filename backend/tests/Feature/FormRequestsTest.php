@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Integrations\Bitrix24\BitrixToken;
@@ -28,47 +30,6 @@ class FormRequestsTest extends TestCase
     {
         parent::setUp();
         $this->seed();
-    }
-
-    private function admin(): User
-    {
-        return User::where('email', 'admin@example.com')->first();
-    }
-
-    private function member(): User
-    {
-        $user = User::factory()->create();
-        $user->roles()->attach(Role::where('name', 'Member')->first());
-
-        return $user;
-    }
-
-    private function userWith(array $permissions): User
-    {
-        $role = Role::create(['name' => 'c_'.uniqid(), 'display_name' => 'C', 'description' => 'x']);
-        $role->permissions()->sync(Permission::whereIn('name', $permissions)->pluck('id'));
-        $user = User::factory()->create();
-        $user->roles()->attach($role);
-
-        return $user;
-    }
-
-    private function project(User $owner, array $members = []): Project
-    {
-        $project = Project::forceCreate(['title' => 'P', 'status' => 'active', 'owner_id' => $owner->id]);
-        foreach ($members as $m) {
-            $project->members()->attach($m->id, ['role' => 'member']);
-        }
-
-        return $project;
-    }
-
-    private function task(Project $project): Task
-    {
-        return Task::forceCreate([
-            'title' => 'T', 'status' => 'todo', 'priority' => 'low',
-            'project_id' => $project->id, 'created_by' => $project->owner_id,
-        ]);
     }
 
     public function test_chat_outsider_gets_403_not_422(): void
@@ -196,5 +157,46 @@ class FormRequestsTest extends TestCase
 
         $this->getJson('/api/tasks?per_page=1')->assertOk()->assertJsonPath('meta.per_page', 1);
         $this->getJson('/api/tasks?per_page=100')->assertOk()->assertJsonPath('meta.per_page', 100);
+    }
+
+    private function admin(): User
+    {
+        return User::where('email', 'admin@example.com')->first();
+    }
+
+    private function member(): User
+    {
+        $user = User::factory()->create();
+        $user->roles()->attach(Role::where('name', 'Member')->first());
+
+        return $user;
+    }
+
+    private function userWith(array $permissions): User
+    {
+        $role = Role::create(['name' => 'c_'.uniqid(), 'display_name' => 'C', 'description' => 'x']);
+        $role->permissions()->sync(Permission::whereIn('name', $permissions)->pluck('id'));
+        $user = User::factory()->create();
+        $user->roles()->attach($role);
+
+        return $user;
+    }
+
+    private function project(User $owner, array $members = []): Project
+    {
+        $project = Project::forceCreate(['title' => 'P', 'status' => 'active', 'owner_id' => $owner->id]);
+        foreach ($members as $m) {
+            $project->members()->attach($m->id, ['role' => 'member']);
+        }
+
+        return $project;
+    }
+
+    private function task(Project $project): Task
+    {
+        return Task::forceCreate([
+            'title' => 'T', 'status' => 'todo', 'priority' => 'low',
+            'project_id' => $project->id, 'created_by' => $project->owner_id,
+        ]);
     }
 }

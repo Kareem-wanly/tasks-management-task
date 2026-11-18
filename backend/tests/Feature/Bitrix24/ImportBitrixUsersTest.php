@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -19,6 +21,17 @@ class ImportBitrixUsersTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Every user the fake portal holds; tests change it between imports.
+     *
+     * @var list<array>
+     */
+    private array $portalRows = [];
+
+    private ?array $batchError = null;
+
+    private bool $portalFaked = false;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -27,7 +40,7 @@ class ImportBitrixUsersTest extends TestCase
 
         app()->instance(BitrixClient::SERVICE_ACCOUNT, new class implements HasBitrixToken
         {
-            public function bitrixToken(): ?BitrixToken
+            public function bitrixToken(): BitrixToken
             {
                 return new BitrixToken('service-access', 'service-refresh', CarbonImmutable::now()->addHour());
             }
@@ -41,79 +54,16 @@ class ImportBitrixUsersTest extends TestCase
         });
     }
 
-    private function row(int $id, array $overrides = []): array
-    {
-        return array_merge([
-            'ID' => (string) $id,
-            'ACTIVE' => true,
-            'NAME' => "Name{$id}",
-            'LAST_NAME' => "Last{$id}",
-            'EMAIL' => "user{$id}@portal.test",
-            'PERSONAL_PHOTO' => "https://portal.test/{$id}.jpg",
-            'WORK_POSITION' => 'Engineer',
-            'UF_DEPARTMENT' => [1, 5],
-        ], $overrides);
-    }
-
-    /**
-     * Every user the fake portal holds; tests change it between imports.
-     *
-     * @var list<array>
-     */
-    private array $portalRows = [];
-
-    private ?array $batchError = null;
-
-    private bool $portalFaked = false;
-
-    /**
-     * @param  list<array>  $rows  All portal users; served 50 per page.
-     */
-    private function fakePortal(array $rows, ?array $batchError = null): void
-    {
-        $this->portalRows = $rows;
-        $this->batchError = $batchError;
-
-        // Http::fake() stubs can't be replaced later, so register them once.
-        if ($this->portalFaked) {
-            return;
-        }
-        $this->portalFaked = true;
-
-        Http::fake([
-            'https://portal.test/rest/user.get.json' => fn () => Http::response([
-                'result' => array_slice($this->portalRows, 0, 50),
-                'total' => count($this->portalRows),
-            ]),
-            'https://portal.test/rest/batch.json' => function (Request $request) {
-                $result = [];
-                foreach (array_keys($request['cmd']) as $key) {
-                    $result[$key] = array_slice($this->portalRows, (int) substr($key, 5), 50);
-                }
-
-                return Http::response(['result' => [
-                    'result' => $result,
-                    'result_error' => $this->batchError ?? [],
-                ]]);
-            },
-        ]);
-    }
-
-    private function import(bool $linkByEmail = false): void
-    {
-        ImportBitrixUsers::dispatchSync($linkByEmail);
-    }
-
     public function test_every_page_of_portal_users_is_imported(): void
     {
-        $this->fakePortal(array_map(fn (int $id) => $this->row($id), range(1, 120)));
+        $this->fakePortal(array_map(fn (int $id): array => $this->row($id), range(1, 120)));
 
         $this->import();
 
         $this->assertSame(120, User::whereNotNull('bitrix_user_id')->count());
         // One user.get for the first page, one batch for the other two.
         Http::assertSentCount(2);
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), '/batch.json')
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), '/batch.json')
             && array_keys($r['cmd']) === ['page_50', 'page_100']
             && ! str_contains($r['cmd']['page_50'], 'ACTIVE'));
 
@@ -232,12 +182,64 @@ class ImportBitrixUsersTest extends TestCase
     public function test_a_failed_page_fails_the_job(): void
     {
         $this->fakePortal(
-            array_map(fn (int $id) => $this->row($id), range(1, 60)),
+            array_map(fn (int $id): array => $this->row($id), range(1, 60)),
             ['page_50' => ['error' => 'ACCESS_DENIED', 'error_description' => 'denied']],
         );
 
         $this->expectException(BitrixException::class);
 
         $this->import();
+    }
+
+    private function row(int $id, array $overrides = []): array
+    {
+        return array_merge([
+            'ID' => (string) $id,
+            'ACTIVE' => true,
+            'NAME' => "Name{$id}",
+            'LAST_NAME' => "Last{$id}",
+            'EMAIL' => "user{$id}@portal.test",
+            'PERSONAL_PHOTO' => "https://portal.test/{$id}.jpg",
+            'WORK_POSITION' => 'Engineer',
+            'UF_DEPARTMENT' => [1, 5],
+        ], $overrides);
+    }
+
+    /**
+     * @param  list<array>  $rows  All portal users; served 50 per page.
+     */
+    private function fakePortal(array $rows, ?array $batchError = null): void
+    {
+        $this->portalRows = $rows;
+        $this->batchError = $batchError;
+
+        // Http::fake() stubs can't be replaced later, so register them once.
+        if ($this->portalFaked) {
+            return;
+        }
+        $this->portalFaked = true;
+
+        Http::fake([
+            'https://portal.test/rest/user.get.json' => fn () => Http::response([
+                'result' => array_slice($this->portalRows, 0, 50),
+                'total' => count($this->portalRows),
+            ]),
+            'https://portal.test/rest/batch.json' => function (Request $request) {
+                $result = [];
+                foreach (array_keys($request['cmd']) as $key) {
+                    $result[$key] = array_slice($this->portalRows, (int) substr($key, 5), 50);
+                }
+
+                return Http::response(['result' => [
+                    'result' => $result,
+                    'result_error' => $this->batchError ?? [],
+                ]]);
+            },
+        ]);
+    }
+
+    private function import(bool $linkByEmail = false): void
+    {
+        dispatch_sync(new ImportBitrixUsers($linkByEmail));
     }
 }

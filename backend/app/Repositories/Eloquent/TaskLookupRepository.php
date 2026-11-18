@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repositories\Eloquent;
 
 use App\Models\Task;
@@ -33,7 +35,7 @@ class TaskLookupRepository implements TaskLookupRepositoryInterface
 
     public function systemBitrixIds(string $model): array
     {
-        return $model::where('is_system', true)->whereNotNull('bitrix_id')->pluck('bitrix_id')->map(fn ($id) => (int) $id)->all();
+        return $model::where('is_system', true)->whereNotNull('bitrix_id')->pluck('bitrix_id')->map(fn ($id): int => (int) $id)->all();
     }
 
     public function keyForBitrix(string $model, int $bitrixId): ?string

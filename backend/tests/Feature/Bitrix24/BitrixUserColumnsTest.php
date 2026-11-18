@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -16,16 +18,6 @@ use Tests\TestCase;
 class BitrixUserColumnsTest extends TestCase
 {
     use RefreshDatabase;
-
-    private function bitrixEmployee(): User
-    {
-        return User::forceCreate([
-            'name' => 'Bitrix Employee',
-            'email' => 'employee@portal.test',
-            'password' => null,
-            'bitrix_user_id' => 42,
-        ]);
-    }
 
     public function test_employee_from_bitrix_can_exist_without_a_password(): void
     {
@@ -78,9 +70,19 @@ class BitrixUserColumnsTest extends TestCase
         $this->assertArrayNotHasKey('bitrix_access_token', $user->toArray());
         $this->assertArrayNotHasKey('bitrix_refresh_token', $user->toArray());
 
-        app(BitrixClient::class)->callAsUser($user, 'user.current');
+        resolve(BitrixClient::class)->callAsUser($user, 'user.current');
 
         $this->assertSame('user-new-access', $user->fresh()->bitrixToken()->accessToken);
-        Http::assertSent(fn (Request $r) => str_contains($r->url(), '/rest/user.current.json') && $r['auth'] === 'user-new-access');
+        Http::assertSent(fn (Request $r): bool => str_contains($r->url(), '/rest/user.current.json') && $r['auth'] === 'user-new-access');
+    }
+
+    private function bitrixEmployee(): User
+    {
+        return User::forceCreate([
+            'name' => 'Bitrix Employee',
+            'email' => 'employee@portal.test',
+            'password' => null,
+            'bitrix_user_id' => 42,
+        ]);
     }
 }
