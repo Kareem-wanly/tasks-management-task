@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Project\AddProjectMemberDTO;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -22,5 +23,13 @@ class AddProjectMemberRequest extends FormRequest
             'user_id' => ['required', 'integer', Rule::exists('users', 'id')->where('is_active', true)],
             'role' => ['sometimes', 'string', 'in:member,moderator'],
         ];
+    }
+
+    public function toDto(): AddProjectMemberDTO
+    {
+        /** @var array{user_id: int|string, role?: string} $validated */
+        $validated = $this->validated();
+
+        return AddProjectMemberDTO::fromArray($validated);
     }
 }
