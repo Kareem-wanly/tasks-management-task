@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Task\DelegateTaskDTO;
+use App\DTOs\Task\TaskMembersDTO;
 use App\Integrations\Bitrix24\BitrixTaskMemberPusher;
 use App\Models\Task;
 use App\Models\User;
@@ -25,20 +27,15 @@ class TaskMemberService
         private readonly ConnectionInterface $database,
     ) {}
 
-    /**
-     * Replaces both lists.
-     *
-     * @param  list<int>  $accompliceIds
-     * @param  list<int>  $auditorIds
-     */
-    public function setMembers(User $actor, Task $task, array $accompliceIds, array $auditorIds): Task
+    /** Replaces both lists. */
+    public function setMembers(User $actor, Task $task, TaskMembersDTO $members): Task
     {
         if ($this->bitrix->handles($task)) {
-            $this->bitrix->setMembers($actor, $task, $accompliceIds, $auditorIds);
+            $this->bitrix->setMembers($actor, $task, $members->accompliceIds, $members->auditorIds);
         } else {
-            $this->database->transaction(function () use ($task, $accompliceIds, $auditorIds): void {
-                $this->tasks->syncAccomplices($task, $accompliceIds);
-                $this->tasks->syncAuditors($task, $auditorIds);
+            $this->database->transaction(function () use ($task, $members): void {
+                $this->tasks->syncAccomplices($task, $members->accompliceIds);
+                $this->tasks->syncAuditors($task, $members->auditorIds);
             });
         }
 
@@ -58,9 +55,9 @@ class TaskMemberService
     }
 
     /** The responsible person hands the task over and keeps following it. */
-    public function delegate(User $actor, Task $task, int $toUserId): Task
+    public function delegate(User $actor, Task $task, DelegateTaskDTO $data): Task
     {
-        $to = $this->users->findOrFail($toUserId);
+        $to = $this->users->findOrFail($data->userId);
 
         if ($this->bitrix->handles($task)) {
             $this->bitrix->delegate($actor, $task, $to);

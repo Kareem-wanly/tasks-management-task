@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
 
+use App\DTOs\Task\TaskFiltersDTO;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskPriority;
@@ -17,7 +18,7 @@ class TaskRepository implements TaskRepositoryInterface
 {
     private const SORTS = ['created_at', 'due_date', 'priority', 'title', 'status'];
 
-    public function paginate(?User $visibleTo, array $filters, int $perPage): LengthAwarePaginator
+    public function paginate(?User $visibleTo, TaskFiltersDTO $filters, int $perPage): LengthAwarePaginator
     {
         $query = Task::with(['project', 'assignee']);
 
@@ -26,7 +27,7 @@ class TaskRepository implements TaskRepositoryInterface
         }
 
         $this->applyFilters($query, $filters);
-        $this->applySort($query, $filters['sort_by'] ?? null, $filters['sort_order'] ?? null);
+        $this->applySort($query, $filters->sortBy, $filters->sortOrder);
 
         return $query->paginate($perPage);
     }
@@ -170,33 +171,32 @@ class TaskRepository implements TaskRepositoryInterface
         ];
     }
 
-    /** @param  array<string, mixed>  $filters */
-    private function applyFilters(Builder $query, array $filters): void
+    private function applyFilters(Builder $query, TaskFiltersDTO $filters): void
     {
-        if (! empty($filters['search'])) {
-            $search = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $filters['search']);
+        if ($filters->search !== null) {
+            $search = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $filters->search);
             $query->where('title', 'like', "%{$search}%");
         }
 
-        foreach (['status', 'priority', 'assigned_to', 'project_id'] as $column) {
-            if (isset($filters[$column]) && $filters[$column] !== '') {
-                $query->where($column, $filters[$column]);
+        foreach (['status' => $filters->status, 'priority' => $filters->priority, 'assigned_to' => $filters->assignedTo, 'project_id' => $filters->projectId] as $column => $value) {
+            if ($value !== null) {
+                $query->where($column, $value);
             }
         }
 
         // Any closing status (is_final), not only "completed".
-        if (isset($filters['finished'])) {
-            $filters['finished'] ? $query->finished() : $query->unfinished();
+        if ($filters->finished !== null) {
+            $filters->finished ? $query->finished() : $query->unfinished();
         }
 
-        if (! empty($filters['due_date_from'])) {
-            $query->whereDate('due_date', '>=', $filters['due_date_from']);
+        if ($filters->dueDateFrom !== null) {
+            $query->whereDate('due_date', '>=', $filters->dueDateFrom);
         }
-        if (! empty($filters['due_date_to'])) {
-            $query->whereDate('due_date', '<=', $filters['due_date_to']);
+        if ($filters->dueDateTo !== null) {
+            $query->whereDate('due_date', '<=', $filters->dueDateTo);
         }
 
-        if (! empty($filters['overdue'])) {
+        if ($filters->overdue) {
             $query->unfinished()->whereNotNull('due_date')->whereDate('due_date', '<', now()->toDateString());
         }
     }

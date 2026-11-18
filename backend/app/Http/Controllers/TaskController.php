@@ -24,7 +24,7 @@ class TaskController extends Controller
 
     public function index(ListTasksRequest $request): AnonymousResourceCollection
     {
-        return TaskResource::collection($this->tasks->list($request->user(), $request->filters(), $request->perPage()));
+        return TaskResource::collection($this->tasks->list($request->user(), $request->toDto(), $request->perPage()));
     }
 
     public function indexByProject(ListProjectTasksRequest $request, Project $project): JsonResponse
@@ -39,23 +39,23 @@ class TaskController extends Controller
 
     public function storeByProject(StoreTaskRequest $request, Project $project): TaskResource
     {
-        return new TaskResource($this->tasks->create($request->user(), $project, $request->validated()));
+        return new TaskResource($this->tasks->create($request->user(), $project, $request->toDto()));
     }
 
     /** A task without a project: a Bitrix personal task. */
     public function store(StoreTaskRequest $request): TaskResource
     {
-        return new TaskResource($this->tasks->create($request->user(), null, $request->validated()));
+        return new TaskResource($this->tasks->create($request->user(), null, $request->toDto()));
     }
 
     public function update(UpdateTaskRequest $request, Task $task): TaskResource
     {
-        return new TaskResource($this->tasks->update($request->user(), $task, $request->validated()));
+        return new TaskResource($this->tasks->update($request->user(), $task, $request->toDto()));
     }
 
     public function updateStatus(UpdateTaskStatusRequest $request, Task $task): TaskResource
     {
-        return new TaskResource($this->tasks->changeStatus($request->user(), $task, $request->validated('status')));
+        return new TaskResource($this->tasks->changeStatus($request->user(), $task, $request->toDto()));
     }
 
     public function destroy(DeleteTaskRequest $request, Task $task): JsonResponse

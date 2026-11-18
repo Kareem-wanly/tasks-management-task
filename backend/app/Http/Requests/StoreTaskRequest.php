@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Task\CreateTaskDTO;
 use App\Models\Task;
 use App\Rules\ParentTask;
 use App\Rules\ProjectMember;
@@ -62,5 +63,10 @@ class StoreTaskRequest extends FormRequest
                 }
             }
         });
+    }
+
+    public function toDto(): CreateTaskDTO
+    {
+        return CreateTaskDTO::fromArray($this->validated());
     }
 }
