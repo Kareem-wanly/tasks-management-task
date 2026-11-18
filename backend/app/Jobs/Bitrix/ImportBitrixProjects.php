@@ -80,7 +80,11 @@ class ImportBitrixProjects implements ShouldQueue
 
         $missing = array_values(array_diff($projects->allBitrixIds(), $seen));
 
-        return $projects->deleteByBitrixIds($guard->confirmedGone($missing, fn (int $id) => $fetch->group($id) !== null, 'groups'));
+        $gone = $guard->confirmedGone($missing, fn (int $id) => $fetch->group($id) !== null, 'groups');
+        $deleted = $projects->deleteByBitrixIds($gone);
+        $guard->recordDeleted('groups', $gone, 'import');
+
+        return $deleted;
     }
 
     /**

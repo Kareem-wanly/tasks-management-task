@@ -49,6 +49,7 @@ class SyncBitrixProject implements ShouldBeUniqueUntilProcessing, ShouldQueue
             if (! $echo->isProjectEcho($this->bitrixGroupId, null, false) && $guard->serviceAccountIsAdmin()) {
                 if ($project = $projectRepository->findByBitrixGroupId($this->bitrixGroupId)) {
                     $projectRepository->delete($project);
+                    $guard->recordDeleted('groups', [$this->bitrixGroupId], 'event');
                 }
             }
 

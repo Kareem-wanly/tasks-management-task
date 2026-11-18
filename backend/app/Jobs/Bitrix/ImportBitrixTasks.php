@@ -109,6 +109,10 @@ class ImportBitrixTasks implements ShouldQueue
         // Compared here, not in SQL: a NOT IN with every Bitrix ID outgrows the placeholder limit.
         $missing = array_values(array_diff($tasks->allBitrixIds(), $seen));
 
-        return $tasks->deleteByBitrixIds($guard->confirmedGone($missing, fn (int $id) => $fetch->task($id) !== null, 'tasks'));
+        $gone = $guard->confirmedGone($missing, fn (int $id) => $fetch->task($id) !== null, 'tasks');
+        $deleted = $tasks->deleteByBitrixIds($gone);
+        $guard->recordDeleted('tasks', $gone, 'import');
+
+        return $deleted;
     }
 }

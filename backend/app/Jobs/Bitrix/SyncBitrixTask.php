@@ -51,6 +51,7 @@ class SyncBitrixTask implements ShouldBeUniqueUntilProcessing, ShouldQueue
             if (! $echo->isTaskEcho($this->bitrixTaskId, null) && $guard->serviceAccountIsAdmin()) {
                 if ($task = $taskRepository->findByBitrixId($this->bitrixTaskId)) {
                     $taskRepository->delete($task);
+                    $guard->recordDeleted('tasks', [$this->bitrixTaskId], 'event');
                 }
             }
 
