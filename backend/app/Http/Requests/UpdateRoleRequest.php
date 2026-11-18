@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Role\UpdateRoleDTO;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -31,5 +32,10 @@ class UpdateRoleRequest extends FormRequest
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['integer', 'exists:permissions,id'],
         ];
+    }
+
+    public function toDto(): UpdateRoleDTO
+    {
+        return UpdateRoleDTO::fromArray($this->validated());
     }
 }

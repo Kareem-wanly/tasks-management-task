@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\User\InviteUserDTO;
+use App\DTOs\User\SetUserActiveDTO;
+use App\DTOs\User\UpdateUserDTO;
+use App\DTOs\User\UserFiltersDTO;
 use App\Exceptions\BusinessRuleException;
 use App\Integrations\Bitrix24\BitrixUserPusher;
 use App\Models\User;
@@ -28,8 +32,7 @@ class UserService
         private readonly BitrixUserPusher $bitrix,
     ) {}
 
-    /** @param  array{search?: ?string, role?: ?string}  $filters */
-    public function list(array $filters, int $perPage): LengthAwarePaginator
+    public function list(UserFiltersDTO $filters, int $perPage): LengthAwarePaginator
     {
         return $this->users->paginate($filters, $perPage);
     }
@@ -48,26 +51,23 @@ class UserService
     /**
      * Invites the person to Bitrix24 (Bitrix emails them), then adds them
      * here with the chosen role, or Member.
-     *
-     * @param  array{name: string, email: string, password: string, role_id?: ?int}  $data
      */
-    public function invite(User $actor, array $data): User
+    public function invite(User $actor, InviteUserDTO $data): User
     {
-        $user = new User(['name' => $data['name'], 'email' => $data['email'], 'password' => $data['password']]);
+        $user = new User(['name' => $data->name, 'email' => $data->email, 'password' => $data->password]);
         $this->bitrix->invite($actor, $user);
 
         DB::transaction(function () use ($user, $data): void {
             $this->users->save($user);
-            $this->users->attachRole($user, ! empty($data['role_id']) ? (int) $data['role_id'] : $this->roles->memberRole()->id);
+            $this->users->attachRole($user, $data->roleId ?? $this->roles->memberRole()->id);
         });
 
         return $this->users->withRoles($user);
     }
 
-    /** @param  array<string, mixed>  $data */
-    public function update(User $actor, User $user, array $data): User
+    public function update(User $actor, User $user, UpdateUserDTO $data): User
     {
-        $user->fill($data);
+        $user->fill($data->toArray());
         $this->bitrix->update($actor, $user);
         $this->users->save($user);
 
@@ -79,8 +79,10 @@ class UserService
      * are deactivated (and can be activated again). A deactivated employee
      * can't sign in, and their open sessions end.
      */
-    public function setActive(User $actor, User $user, bool $active): User
+    public function setActive(User $actor, User $user, SetUserActiveDTO $data): User
     {
+        $active = $data->active;
+
         if ($user->is($actor)) {
             throw BusinessRuleException::forbidden('You cannot deactivate your own account.');
         }

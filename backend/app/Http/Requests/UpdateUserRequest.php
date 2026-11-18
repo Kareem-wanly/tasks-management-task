@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\User\UpdateUserDTO;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -23,5 +24,10 @@ class UpdateUserRequest extends FormRequest
                 Rule::unique('users', 'email')->ignore($this->route('user')),
             ],
         ];
+    }
+
+    public function toDto(): UpdateUserDTO
+    {
+        return UpdateUserDTO::fromArray($this->validated());
     }
 }

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Auth\LoginDTO;
+use App\DTOs\Auth\RegisterDTO;
+use App\DTOs\Auth\UpdatePasswordDTO;
+use App\DTOs\Auth\UpdateProfileDTO;
 use App\Exceptions\BusinessRuleException;
 use App\Models\User;
 use App\Repositories\Contracts\RoleRepositoryInterface;
@@ -25,13 +29,12 @@ class AuthService
     ) {}
 
     /**
-     * @param  array{name: string, email: string, password: string}  $data
      * @return array{0: User, 1: string} The user and their API token.
      */
-    public function register(array $data): array
+    public function register(RegisterDTO $data): array
     {
         $user = DB::transaction(function () use ($data): User {
-            $user = $this->users->create(['name' => $data['name'], 'email' => $data['email'], 'password' => $data['password']]);
+            $user = $this->users->create(['name' => $data->name, 'email' => $data->email, 'password' => $data->password]);
 
             if (($member = $this->roles->findByName('Member')) instanceof \App\Models\Role) {
                 $this->users->attachRole($user, $member->id);
@@ -44,11 +47,11 @@ class AuthService
     }
 
     /** @return array{0: User, 1: string} The user and their API token. */
-    public function login(string $email, string $password): array
+    public function login(LoginDTO $credentials): array
     {
-        $user = $this->users->findByEmail($email);
+        $user = $this->users->findByEmail($credentials->email);
 
-        if (! $user instanceof User || ! Hash::check($password, $user->password)) {
+        if (! $user instanceof User || ! Hash::check($credentials->password, $user->password)) {
             throw new BusinessRuleException('Invalid login credentials', 401);
         }
 
@@ -70,16 +73,15 @@ class AuthService
         $this->users->revokeCurrentToken($user);
     }
 
-    /** @param  array{name: string, email: string}  $data */
-    public function updateProfile(User $user, array $data): User
+    public function updateProfile(User $user, UpdateProfileDTO $data): User
     {
-        $this->users->update($user, $data);
+        $this->users->update($user, $data->toArray());
 
         return $user;
     }
 
-    public function updatePassword(User $user, string $password): void
+    public function updatePassword(User $user, UpdatePasswordDTO $data): void
     {
-        $this->users->update($user, ['password' => $password]);
+        $this->users->update($user, ['password' => $data->password]);
     }
 }

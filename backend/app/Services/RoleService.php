@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Role\CreateRoleDTO;
+use App\DTOs\Role\SyncRolePermissionsDTO;
+use App\DTOs\Role\UpdateRoleDTO;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Role;
 use App\Models\User;
@@ -35,20 +38,19 @@ class RoleService
         return $this->roles->withPermissions($role);
     }
 
-    /** @param  array<string, mixed>  $data */
-    public function create(User $actor, array $data): Role
+    public function create(User $actor, CreateRoleDTO $data): Role
     {
         // A refused permission must not leave the new role behind.
         $role = $this->database->transaction(function () use ($actor, $data): Role {
             $role = $this->roles->create([
-                'name' => $data['name'],
-                'display_name' => $data['display_name'] ?? $data['name'],
-                'description' => $data['description'] ?? null,
+                'name' => $data->name,
+                'display_name' => $data->displayName ?? $data->name,
+                'description' => $data->description,
             ]);
 
-            if (! empty($data['permissions'])) {
-                $this->guardPermissionGrant($actor, $role, $data['permissions']);
-                $this->roles->syncPermissions($role, $data['permissions']);
+            if ($data->permissionIds !== []) {
+                $this->guardPermissionGrant($actor, $role, $data->permissionIds);
+                $this->roles->syncPermissions($role, $data->permissionIds);
             }
 
             return $role;
@@ -57,10 +59,9 @@ class RoleService
         return $this->roles->withPermissions($role);
     }
 
-    /** @param  array<string, mixed>  $data */
-    public function update(User $actor, Role $role, array $data): Role
+    public function update(User $actor, Role $role, UpdateRoleDTO $data): Role
     {
-        $newName = $data['name'] ?? null;
+        $newName = $data->name;
         $isSystem = in_array($role->name, self::SYSTEM_ROLES, true);
 
         // System roles keep their names, so the app can rely on them.
@@ -72,22 +73,21 @@ class RoleService
         }
 
         $this->database->transaction(function () use ($actor, $role, $data): void {
-            $this->roles->update($role, array_intersect_key($data, array_flip(['name', 'display_name', 'description'])));
+            $this->roles->update($role, $data->toArray());
 
-            if (array_key_exists('permissions', $data)) {
-                $this->guardPermissionGrant($actor, $role, $data['permissions']);
-                $this->roles->syncPermissions($role, $data['permissions']);
+            if ($data->has('permissions')) {
+                $this->guardPermissionGrant($actor, $role, $data->permissionIds);
+                $this->roles->syncPermissions($role, $data->permissionIds);
             }
         });
 
         return $this->roles->withPermissions($role);
     }
 
-    /** @param  list<int>  $permissionIds */
-    public function syncPermissions(User $actor, Role $role, array $permissionIds): Role
+    public function syncPermissions(User $actor, Role $role, SyncRolePermissionsDTO $permissions): Role
     {
-        $this->guardPermissionGrant($actor, $role, $permissionIds);
-        $this->roles->syncPermissions($role, $permissionIds);
+        $this->guardPermissionGrant($actor, $role, $permissions->permissionIds);
+        $this->roles->syncPermissions($role, $permissions->permissionIds);
 
         return $this->roles->withPermissions($role);
     }

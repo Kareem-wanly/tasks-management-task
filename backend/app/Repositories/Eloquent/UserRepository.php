@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
 
+use App\DTOs\User\UserFiltersDTO;
 use App\Models\Role;
 use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
@@ -12,17 +13,17 @@ use Illuminate\Support\Collection;
 
 class UserRepository implements UserRepositoryInterface
 {
-    public function paginate(array $filters, int $perPage): LengthAwarePaginator
+    public function paginate(UserFiltersDTO $filters, int $perPage): LengthAwarePaginator
     {
         $query = User::with('roles:id,name,display_name');
 
-        if (! empty($filters['search'])) {
-            $search = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $filters['search']);
+        if ($filters->search !== null) {
+            $search = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $filters->search);
             $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
         }
 
-        if (! empty($filters['role'])) {
-            $role = $filters['role'];
+        if ($filters->role !== null) {
+            $role = $filters->role;
             $query->whereHas('roles', fn ($q) => $q->where('name', $role)->orWhere('id', $role));
         }
 

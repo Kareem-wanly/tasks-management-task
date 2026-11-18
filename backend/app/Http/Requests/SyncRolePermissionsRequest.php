@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Role\SyncRolePermissionsDTO;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Replaces the permissions a role grants. */
@@ -20,5 +21,13 @@ class SyncRolePermissionsRequest extends FormRequest
             'permissions' => ['required', 'array'],
             'permissions.*' => ['integer', 'exists:permissions,id'],
         ];
+    }
+
+    public function toDto(): SyncRolePermissionsDTO
+    {
+        /** @var array{permissions: list<int|string>} $validated */
+        $validated = $this->validated();
+
+        return SyncRolePermissionsDTO::fromArray($validated);
     }
 }
