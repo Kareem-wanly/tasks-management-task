@@ -4,7 +4,8 @@ import authApi from '@/api/authApi';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { ApiError } from '@/lib/apiClient';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { bitrixFrameAuth } from '@/lib/auth/bitrixFrame';
+import { Button } from '@/components/ui/button';
+import { bitrixFrameAuth, isInsideFrame } from '@/lib/auth/bitrixFrame';
 import AuthShell from './components/AuthShell';
 import BitrixLoginButton from './components/BitrixLoginButton';
 import { BITRIX_SIGN_IN_DEFAULT_ERROR, BITRIX_SIGN_IN_ERRORS } from './bitrixSignInErrors';
@@ -14,8 +15,12 @@ type Outcome = { message: string | null } | null;
 
 /**
  * Where the app opens inside Bitrix24. It signs in the Bitrix user around it, with the tokens Bitrix's JS
- * SDK hands this frame (a forged POST can't plant someone else's). If that isn't possible, e.g. the page
- * was opened outside Bitrix, the normal "Sign in with Bitrix24" button is shown.
+ * SDK hands this frame (a forged POST can't plant someone else's). Bitrix only answers a frame on the
+ * app's registered address, so this works where the SPA is served from that address.
+ *
+ * Otherwise: inside Bitrix, the sign-in can't finish in the frame (the browser treats our session cookie
+ * as third-party there), so the app opens in a new tab, where the normal sign-in works. Outside Bitrix,
+ * the normal "Sign in with Bitrix24" button is shown.
  */
 export default function BitrixAppPage() {
   const { loginWithToken } = useAuth();
@@ -65,7 +70,21 @@ export default function BitrixAppPage() {
           {outcome.message}
         </p>
       )}
-      <BitrixLoginButton />
+      {isInsideFrame() ? (
+        <>
+          <p className="mb-4 text-sm text-muted-foreground">The app opens in its own tab, where you sign in with Bitrix24.</p>
+          <Button
+            type="button"
+            size="lg"
+            className="w-full"
+            onClick={() => window.open(`${window.location.origin}/login`, '_blank', 'noopener')}
+          >
+            Open the app in a new tab
+          </Button>
+        </>
+      ) : (
+        <BitrixLoginButton />
+      )}
     </AuthShell>
   );
 }

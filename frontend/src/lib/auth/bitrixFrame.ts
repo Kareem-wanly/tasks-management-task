@@ -17,7 +17,8 @@ const SDK_URL = 'https://api.bitrix24.com/api/v1/';
 /** How long to wait for the Bitrix page around us to answer before showing the sign-in button. */
 const TIMEOUT_MS = 6000;
 
-function isInsideFrame(): boolean {
+/** Whether this page runs inside a frame (e.g. opened as an app inside Bitrix24). */
+export function isInsideFrame(): boolean {
   try {
     return window.self !== window.top;
   } catch {

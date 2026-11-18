@@ -135,21 +135,23 @@ class BitrixAuthController extends Controller
      */
     public function appSession(BitrixAppSessionRequest $request): JsonResponse
     {
-        if (! $this->isOurPortal($request->validated('domain'))) {
+        $auth = $request->frameAuth();
+
+        if (! $this->isOurPortal($auth['domain'])) {
             return $this->refuse('unknown_portal');
         }
 
         // A valid token of another app on the portal is not a sign-in to ours.
-        if (! $this->isOurAppToken((string) $request->validated('access_token'))) {
+        if (! $this->isOurAppToken($auth['access_token'])) {
             return $this->refuse('bitrix_rejected');
         }
 
         $user = $this->authenticate(new BitrixToken(
-            accessToken: (string) $request->validated('access_token'),
-            refreshToken: (string) $request->validated('refresh_token'),
-            expiresAt: CarbonImmutable::now()->addSeconds((int) ($request->validated('expires_in') ?: 3600)),
-            domain: (string) $request->validated('domain'),
-            memberId: $request->validated('member_id'),
+            accessToken: $auth['access_token'],
+            refreshToken: $auth['refresh_token'],
+            expiresAt: CarbonImmutable::now()->addSeconds($auth['expires_in']),
+            domain: $auth['domain'],
+            memberId: $auth['member_id'],
         ));
 
         return $user instanceof User
