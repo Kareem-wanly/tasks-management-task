@@ -15,7 +15,7 @@ class BitrixAuthTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const FRONTEND = 'http://localhost:5173/auth/bitrix/callback';
+    private const FRONTEND = 'http://localhost:5173/auth/bitrix/done';
 
     private const APP_PAGE = 'http://localhost:5173/auth/bitrix/app';
 
@@ -275,6 +275,18 @@ class BitrixAuthTest extends TestCase
         $this->withToken($token)->getJson('/api/me')->assertOk()->assertJsonPath('user.id', User::sole()->id);
         $this->assertSame('frame-access', User::sole()->bitrixToken()->accessToken);
         Http::assertSent(fn (Request $r) => str_contains($r->url(), 'user.current') && $r['auth'] === 'frame-access');
+    }
+
+    /** Bitrix's JS SDK gives expires_in as the expiry time (Unix seconds or milliseconds), not seconds left. */
+    public function test_the_app_page_accepts_the_expiry_as_a_unix_time(): void
+    {
+        $this->fakeBitrix();
+
+        $this->appSession(['expires_in' => time() + 1800])->assertOk();
+        $this->assertEqualsWithDelta(now()->addSeconds(1800)->timestamp, User::sole()->bitrixToken()->expiresAt->timestamp, 5);
+
+        $this->appSession(['expires_in' => (time() + 600) * 1000])->assertOk();
+        $this->assertEqualsWithDelta(now()->addSeconds(600)->timestamp, User::sole()->fresh()->bitrixToken()->expiresAt->timestamp, 5);
     }
 
     public function test_the_app_page_refuses_another_portal_or_another_app(): void

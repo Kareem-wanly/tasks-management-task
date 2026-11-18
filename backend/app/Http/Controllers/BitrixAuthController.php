@@ -89,7 +89,7 @@ class BitrixAuthController extends Controller
     public function appSession(BitrixAppSessionRequest $request): JsonResponse
     {
         try {
-            return response()->json(['token' => $this->auth->signInFromFrame($request->validated())]);
+            return response()->json(['token' => $this->auth->signInFromFrame($request->frameAuth())]);
         } catch (BitrixSignInException $e) {
             return response()->json(['message' => 'Sign-in with Bitrix24 was refused.', 'reason' => $e->reason], 422);
         }

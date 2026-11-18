@@ -21,9 +21,11 @@ return [
 
     'oauth_server' => env('BITRIX24_OAUTH_SERVER', 'https://oauth.bitrix.info'),
 
+    // The SPA page that finishes a sign-in. Not /auth/bitrix/callback: when the SPA and the API share
+    // one address (needed for the app to work inside Bitrix24), that path is Laravel's.
     'frontend_callback_url' => env(
         'BITRIX24_FRONTEND_CALLBACK_URL',
-        env('FRONTEND_URL', 'http://localhost:5173').'/auth/bitrix/callback'
+        env('FRONTEND_URL', 'http://localhost:5173').'/auth/bitrix/done'
     ),
 
     // The frontend page the app opens on inside Bitrix24 (it signs in through Bitrix's JS SDK).
