@@ -10,15 +10,15 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
- * Step 4.7: brings every Bitrix task's whole chat up to date. Edits and
- * deletes in Bitrix send no events, so this nightly pass (and opening a
- * task, for its newest messages) is how they reach us.
+ * Step 4.6: brings every Bitrix task's results up to date. Bitrix sends no
+ * events for results, so this nightly pass (and opening a task) is how
+ * results added there reach us. REST 3.0 has no batch: one call per task.
  */
-final class ImportBitrixChat implements ShouldQueue
+final class ImportBitrixResultsJob implements ShouldQueue
 {
     use Queueable, TracksSyncProgress;
 
-    public const ENTITY = BitrixImportServiceInterface::CHAT;
+    public const ENTITY = BitrixImportServiceInterface::RESULTS;
 
     public function __construct()
     {
@@ -27,6 +27,6 @@ final class ImportBitrixChat implements ShouldQueue
 
     public function handle(BitrixImportServiceInterface $import): void
     {
-        $import->importChat();
+        $import->importResults();
     }
 }

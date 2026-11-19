@@ -10,7 +10,7 @@ use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** The user list, filtered by name/email and role. */
-class ListUsersRequest extends FormRequest
+final class ListUsersRequest extends FormRequest
 {
     use HasPagination;
 

@@ -15,11 +15,11 @@ use Carbon\CarbonImmutable;
  * (tasks.task.result.list items, REST 3.0). Bitrix sends no events for
  * results, so this runs when the task is opened and every night.
  */
-class BitrixResultSync
+final readonly class BitrixResultSync
 {
     public function __construct(
-        private readonly TaskResultRepositoryInterface $results,
-        private readonly UserRepositoryInterface $users,
+        private TaskResultRepositoryInterface $results,
+        private UserRepositoryInterface $users,
     ) {}
 
     /**

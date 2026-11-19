@@ -9,7 +9,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /** Puts an item right after another item of its list (after_id), or first (null). */
-class MoveChecklistItemRequest extends FormRequest
+final class MoveChecklistItemRequest extends FormRequest
 {
     public function authorize(): bool
     {

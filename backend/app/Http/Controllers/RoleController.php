@@ -14,7 +14,7 @@ use App\Models\Role;
 use App\Services\Contracts\RoleServiceInterface;
 use Illuminate\Http\JsonResponse;
 
-class RoleController extends Controller
+final class RoleController extends Controller
 {
     public function __construct(private readonly RoleServiceInterface $roles) {}
 

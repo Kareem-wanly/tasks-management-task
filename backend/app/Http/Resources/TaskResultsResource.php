@@ -13,7 +13,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * @property TaskResultsDTO $resource
  */
-class TaskResultsResource extends JsonResource
+final class TaskResultsResource extends JsonResource
 {
     public static $wrap;
 

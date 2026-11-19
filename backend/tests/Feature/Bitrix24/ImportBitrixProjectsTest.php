@@ -9,7 +9,7 @@ use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
-use App\Jobs\Bitrix\ImportBitrixProjects;
+use App\Jobs\Bitrix\ImportBitrixProjectsJob;
 use App\Models\ActivityLog;
 use App\Models\Project;
 use App\Models\User;
@@ -115,7 +115,7 @@ class ImportBitrixProjectsTest extends TestCase
 
     public function test_job_runs_on_the_bitrix_queue(): void
     {
-        $this->assertSame('bitrix', (new ImportBitrixProjects)->queue);
+        $this->assertSame('bitrix', (new ImportBitrixProjectsJob)->queue);
     }
 
     public function test_every_page_of_groups_is_imported(): void
@@ -274,6 +274,6 @@ class ImportBitrixProjectsTest extends TestCase
 
     private function import(): void
     {
-        dispatch_sync(new ImportBitrixProjects);
+        dispatch_sync(new ImportBitrixProjectsJob);
     }
 }

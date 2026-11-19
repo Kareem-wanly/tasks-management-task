@@ -12,3 +12,15 @@ pest()->extend(Tests\TestCase::class)
 
 pest()->extend(Tests\TestCase::class)
     ->in('Unit/Services', 'Unit/Actions', 'Unit/Jobs');
+
+/**
+ * An unsaved user whose roles are known without the database (the model's
+ * role cache is filled), for service unit tests with mocked repositories.
+ */
+function userWithRoles(string ...$roles): App\Models\User
+{
+    $user = (new App\Models\User)->forceFill(['id' => random_int(1_000, 999_999), 'name' => 'Someone']);
+    (fn (): Illuminate\Support\Collection => $this->roleCache = collect($roles))->call($user);
+
+    return $user;
+}

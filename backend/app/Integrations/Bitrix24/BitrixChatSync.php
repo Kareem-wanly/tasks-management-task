@@ -16,11 +16,11 @@ use Carbon\CarbonImmutable;
  * edits and deletes send no events, so this also runs when the task is
  * opened (newest page) and every night (the whole chat).
  */
-class BitrixChatSync
+final readonly class BitrixChatSync
 {
     public function __construct(
-        private readonly TaskChatMessageRepositoryInterface $messages,
-        private readonly UserRepositoryInterface $users,
+        private TaskChatMessageRepositoryInterface $messages,
+        private UserRepositoryInterface $users,
     ) {}
 
     /**

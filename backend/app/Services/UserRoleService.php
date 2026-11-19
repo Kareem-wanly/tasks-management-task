@@ -14,8 +14,8 @@ use App\Repositories\Contracts\PermissionRepositoryInterface;
 use App\Repositories\Contracts\RoleRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Contracts\UserRoleServiceInterface;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Which roles a user has. Nobody hands out permissions they don't hold,
@@ -28,6 +28,7 @@ final readonly class UserRoleService implements UserRoleServiceInterface
         private UserRepositoryInterface $users,
         private RoleRepositoryInterface $roles,
         private PermissionRepositoryInterface $permissions,
+        private ConnectionInterface $database,
     ) {}
 
     public function list(User $user): Collection
@@ -45,7 +46,7 @@ final readonly class UserRoleService implements UserRoleServiceInterface
             throw new RoleAssignmentDeniedException;
         }
 
-        return DB::transaction(function () use ($actorIsAdmin, $user, $roleIds): User {
+        return $this->database->transaction(function () use ($actorIsAdmin, $user, $roleIds): User {
             $adminRole = $this->roles->findByName(SystemRole::Administrator->value);
 
             if ($adminRole instanceof \App\Models\Role) {

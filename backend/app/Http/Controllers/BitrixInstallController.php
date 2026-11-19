@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
  *   as not installed until the page calls BX24.installFinish(), so we answer
  *   with a page that does.
  */
-class BitrixInstallController extends Controller
+final class BitrixInstallController extends Controller
 {
     public function __construct(private readonly BitrixInstallServiceInterface $installs) {}
 

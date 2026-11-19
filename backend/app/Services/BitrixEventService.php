@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Bitrix\BitrixEventDTO;
-use App\Jobs\Bitrix\SyncBitrixProject;
-use App\Jobs\Bitrix\SyncBitrixTask;
-use App\Jobs\Bitrix\SyncBitrixTaskChat;
+use App\Jobs\Bitrix\SyncBitrixProjectJob;
+use App\Jobs\Bitrix\SyncBitrixTaskChatJob;
+use App\Jobs\Bitrix\SyncBitrixTaskJob;
 use App\Repositories\Contracts\BitrixPortalRepositoryInterface;
 use App\Services\Contracts\BitrixEventServiceInterface;
 use Illuminate\Support\Facades\Log;
@@ -59,18 +59,18 @@ final readonly class BitrixEventService implements BitrixEventServiceInterface
         }
     }
 
-    private function taskJob(mixed $id): ?SyncBitrixTask
+    private function taskJob(mixed $id): ?SyncBitrixTaskJob
     {
-        return (int) $id > 0 ? new SyncBitrixTask((int) $id) : null;
+        return (int) $id > 0 ? new SyncBitrixTaskJob((int) $id) : null;
     }
 
-    private function chatJob(mixed $taskId): ?SyncBitrixTaskChat
+    private function chatJob(mixed $taskId): ?SyncBitrixTaskChatJob
     {
-        return (int) $taskId > 0 ? new SyncBitrixTaskChat((int) $taskId) : null;
+        return (int) $taskId > 0 ? new SyncBitrixTaskChatJob((int) $taskId) : null;
     }
 
-    private function projectJob(mixed $id): ?SyncBitrixProject
+    private function projectJob(mixed $id): ?SyncBitrixProjectJob
     {
-        return (int) $id > 0 ? new SyncBitrixProject((int) $id) : null;
+        return (int) $id > 0 ? new SyncBitrixProjectJob((int) $id) : null;
     }
 }

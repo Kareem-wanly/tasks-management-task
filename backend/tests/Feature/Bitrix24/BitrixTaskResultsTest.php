@@ -6,7 +6,7 @@ namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
-use App\Jobs\Bitrix\ImportBitrixResults;
+use App\Jobs\Bitrix\ImportBitrixResultsJob;
 use App\Models\Permission;
 use App\Models\Project;
 use App\Models\Role;
@@ -168,7 +168,7 @@ class BitrixTaskResultsTest extends TestCase
     {
         $this->bitrixResult('From Bitrix', 5);
 
-        dispatch_sync(new ImportBitrixResults);
+        dispatch_sync(new ImportBitrixResultsJob);
 
         $this->assertSame(['From Bitrix'], TaskResult::pluck('text')->all());
     }

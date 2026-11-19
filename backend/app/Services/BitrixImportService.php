@@ -20,14 +20,14 @@ use App\Integrations\Bitrix24\Contracts\BitrixTaskRepositoryInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixTimeRepositoryInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixUserRepositoryInterface;
 use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
-use App\Jobs\Bitrix\ImportBitrixChat;
-use App\Jobs\Bitrix\ImportBitrixChecklists;
-use App\Jobs\Bitrix\ImportBitrixFiles;
-use App\Jobs\Bitrix\ImportBitrixProjects;
-use App\Jobs\Bitrix\ImportBitrixResults;
-use App\Jobs\Bitrix\ImportBitrixTasks;
-use App\Jobs\Bitrix\ImportBitrixTime;
-use App\Jobs\Bitrix\ImportBitrixUsers;
+use App\Jobs\Bitrix\ImportBitrixChatJob;
+use App\Jobs\Bitrix\ImportBitrixChecklistsJob;
+use App\Jobs\Bitrix\ImportBitrixFilesJob;
+use App\Jobs\Bitrix\ImportBitrixProjectsJob;
+use App\Jobs\Bitrix\ImportBitrixResultsJob;
+use App\Jobs\Bitrix\ImportBitrixTasksJob;
+use App\Jobs\Bitrix\ImportBitrixTimeJob;
+use App\Jobs\Bitrix\ImportBitrixUsersJob;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -53,14 +53,14 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
 
     /** The job that imports each entity. */
     private const JOBS = [
-        self::USERS => ImportBitrixUsers::class,
-        self::PROJECTS => ImportBitrixProjects::class,
-        self::TASKS => ImportBitrixTasks::class,
-        self::CHECKLISTS => ImportBitrixChecklists::class,
-        self::TIME => ImportBitrixTime::class,
-        self::FILES => ImportBitrixFiles::class,
-        self::RESULTS => ImportBitrixResults::class,
-        self::CHAT => ImportBitrixChat::class,
+        self::USERS => ImportBitrixUsersJob::class,
+        self::PROJECTS => ImportBitrixProjectsJob::class,
+        self::TASKS => ImportBitrixTasksJob::class,
+        self::CHECKLISTS => ImportBitrixChecklistsJob::class,
+        self::TIME => ImportBitrixTimeJob::class,
+        self::FILES => ImportBitrixFilesJob::class,
+        self::RESULTS => ImportBitrixResultsJob::class,
+        self::CHAT => ImportBitrixChatJob::class,
     ];
 
     public function __construct(
@@ -98,6 +98,11 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
         dispatch_sync($this->job($entity, $linkByEmail));
     }
 
+    public function markFailed(string $entity, string $error): void
+    {
+        $this->cursors->fail($entity, $error);
+    }
+
     public function progress(array $entities): Collection
     {
         return $this->cursors->forEntities($entities);
@@ -117,8 +122,8 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
 
     public function syncChanges(CarbonImmutable $since): void
     {
-        dispatch_sync(new ImportBitrixProjects);
-        dispatch_sync(new ImportBitrixTasks($since->subSeconds(self::OVERLAP_SECONDS)));
+        dispatch_sync(new ImportBitrixProjectsJob);
+        dispatch_sync(new ImportBitrixTasksJob($since->subSeconds(self::OVERLAP_SECONDS)));
     }
 
     public function importUsers(bool $linkByEmail): void
@@ -259,7 +264,7 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
 
     private function job(string $entity, bool $linkByEmail): object
     {
-        return $entity === self::USERS ? new ImportBitrixUsers($linkByEmail) : new (self::JOBS[$entity]);
+        return $entity === self::USERS ? new ImportBitrixUsersJob($linkByEmail) : new (self::JOBS[$entity]);
     }
 
     /**

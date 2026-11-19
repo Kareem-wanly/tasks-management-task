@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * "Sign in with Bitrix24" (kept in its sessionStorage): a code sent to
  * another browser can't be traded there (login CSRF). Only hashes are stored.
  */
-class BitrixLoginCodes
+final class BitrixLoginCodes
 {
     public const LENGTH = 64;
 

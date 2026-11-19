@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Starts or stops following a task: anyone who sees it may. */
-class WatchTaskRequest extends FormRequest
+final class WatchTaskRequest extends FormRequest
 {
     public function authorize(): bool
     {

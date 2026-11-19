@@ -13,12 +13,11 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Step 4.7: brings one task's chat up to date after OnTaskCommentAdd (a new
- * message in Bitrix; the event only names the task). Unique until it
- * starts, so a burst of messages collapses into one fetch. Our own messages
- * come back too; they are matched by their Bitrix ID, so nothing doubles.
+ * Step 3.4: brings one Bitrix24 group up to date after a group event.
+ * Unique until it starts, so the events Bitrix sends for one change
+ * collapse into one fetch (debounce).
  */
-final class SyncBitrixTaskChat implements ShouldBeUniqueUntilProcessing, ShouldQueue
+final class SyncBitrixProjectJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Queueable;
 
@@ -27,30 +26,30 @@ final class SyncBitrixTaskChat implements ShouldBeUniqueUntilProcessing, ShouldQ
     /** Seconds before each retry, e.g. while Bitrix is unreachable. */
     public array $backoff = [10, 60];
 
-    /** One page of messages; well under $uniqueFor. */
+    /** One group's fetch and save; well under $uniqueFor. */
     public int $timeout = 90;
 
     /** Safety net: the lock never outlives a stuck job by much. */
     public int $uniqueFor = 120;
 
-    public function __construct(public readonly int $bitrixTaskId)
+    public function __construct(public readonly int $bitrixGroupId)
     {
         $this->onQueue(QueueName::Bitrix);
     }
 
     public function uniqueId(): string
     {
-        return 'chat:'.$this->bitrixTaskId;
+        return (string) $this->bitrixGroupId;
     }
 
     public function handle(BitrixSyncServiceInterface $sync): void
     {
-        $sync->syncTaskChat($this->bitrixTaskId);
+        $sync->syncProject($this->bitrixGroupId);
     }
 
-    /** The chat is fetched again when the task is opened, and by the nightly import. */
+    /** The next event, or the nightly import, brings the project up to date. */
     public function failed(?Throwable $exception): void
     {
-        Log::warning('Bitrix24 task chat sync failed.', ['bitrix_task_id' => $this->bitrixTaskId, 'error' => $exception?->getMessage()]);
+        Log::warning('Bitrix24 project sync failed.', ['bitrix_group_id' => $this->bitrixGroupId, 'error' => $exception?->getMessage()]);
     }
 }

@@ -16,12 +16,12 @@ use Illuminate\Support\Facades\Log;
  * Creates or updates our copy of a Bitrix24 user. Used by the import and by
  * Bitrix login, so both end with the same row. Bitrix wins on conflict.
  */
-class BitrixUserSync
+final readonly class BitrixUserSync
 {
     public function __construct(
-        private readonly BitrixUserMapper $mapper,
-        private readonly UserRepositoryInterface $users,
-        private readonly RoleRepositoryInterface $roles,
+        private BitrixUserMapper $mapper,
+        private UserRepositoryInterface $users,
+        private RoleRepositoryInterface $roles,
     ) {}
 
     /**

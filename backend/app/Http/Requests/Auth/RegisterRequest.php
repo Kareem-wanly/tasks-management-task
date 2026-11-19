@@ -7,7 +7,7 @@ namespace App\Http\Requests\Auth;
 use App\DTOs\Auth\RegisterDTO;
 use Illuminate\Foundation\Http\FormRequest;
 
-class RegisterRequest extends FormRequest
+final class RegisterRequest extends FormRequest
 {
     public function authorize(): bool
     {

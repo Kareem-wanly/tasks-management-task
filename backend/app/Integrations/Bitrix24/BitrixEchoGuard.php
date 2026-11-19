@@ -24,14 +24,14 @@ use Illuminate\Support\Facades\Log;
  * the fingerprint we sent. A different record right after our change is a
  * conflict, logged, and Bitrix's version is applied.
  */
-class BitrixEchoGuard
+final readonly class BitrixEchoGuard
 {
     public function __construct(
-        private readonly BitrixOutboundOpRepositoryInterface $ops,
-        private readonly TaskRepositoryInterface $tasks,
-        private readonly ProjectRepositoryInterface $projects,
-        private readonly ActivityLogRepositoryInterface $activities,
-        private readonly BitrixFingerprint $fingerprints,
+        private BitrixOutboundOpRepositoryInterface $ops,
+        private TaskRepositoryInterface $tasks,
+        private ProjectRepositoryInterface $projects,
+        private ActivityLogRepositoryInterface $activities,
+        private BitrixFingerprint $fingerprints,
     ) {}
 
     /**

@@ -9,7 +9,7 @@ use App\Enums\ProjectMemberRole;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class AddProjectMemberRequest extends FormRequest
+final class AddProjectMemberRequest extends FormRequest
 {
     public function authorize(): bool
     {

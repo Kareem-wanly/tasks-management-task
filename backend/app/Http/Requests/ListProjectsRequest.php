@@ -10,7 +10,7 @@ use App\Models\Project;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** The projects the user may open, filtered and sorted. */
-class ListProjectsRequest extends FormRequest
+final class ListProjectsRequest extends FormRequest
 {
     use HasPagination;
 

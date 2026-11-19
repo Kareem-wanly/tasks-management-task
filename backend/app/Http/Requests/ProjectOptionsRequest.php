@@ -8,7 +8,7 @@ use App\Models\Project;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Projects for dropdowns; list filters pass include_archived=1. */
-class ProjectOptionsRequest extends FormRequest
+final class ProjectOptionsRequest extends FormRequest
 {
     public function authorize(): bool
     {

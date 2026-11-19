@@ -12,7 +12,7 @@ use App\Services\Contracts\TaskHistoryServiceInterface;
 /**
  * Step 4.8: a task's change history (read only).
  */
-class TaskHistoryController extends Controller
+final class TaskHistoryController extends Controller
 {
     public function __construct(private readonly TaskHistoryServiceInterface $history) {}
 

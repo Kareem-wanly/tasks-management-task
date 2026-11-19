@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Deletes a task (in Bitrix too). */
-class DeleteTaskRequest extends FormRequest
+final class DeleteTaskRequest extends FormRequest
 {
     public function authorize(): bool
     {

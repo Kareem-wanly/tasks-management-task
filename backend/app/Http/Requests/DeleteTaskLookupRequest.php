@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Deletes one of our own statuses or priorities. */
-class DeleteTaskLookupRequest extends FormRequest
+final class DeleteTaskLookupRequest extends FormRequest
 {
     public function authorize(): bool
     {

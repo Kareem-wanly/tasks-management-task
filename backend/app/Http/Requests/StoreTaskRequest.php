@@ -12,7 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
-class StoreTaskRequest extends FormRequest
+final class StoreTaskRequest extends FormRequest
 {
     /**
      * Shared by POST /projects/{project}/tasks and POST /tasks (no project).

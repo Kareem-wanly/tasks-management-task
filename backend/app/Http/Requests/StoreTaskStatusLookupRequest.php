@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use App\Models\TaskLookup;
 use App\Models\TaskStatus;
 
-class StoreTaskStatusLookupRequest extends TaskLookupRequest
+final class StoreTaskStatusLookupRequest extends TaskLookupRequest
 {
     public function lookup(): ?TaskLookup
     {

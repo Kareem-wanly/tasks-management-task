@@ -8,7 +8,7 @@ use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
-use App\Jobs\Bitrix\ImportBitrixUsers;
+use App\Jobs\Bitrix\ImportBitrixUsersJob;
 use App\Models\Role;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -80,7 +80,7 @@ class ImportBitrixUsersTest extends TestCase
 
     public function test_job_runs_on_the_bitrix_queue(): void
     {
-        $this->assertSame('bitrix', (new ImportBitrixUsers)->queue);
+        $this->assertSame('bitrix', (new ImportBitrixUsersJob)->queue);
     }
 
     public function test_running_twice_updates_instead_of_duplicating(): void
@@ -240,6 +240,6 @@ class ImportBitrixUsersTest extends TestCase
 
     private function import(bool $linkByEmail = false): void
     {
-        dispatch_sync(new ImportBitrixUsers($linkByEmail));
+        dispatch_sync(new ImportBitrixUsersJob($linkByEmail));
     }
 }

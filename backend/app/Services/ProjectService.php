@@ -25,8 +25,8 @@ use App\Repositories\Contracts\ProjectRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Contracts\ProjectServiceInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Projects and their members. Changes to a project linked to Bitrix24 go to
@@ -50,6 +50,7 @@ final readonly class ProjectService implements ProjectServiceInterface
         private BitrixProjectRepositoryInterface $bitrixProjects,
         private BitrixOutboundOpRepositoryInterface $ops,
         private BitrixFingerprint $fingerprints,
+        private ConnectionInterface $database,
     ) {}
 
     public function list(User $user, ProjectFiltersDTO $filters, int $perPage): LengthAwarePaginator
@@ -84,7 +85,7 @@ final readonly class ProjectService implements ProjectServiceInterface
 
         $this->createInBitrix($actor, $project);
 
-        DB::transaction(function () use ($actor, $project): void {
+        $this->database->transaction(function () use ($actor, $project): void {
             $this->projects->save($project);
             // The same role the Bitrix import gives the group owner.
             $this->projects->attachMember($project, $actor->id, ProjectMemberRole::Owner);

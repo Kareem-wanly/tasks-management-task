@@ -10,7 +10,7 @@ use App\Enums\ProjectMemberRole;
  * Turns a Bitrix24 workgroup (socialnetwork.api.workgroup.list, camelCase
  * keys) and its members (sonet_group.user.get) into our projects columns.
  */
-class BitrixProjectMapper
+final class BitrixProjectMapper
 {
     /** Bitrix member role => project_user.role. Other roles (e.g. pending requests) are not members. */
     public const ROLES = [

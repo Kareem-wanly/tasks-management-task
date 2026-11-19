@@ -8,7 +8,7 @@ use App\DTOs\User\SetUserActiveDTO;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Deactivates or activates an employee (replaces deleting). */
-class SetUserActiveRequest extends FormRequest
+final class SetUserActiveRequest extends FormRequest
 {
     public function authorize(): bool
     {

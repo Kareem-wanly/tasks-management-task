@@ -14,7 +14,7 @@ use App\Services\Contracts\TaskMemberServiceInterface;
 /**
  * Step 4.1: accomplices and auditors.
  */
-class TaskMemberController extends Controller
+final class TaskMemberController extends Controller
 {
     public function __construct(private readonly TaskMemberServiceInterface $members) {}
 

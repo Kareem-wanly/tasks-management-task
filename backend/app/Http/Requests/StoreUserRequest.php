@@ -8,7 +8,7 @@ use App\DTOs\User\InviteUserDTO;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreUserRequest extends FormRequest
+final class StoreUserRequest extends FormRequest
 {
     public function authorize(): bool
     {

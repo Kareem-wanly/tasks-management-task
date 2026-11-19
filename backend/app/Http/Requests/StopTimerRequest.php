@@ -8,7 +8,7 @@ use App\DTOs\Task\StopTimerDTO;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Stops the caller's timer; its time is logged with the optional comment. */
-class StopTimerRequest extends FormRequest
+final class StopTimerRequest extends FormRequest
 {
     public function authorize(): bool
     {

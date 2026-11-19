@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Step 4.7: a file sent in the chat; only files of that message, for whoever reads the chat. */
-class DownloadTaskChatFileRequest extends FormRequest
+final class DownloadTaskChatFileRequest extends FormRequest
 {
     public function authorize(): bool
     {

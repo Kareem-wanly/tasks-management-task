@@ -9,7 +9,7 @@ use App\Models\ActivityLog;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** The activity log across the projects the user may see. */
-class ListActivitiesRequest extends FormRequest
+final class ListActivitiesRequest extends FormRequest
 {
     use HasPagination;
 

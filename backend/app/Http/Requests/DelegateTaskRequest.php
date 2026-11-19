@@ -11,7 +11,7 @@ use Illuminate\Validation\Rule;
 /**
  * Step 4.1: the responsible person hands the task to someone else.
  */
-class DelegateTaskRequest extends FormRequest
+final class DelegateTaskRequest extends FormRequest
 {
     public function authorize(): bool
     {

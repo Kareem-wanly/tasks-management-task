@@ -12,7 +12,7 @@ use App\Models\TaskPriority;
 use App\Services\Contracts\TaskLookupServiceInterface;
 use Illuminate\Http\JsonResponse;
 
-class TaskPriorityController extends Controller
+final class TaskPriorityController extends Controller
 {
     public function __construct(private readonly TaskLookupServiceInterface $lookups) {}
 

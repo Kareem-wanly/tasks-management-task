@@ -12,14 +12,14 @@ use Illuminate\Foundation\Queue\Queueable;
 
 /**
  * Step 2.3: copies every portal task into tasks, open ones first, then
- * closed. Run after ImportBitrixUsers and ImportBitrixProjects.
+ * closed. Run after ImportBitrixUsersJob and ImportBitrixProjectsJob.
  * Safe to re-run: rows are matched on bitrix_task_id.
  *
  * Step 3.6: a full run also deletes tasks that are gone from Bitrix (their
  * delete event may have been lost). With $changedSince it is the periodic
  * delta instead: only tasks changed in Bitrix since then.
  */
-final class ImportBitrixTasks implements ShouldQueue
+final class ImportBitrixTasksJob implements ShouldQueue
 {
     use Queueable, TracksSyncProgress;
 

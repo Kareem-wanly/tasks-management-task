@@ -13,7 +13,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * @property TimeLogDTO $resource
  */
-class TimeLogResource extends JsonResource
+final class TimeLogResource extends JsonResource
 {
     public static $wrap;
 

@@ -10,7 +10,7 @@ use App\Models\Task;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** The task list: filters, sort and page. */
-class ListTasksRequest extends FormRequest
+final class ListTasksRequest extends FormRequest
 {
     use HasPagination;
 

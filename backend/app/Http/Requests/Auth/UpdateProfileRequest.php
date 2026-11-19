@@ -9,7 +9,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /** The signed-in user's own name and email. */
-class UpdateProfileRequest extends FormRequest
+final class UpdateProfileRequest extends FormRequest
 {
     public function authorize(): bool
     {

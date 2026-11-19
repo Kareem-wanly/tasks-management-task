@@ -6,7 +6,7 @@ namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
-use App\Jobs\Bitrix\ImportBitrixTime;
+use App\Jobs\Bitrix\ImportBitrixTimeJob;
 use App\Models\Permission;
 use App\Models\Project;
 use App\Models\Role;
@@ -242,7 +242,7 @@ class BitrixTimeTest extends TestCase
     {
         $this->entry(15, 5, 900);
 
-        dispatch_sync(new ImportBitrixTime);
+        dispatch_sync(new ImportBitrixTimeJob);
 
         $this->assertSame(900, $this->task->fresh()->time_spent);
     }

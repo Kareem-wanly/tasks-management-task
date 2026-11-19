@@ -12,7 +12,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
-class TokenManager
+final class TokenManager
 {
     private const REFRESH_MARGIN_SECONDS = 60;
 

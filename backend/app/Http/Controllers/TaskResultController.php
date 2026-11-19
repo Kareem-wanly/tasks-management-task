@@ -16,7 +16,7 @@ use App\Services\Contracts\TaskResultServiceInterface;
 /**
  * Step 4.6: a task's official results. Every answer is the whole list.
  */
-class TaskResultController extends Controller
+final class TaskResultController extends Controller
 {
     public function __construct(private readonly TaskResultServiceInterface $results) {}
 

@@ -17,7 +17,7 @@ use App\Services\Contracts\TaskChecklistServiceInterface;
 /**
  * Step 4.3: a task's checklists. Every answer is the whole checklist.
  */
-class TaskChecklistController extends Controller
+final class TaskChecklistController extends Controller
 {
     public function __construct(private readonly TaskChecklistServiceInterface $checklists) {}
 
