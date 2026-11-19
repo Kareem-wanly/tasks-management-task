@@ -7,10 +7,10 @@ namespace App\Services;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Exceptions\Bitrix\BitrixLoginCodeExpiredException;
 use App\Exceptions\Bitrix\BitrixSignInException;
-use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixLoginCodes;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\BitrixUserSync;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\TokenManager;
 use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
@@ -36,7 +36,7 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
 
     public function __construct(
         private TokenManager $tokens,
-        private BitrixClient $bitrix,
+        private BitrixGatewayInterface $bitrix,
         private BitrixUserSync $users,
         private UserRepositoryInterface $userRepository,
         private BitrixLoginCodes $codes,

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Bitrix24;
 
 use App\Enums\ProjectStatus;
-use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use App\Jobs\Bitrix\SyncBitrixProject;
 use App\Jobs\Bitrix\SyncBitrixTask;
@@ -42,7 +42,7 @@ class BitrixEventsTest extends TestCase
         config(['bitrix.portal' => 'portal.test']);
         BitrixPortal::forceCreate(['member_id' => 'member-1', 'domain' => 'portal.test', 'application_token' => 'app-token']);
 
-        app()->instance(BitrixClient::SERVICE_ACCOUNT, new class implements HasBitrixToken
+        app()->instance(BitrixGatewayInterface::SERVICE_ACCOUNT, new class implements HasBitrixToken
         {
             public function bitrixToken(): BitrixToken
             {

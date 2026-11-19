@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Bitrix24;
 
-use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Models\Project;
 use App\Models\Role;
 use App\Models\Task;
@@ -47,7 +47,7 @@ class BitrixTaskHistoryTest extends TestCase
         $this->actor->roles()->attach(Role::where('name', 'Administrator')->first());
         $this->actor->storeBitrixToken(new BitrixToken('actor-access', 'actor-refresh', CarbonImmutable::now()->addHour()));
         User::factory()->create(['bitrix_user_id' => 6, 'name' => 'Karim']);
-        app()->instance(BitrixClient::SERVICE_ACCOUNT, $this->actor);
+        app()->instance(BitrixGatewayInterface::SERVICE_ACCOUNT, $this->actor);
 
         TaskStatus::where('key', 'todo')->update(['bitrix_id' => 2]);
         TaskStatus::where('key', 'in_progress')->update(['bitrix_id' => 3]);

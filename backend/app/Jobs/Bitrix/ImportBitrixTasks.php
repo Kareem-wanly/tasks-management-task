@@ -6,10 +6,10 @@ namespace App\Jobs\Bitrix;
 
 use App\Enums\QueueName;
 use App\Enums\TaskMemberRole;
-use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixDeletionGuard;
 use App\Integrations\Bitrix24\BitrixRecordFetcher;
 use App\Integrations\Bitrix24\BitrixTaskSync;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
 use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
 use App\Repositories\Contracts\TaskRepositoryInterface;
@@ -41,7 +41,7 @@ class ImportBitrixTasks implements ShouldQueue
         $this->onQueue(QueueName::Bitrix);
     }
 
-    public function handle(BitrixClient $bitrix, BitrixTaskSync $tasks, BitrixTaskMapper $mapper, BitrixRecordFetcher $fetch, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $taskRepository, BitrixDeletionGuard $guard): void
+    public function handle(BitrixGatewayInterface $bitrix, BitrixTaskSync $tasks, BitrixTaskMapper $mapper, BitrixRecordFetcher $fetch, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $taskRepository, BitrixDeletionGuard $guard): void
     {
         $cursor = $cursors->start(self::ENTITY);
         $skipped = 0;

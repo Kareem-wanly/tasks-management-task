@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Bitrix24;
 
 use App\Enums\OutboundOpStatus;
-use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Jobs\Bitrix\SyncBitrixTask;
 use App\Models\ActivityLog;
 use App\Models\BitrixOutboundOp;
@@ -56,7 +56,7 @@ class BitrixTaskMembersTest extends TestCase
         $this->actor = $this->bitrixUser(5, 'actor', 'Administrator');
         $this->member = $this->bitrixUser(7, 'member', 'Member');
         $this->outsider = $this->bitrixUser(8, 'outsider', 'Member');
-        app()->instance(BitrixClient::SERVICE_ACCOUNT, $this->actor);
+        app()->instance(BitrixGatewayInterface::SERVICE_ACCOUNT, $this->actor);
 
         $this->project = Project::forceCreate(['title' => 'P', 'status' => 'active', 'owner_id' => $this->actor->id, 'bitrix_group_id' => 3]);
         $this->project->members()->attach($this->member->id, ['role' => 'member']);

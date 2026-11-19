@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Bitrix24;
 
 use App\Exceptions\Bitrix\BitrixException;
-use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use App\Integrations\Bitrix24\TokenManager;
 use Carbon\CarbonImmutable;
@@ -18,7 +18,7 @@ use Illuminate\Support\Sleep;
 use InvalidArgumentException;
 use Tests\TestCase;
 
-class BitrixClientTest extends TestCase
+final class BitrixGatewayTest extends TestCase
 {
     private const REST = 'https://portal.test/rest/*';
 
@@ -162,7 +162,7 @@ class BitrixClientTest extends TestCase
     public function test_call_as_service_uses_the_bound_service_account(): void
     {
         Http::fake([self::REST => Http::response(['result' => true])]);
-        app()->instance(BitrixClient::SERVICE_ACCOUNT, $this->holder($this->token(access: 'service-access')));
+        app()->instance(BitrixGatewayInterface::SERVICE_ACCOUNT, $this->holder($this->token(access: 'service-access')));
 
         $this->client()->callAsService('event.get');
 
@@ -172,7 +172,7 @@ class BitrixClientTest extends TestCase
     public function test_call_as_service_is_refused_without_a_bound_account(): void
     {
         Http::fake();
-        unset(app()[BitrixClient::SERVICE_ACCOUNT]);
+        unset(app()[BitrixGatewayInterface::SERVICE_ACCOUNT]);
 
         try {
             $this->client()->callAsService('event.get');
@@ -366,8 +366,8 @@ class BitrixClientTest extends TestCase
         ];
     }
 
-    private function client(): BitrixClient
+    private function client(): BitrixGatewayInterface
     {
-        return resolve(BitrixClient::class);
+        return resolve(BitrixGatewayInterface::class);
     }
 }

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Bitrix24;
 
 use App\Enums\OutboundOpStatus;
-use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Jobs\Bitrix\SyncBitrixTask;
 use App\Models\BitrixOutboundOp;
 use App\Models\Project;
@@ -46,7 +46,7 @@ class BitrixSubtasksTest extends TestCase
         $this->actor = User::factory()->create(['bitrix_user_id' => 5]);
         $this->actor->roles()->attach(Role::where('name', 'Administrator')->first());
         $this->actor->storeBitrixToken(new BitrixToken('actor-access', 'actor-refresh', CarbonImmutable::now()->addHour()));
-        app()->instance(BitrixClient::SERVICE_ACCOUNT, $this->actor);
+        app()->instance(BitrixGatewayInterface::SERVICE_ACCOUNT, $this->actor);
 
         $this->project = Project::forceCreate(['title' => 'P', 'status' => 'active', 'owner_id' => $this->actor->id, 'bitrix_group_id' => 3]);
         $this->parent = $this->task(['title' => 'Parent', 'bitrix_task_id' => 50]);

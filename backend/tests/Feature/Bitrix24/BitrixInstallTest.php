@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Bitrix24;
 
-use App\Integrations\Bitrix24\BitrixClient;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Models\BitrixPortal;
 use App\Services\BitrixInstallService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -221,7 +221,7 @@ class BitrixInstallTest extends TestCase
         $this->post('/api/bitrix/install', $this->payload())->assertOk();
 
         Http::fake(['https://portal.test/rest/*' => Http::response(['result' => []])]);
-        resolve(BitrixClient::class)->callAsService('event.get');
+        resolve(BitrixGatewayInterface::class)->callAsService('event.get');
 
         Http::assertSent(fn (Request $r): bool => str_contains($r->url(), '/rest/event.get.json') && $r['auth'] === 'install-access');
     }

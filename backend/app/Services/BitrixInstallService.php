@@ -6,8 +6,8 @@ namespace App\Services;
 
 use App\Exceptions\Bitrix\BitrixException;
 use App\Exceptions\Bitrix\BitrixInstallRefusedException;
-use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Models\BitrixPortal;
 use App\Repositories\Contracts\BitrixPortalRepositoryInterface;
 use App\Services\Contracts\BitrixInstallServiceInterface;
@@ -41,7 +41,7 @@ final readonly class BitrixInstallService implements BitrixInstallServiceInterfa
     private const DEPARTMENTS_PAGE_SIZE = 50;
 
     public function __construct(
-        private BitrixClient $bitrix,
+        private BitrixGatewayInterface $bitrix,
         private BitrixPortalRepositoryInterface $portals,
     ) {}
 

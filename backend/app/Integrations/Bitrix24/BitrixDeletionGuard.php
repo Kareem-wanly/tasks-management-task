@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Integrations\Bitrix24;
 
 use App\Exceptions\Bitrix\BitrixException;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -24,7 +25,7 @@ class BitrixDeletionGuard
 {
     public const MAX_PER_RUN = 20;
 
-    public function __construct(private readonly BitrixClient $bitrix) {}
+    public function __construct(private readonly BitrixGatewayInterface $bitrix) {}
 
     public function serviceAccountIsAdmin(): bool
     {

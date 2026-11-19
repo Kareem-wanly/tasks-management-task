@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\DTOs\Task;
 
-use App\Integrations\Bitrix24\BitrixClient;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use Closure;
 use Psr\Http\Message\StreamInterface;
 
@@ -27,7 +27,7 @@ final readonly class FileDownloadDTO
     {
         return new self($name, $mime, function () use ($body): void {
             while (! $body->eof()) {
-                echo $body->read(BitrixClient::DOWNLOAD_CHUNK_BYTES);
+                echo $body->read(BitrixGatewayInterface::DOWNLOAD_CHUNK_BYTES);
                 flush();
             }
         });
