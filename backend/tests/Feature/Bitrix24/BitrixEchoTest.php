@@ -69,7 +69,7 @@ class BitrixEchoTest extends TestCase
 
     public function test_the_echo_of_our_change_is_confirmed_and_never_loops(): void
     {
-        $this->putJson("/api/tasks/{$this->task->id}", ['title' => 'Ours'])->assertOk();
+        $this->putJson("/api/v1/tasks/{$this->task->id}", ['title' => 'Ours'])->assertOk();
         $this->bitrixTask['title'] = 'Ours';
         $logs = ActivityLog::count();
 
@@ -83,7 +83,7 @@ class BitrixEchoTest extends TestCase
 
     public function test_the_echo_of_a_due_date_is_confirmed(): void
     {
-        $this->putJson("/api/tasks/{$this->task->id}", ['due_date' => '2026-11-26'])->assertOk();
+        $this->putJson("/api/v1/tasks/{$this->task->id}", ['due_date' => '2026-11-26'])->assertOk();
         // Bitrix keeps the deadline we sent, in its own ISO form.
         $sent = collect(Http::recorded())->map(fn (array $pair) => $pair[0])
             ->first(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.update.json'));
@@ -96,7 +96,7 @@ class BitrixEchoTest extends TestCase
 
     public function test_two_concurrent_edits_end_with_the_bitrix_version(): void
     {
-        $this->putJson("/api/tasks/{$this->task->id}", ['title' => 'Ours'])->assertOk();
+        $this->putJson("/api/v1/tasks/{$this->task->id}", ['title' => 'Ours'])->assertOk();
         // Someone renamed it in Bitrix right after us.
         $this->bitrixTask['title'] = 'Theirs';
 
@@ -110,7 +110,7 @@ class BitrixEchoTest extends TestCase
     public function test_a_custom_priority_survives_its_own_echo(): void
     {
         // urgent is ours; Bitrix only knows it as "high" (2).
-        $this->putJson("/api/tasks/{$this->task->id}", ['priority' => 'urgent'])->assertOk();
+        $this->putJson("/api/v1/tasks/{$this->task->id}", ['priority' => 'urgent'])->assertOk();
         $this->bitrixTask['priority'] = '2';
 
         dispatch_sync(new SyncBitrixTask(15));
@@ -131,7 +131,7 @@ class BitrixEchoTest extends TestCase
 
     public function test_an_old_change_of_ours_is_not_taken_for_an_echo(): void
     {
-        $this->putJson("/api/tasks/{$this->task->id}", ['title' => 'Ours'])->assertOk();
+        $this->putJson("/api/v1/tasks/{$this->task->id}", ['title' => 'Ours'])->assertOk();
         $this->travel(BitrixOutboundOp::WINDOW_SECONDS + 1)->seconds();
         $this->bitrixTask['title'] = 'Later Bitrix edit';
 
@@ -144,7 +144,7 @@ class BitrixEchoTest extends TestCase
 
     public function test_the_echo_of_our_delete_is_confirmed(): void
     {
-        $this->deleteJson("/api/tasks/{$this->task->id}")->assertOk();
+        $this->deleteJson("/api/v1/tasks/{$this->task->id}")->assertOk();
         $this->bitrixTask = [];
 
         dispatch_sync(new SyncBitrixTask(15));
@@ -155,7 +155,7 @@ class BitrixEchoTest extends TestCase
     public function test_the_echo_of_deleting_a_project_is_confirmed_and_it_stays_deleted(): void
     {
         $project = Project::forceCreate(['title' => 'P', 'status' => 'active', 'owner_id' => $this->actor->id, 'bitrix_group_id' => 40]);
-        $this->deleteJson("/api/projects/{$project->id}")->assertOk();
+        $this->deleteJson("/api/v1/projects/{$project->id}")->assertOk();
         $this->bitrixGroup = ['id' => '40', 'name' => 'P', 'ownerId' => '5', 'closed' => 'Y'];
 
         dispatch_sync(new SyncBitrixProject(40));
@@ -166,7 +166,7 @@ class BitrixEchoTest extends TestCase
 
     public function test_the_echo_of_a_new_project_is_confirmed(): void
     {
-        $this->postJson('/api/projects', ['title' => 'Launch', 'start_date' => '2026-12-01'])->assertCreated();
+        $this->postJson('/api/v1/projects', ['title' => 'Launch', 'start_date' => '2026-12-01'])->assertCreated();
         // Bitrix keeps the day as portal-midnight and returns it in UTC.
         $this->bitrixGroup = ['id' => '40', 'name' => 'Launch', 'description' => '', 'ownerId' => '5', 'closed' => 'N', 'projectDateStart' => '2026-11-30T21:00:00+00:00'];
 
@@ -177,8 +177,8 @@ class BitrixEchoTest extends TestCase
 
     public function test_two_quick_changes_of_ours_are_both_echoes_not_a_conflict(): void
     {
-        $this->putJson("/api/tasks/{$this->task->id}", ['title' => 'First'])->assertOk();
-        $this->putJson("/api/tasks/{$this->task->id}", ['title' => 'Second'])->assertOk();
+        $this->putJson("/api/v1/tasks/{$this->task->id}", ['title' => 'First'])->assertOk();
+        $this->putJson("/api/v1/tasks/{$this->task->id}", ['title' => 'Second'])->assertOk();
         // By the time the first event is handled, Bitrix already has the second change.
         $this->bitrixTask['title'] = 'Second';
 
@@ -192,8 +192,8 @@ class BitrixEchoTest extends TestCase
 
     public function test_an_event_answering_our_older_change_leaves_the_newer_one_waiting(): void
     {
-        $this->putJson("/api/tasks/{$this->task->id}", ['title' => 'First'])->assertOk();
-        $this->putJson("/api/tasks/{$this->task->id}", ['title' => 'Second'])->assertOk();
+        $this->putJson("/api/v1/tasks/{$this->task->id}", ['title' => 'First'])->assertOk();
+        $this->putJson("/api/v1/tasks/{$this->task->id}", ['title' => 'Second'])->assertOk();
         // Fetched before our second change reached Bitrix.
         $this->bitrixTask['title'] = 'First';
 

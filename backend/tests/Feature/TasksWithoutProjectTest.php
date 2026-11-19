@@ -58,7 +58,7 @@ class TasksWithoutProjectTest extends TestCase
     {
         foreach ([$this->creator, $this->assignee] as $user) {
             Sanctum::actingAs($user);
-            $this->getJson('/api/tasks')->assertOk()->assertJsonPath('data.0.id', $this->task->id);
+            $this->getJson('/api/v1/tasks')->assertOk()->assertJsonPath('data.0.id', $this->task->id);
         }
     }
 
@@ -66,9 +66,9 @@ class TasksWithoutProjectTest extends TestCase
     {
         Sanctum::actingAs($this->outsider);
 
-        $this->getJson('/api/tasks')->assertOk()->assertJsonCount(0, 'data');
-        $this->getJson("/api/tasks/{$this->task->id}")->assertForbidden();
-        $this->deleteJson("/api/tasks/{$this->task->id}")->assertForbidden();
+        $this->getJson('/api/v1/tasks')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson("/api/v1/tasks/{$this->task->id}")->assertForbidden();
+        $this->deleteJson("/api/v1/tasks/{$this->task->id}")->assertForbidden();
     }
 
     public function test_administrator_sees_it(): void
@@ -77,27 +77,27 @@ class TasksWithoutProjectTest extends TestCase
         $admin->roles()->attach(Role::where('name', 'Administrator')->first());
         Sanctum::actingAs($admin);
 
-        $this->getJson("/api/tasks/{$this->task->id}")->assertOk()->assertJsonPath('data.project', null);
+        $this->getJson("/api/v1/tasks/{$this->task->id}")->assertOk()->assertJsonPath('data.project', null);
     }
 
     public function test_creator_can_open_update_and_delete_it(): void
     {
         Sanctum::actingAs($this->creator);
 
-        $this->getJson("/api/tasks/{$this->task->id}")->assertOk();
-        $this->putJson("/api/tasks/{$this->task->id}", ['title' => 'Renamed'])->assertOk();
+        $this->getJson("/api/v1/tasks/{$this->task->id}")->assertOk();
+        $this->putJson("/api/v1/tasks/{$this->task->id}", ['title' => 'Renamed'])->assertOk();
         $this->assertSame('Renamed', $this->task->fresh()->title);
-        $this->deleteJson("/api/tasks/{$this->task->id}")->assertSuccessful();
+        $this->deleteJson("/api/v1/tasks/{$this->task->id}")->assertSuccessful();
     }
 
     public function test_assignee_can_chat_and_others_cannot(): void
     {
         Sanctum::actingAs($this->assignee);
-        $this->postJson("/api/tasks/{$this->task->id}/chat", ['text' => 'On it'])->assertOk();
-        $this->getJson("/api/tasks/{$this->task->id}/chat")->assertOk()->assertJsonPath('data.0.text', 'On it');
+        $this->postJson("/api/v1/tasks/{$this->task->id}/chat", ['text' => 'On it'])->assertOk();
+        $this->getJson("/api/v1/tasks/{$this->task->id}/chat")->assertOk()->assertJsonPath('data.0.text', 'On it');
 
         Sanctum::actingAs($this->outsider);
-        $this->getJson("/api/tasks/{$this->task->id}/chat")->assertForbidden();
+        $this->getJson("/api/v1/tasks/{$this->task->id}/chat")->assertForbidden();
     }
 
     public function test_the_assignee_sees_a_project_task_outside_its_project_as_in_bitrix(): void
@@ -114,9 +114,9 @@ class TasksWithoutProjectTest extends TestCase
         $otherTask = Task::forceCreate([...$projectTask->only('status', 'priority', 'project_id', 'created_by'), 'title' => 'Not theirs']);
         Sanctum::actingAs($this->outsider);
 
-        $this->getJson("/api/tasks/{$projectTask->id}")->assertOk();
-        $this->getJson('/api/tasks')->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $projectTask->id);
+        $this->getJson("/api/v1/tasks/{$projectTask->id}")->assertOk();
+        $this->getJson('/api/v1/tasks')->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $projectTask->id);
         // The rest of the project stays hidden: membership still decides that.
-        $this->getJson("/api/tasks/{$otherTask->id}")->assertForbidden();
+        $this->getJson("/api/v1/tasks/{$otherTask->id}")->assertForbidden();
     }
 }

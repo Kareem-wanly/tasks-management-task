@@ -68,7 +68,7 @@ class BitrixProjectPushTest extends TestCase
     {
         Sanctum::actingAs($this->actor);
 
-        $this->postJson('/api/projects', ['title' => 'Launch', 'description' => 'Go', 'start_date' => '2026-12-01'])->assertCreated();
+        $this->postJson('/api/v1/projects', ['title' => 'Launch', 'description' => 'Go', 'start_date' => '2026-12-01'])->assertCreated();
 
         $request = $this->sent('sonet_group.create');
         $this->assertSame('actor-access', $request['auth']);
@@ -85,7 +85,7 @@ class BitrixProjectPushTest extends TestCase
         $project = $this->linkedProject();
         Sanctum::actingAs($this->actor);
 
-        $this->putJson("/api/projects/{$project->id}", ['title' => 'Renamed', 'status' => 'on_hold'])->assertOk();
+        $this->putJson("/api/v1/projects/{$project->id}", ['title' => 'Renamed', 'status' => 'on_hold'])->assertOk();
 
         $request = $this->sent('sonet_group.update');
         $this->assertSame(['GROUP_ID' => 40, 'NAME' => 'Renamed'], array_diff_key($request->data(), ['auth' => true]));
@@ -98,7 +98,7 @@ class BitrixProjectPushTest extends TestCase
         $project = $this->linkedProject();
         Sanctum::actingAs($this->actor);
 
-        $this->putJson("/api/projects/{$project->id}", ['status' => 'in_progress'])->assertOk();
+        $this->putJson("/api/v1/projects/{$project->id}", ['status' => 'in_progress'])->assertOk();
 
         Http::assertNothingSent();
     }
@@ -108,8 +108,8 @@ class BitrixProjectPushTest extends TestCase
         $project = $this->linkedProject();
         Sanctum::actingAs($this->actor);
 
-        $this->postJson("/api/projects/{$project->id}/archive")->assertOk();
-        $this->postJson("/api/projects/{$project->id}/archive")->assertOk();
+        $this->postJson("/api/v1/projects/{$project->id}/archive")->assertOk();
+        $this->postJson("/api/v1/projects/{$project->id}/archive")->assertOk();
 
         $closed = Http::recorded()->map(fn (array $pair) => $pair[0]['CLOSED'])->all();
         $this->assertSame(['Y', 'N'], $closed);
@@ -120,7 +120,7 @@ class BitrixProjectPushTest extends TestCase
         $project = $this->linkedProject();
         Sanctum::actingAs($this->actor);
 
-        $this->deleteJson("/api/projects/{$project->id}")->assertOk();
+        $this->deleteJson("/api/v1/projects/{$project->id}")->assertOk();
 
         $this->assertSame('Y', $this->sent('sonet_group.update')['CLOSED']);
         Http::assertNotSent(fn (Request $r): bool => str_contains($r->url(), 'sonet_group.delete'));
@@ -132,8 +132,8 @@ class BitrixProjectPushTest extends TestCase
         $project = $this->linkedProject();
         Sanctum::actingAs($this->actor);
 
-        $this->postJson("/api/projects/{$project->id}/members", ['user_id' => $this->colleague->id, 'role' => 'moderator'])->assertOk();
-        $this->deleteJson("/api/projects/{$project->id}/members/{$this->colleague->id}")->assertOk();
+        $this->postJson("/api/v1/projects/{$project->id}/members", ['user_id' => $this->colleague->id, 'role' => 'moderator'])->assertOk();
+        $this->deleteJson("/api/v1/projects/{$project->id}/members/{$this->colleague->id}")->assertOk();
 
         $add = $this->sent('sonet_group.user.add');
         $this->assertSame(['service-access', 40, 6], [$add['auth'], $add['GROUP_ID'], $add['USER_ID']]);
@@ -146,7 +146,7 @@ class BitrixProjectPushTest extends TestCase
         $project = $this->linkedProject();
         Sanctum::actingAs($this->actor);
 
-        $this->postJson("/api/projects/{$project->id}/members", ['user_id' => $this->colleague->id])->assertOk();
+        $this->postJson("/api/v1/projects/{$project->id}/members", ['user_id' => $this->colleague->id])->assertOk();
 
         Http::assertNotSent(fn (Request $r): bool => str_contains($r->url(), 'sonet_group.user.update'));
         $this->assertSame('member', $project->members()->sole()->pivot->role);
@@ -158,7 +158,7 @@ class BitrixProjectPushTest extends TestCase
         $local = User::factory()->create(['name' => 'tester']);
         Sanctum::actingAs($this->actor);
 
-        $this->postJson("/api/projects/{$project->id}/members", ['user_id' => $local->id])
+        $this->postJson("/api/v1/projects/{$project->id}/members", ['user_id' => $local->id])
             ->assertUnprocessable()
             ->assertJsonPath('message', 'tester is not a Bitrix24 user, so they cannot be added to this project.');
 
@@ -172,7 +172,7 @@ class BitrixProjectPushTest extends TestCase
         $this->colleague->forceFill(['is_active' => false])->save();
         Sanctum::actingAs($this->actor);
 
-        $this->postJson("/api/projects/{$project->id}/members", ['user_id' => $this->colleague->id])
+        $this->postJson("/api/v1/projects/{$project->id}/members", ['user_id' => $this->colleague->id])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('user_id');
 
@@ -186,7 +186,7 @@ class BitrixProjectPushTest extends TestCase
         $this->refuse = true;
         Sanctum::actingAs($this->actor);
 
-        $this->putJson("/api/projects/{$project->id}", ['title' => 'Renamed'])->assertForbidden();
+        $this->putJson("/api/v1/projects/{$project->id}", ['title' => 'Renamed'])->assertForbidden();
 
         $this->assertSame('P', $project->fresh()->title);
     }
@@ -197,7 +197,7 @@ class BitrixProjectPushTest extends TestCase
         $local->roles()->attach(Role::where('name', 'Administrator')->first());
         Sanctum::actingAs($local);
 
-        $this->postJson('/api/projects', ['title' => 'Launch'])
+        $this->postJson('/api/v1/projects', ['title' => 'Launch'])
             ->assertForbidden()
             ->assertJsonPath('message', 'Sign in with Bitrix24 to change data that is synced with Bitrix24.');
 
@@ -209,9 +209,9 @@ class BitrixProjectPushTest extends TestCase
         $project = $this->linkedProject(['bitrix_group_id' => null]);
         Sanctum::actingAs($this->actor);
 
-        $this->putJson("/api/projects/{$project->id}", ['title' => 'Renamed'])->assertOk();
-        $this->postJson("/api/projects/{$project->id}/members", ['user_id' => $this->colleague->id])->assertOk();
-        $this->deleteJson("/api/projects/{$project->id}")->assertOk();
+        $this->putJson("/api/v1/projects/{$project->id}", ['title' => 'Renamed'])->assertOk();
+        $this->postJson("/api/v1/projects/{$project->id}/members", ['user_id' => $this->colleague->id])->assertOk();
+        $this->deleteJson("/api/v1/projects/{$project->id}")->assertOk();
 
         Http::assertNothingSent();
     }

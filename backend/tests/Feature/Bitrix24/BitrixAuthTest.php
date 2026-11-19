@@ -117,7 +117,7 @@ class BitrixAuthTest extends TestCase
         $this->assertSame('https://portal.test/photo.jpg', $user->avatar_url);
         $this->assertTrue($user->hasRole('Member'));
 
-        $this->withToken($token)->getJson('/api/me')
+        $this->withToken($token)->getJson('/api/v1/me')
             ->assertOk()
             ->assertJsonPath('user.id', $user->id)
             ->assertJsonPath('user.position', 'Engineer')
@@ -212,7 +212,7 @@ class BitrixAuthTest extends TestCase
 
         $token = $this->appSession()->assertOk()->json('token');
 
-        $this->withToken($token)->getJson('/api/me')->assertOk()->assertJsonPath('user.id', User::sole()->id);
+        $this->withToken($token)->getJson('/api/v1/me')->assertOk()->assertJsonPath('user.id', User::sole()->id);
         $this->assertSame('frame-access', User::sole()->bitrixToken()->accessToken);
         Http::assertSent(fn (Request $r): bool => str_contains($r->url(), 'user.current') && $r['auth'] === 'frame-access');
     }
@@ -254,8 +254,8 @@ class BitrixAuthTest extends TestCase
         $code = $this->codeFrom($this->oauthCallback());
 
         $this->assertSame(0, User::sole()->tokens()->count());
-        $this->postJson('/api/auth/bitrix/exchange', ['code' => $code, 'nonce' => self::NONCE])->assertOk()->assertJsonStructure(['token']);
-        $this->postJson('/api/auth/bitrix/exchange', ['code' => $code, 'nonce' => self::NONCE])->assertStatus(422);
+        $this->postJson('/api/v1/auth/bitrix/exchange', ['code' => $code, 'nonce' => self::NONCE])->assertOk()->assertJsonStructure(['token']);
+        $this->postJson('/api/v1/auth/bitrix/exchange', ['code' => $code, 'nonce' => self::NONCE])->assertStatus(422);
         $this->assertSame(1, User::sole()->tokens()->count());
     }
 
@@ -266,7 +266,7 @@ class BitrixAuthTest extends TestCase
 
         $this->travel(61)->seconds();
 
-        $this->postJson('/api/auth/bitrix/exchange', ['code' => $code, 'nonce' => self::NONCE])->assertStatus(422);
+        $this->postJson('/api/v1/auth/bitrix/exchange', ['code' => $code, 'nonce' => self::NONCE])->assertStatus(422);
     }
 
     /**
@@ -278,9 +278,9 @@ class BitrixAuthTest extends TestCase
         $this->fakeBitrix();
         $code = $this->codeFrom($this->oauthCallback());
 
-        $this->postJson('/api/auth/bitrix/exchange', ['code' => $code])->assertStatus(422)->assertJsonValidationErrors('nonce');
-        $this->postJson('/api/auth/bitrix/exchange', ['code' => $code, 'nonce' => 'ffffffff-0000-4000-8000-another-browser'])->assertStatus(422);
-        $this->postJson('/api/auth/bitrix/exchange', ['code' => $code, 'nonce' => self::NONCE])->assertStatus(422);
+        $this->postJson('/api/v1/auth/bitrix/exchange', ['code' => $code])->assertStatus(422)->assertJsonValidationErrors('nonce');
+        $this->postJson('/api/v1/auth/bitrix/exchange', ['code' => $code, 'nonce' => 'ffffffff-0000-4000-8000-another-browser'])->assertStatus(422);
+        $this->postJson('/api/v1/auth/bitrix/exchange', ['code' => $code, 'nonce' => self::NONCE])->assertStatus(422);
 
         $this->assertSame(0, User::sole()->tokens()->count());
     }
@@ -342,14 +342,14 @@ class BitrixAuthTest extends TestCase
     /** Signs in the way the frontend does: trades the code and this browser's nonce for an API token. */
     private function tokenFrom(TestResponse $response): string
     {
-        return $this->postJson('/api/auth/bitrix/exchange', ['code' => $this->codeFrom($response), 'nonce' => self::NONCE])
+        return $this->postJson('/api/v1/auth/bitrix/exchange', ['code' => $this->codeFrom($response), 'nonce' => self::NONCE])
             ->assertOk()
             ->json('token');
     }
 
     private function appSession(array $overrides = []): TestResponse
     {
-        return $this->postJson('/api/auth/bitrix/app-session', array_merge([
+        return $this->postJson('/api/v1/auth/bitrix/app-session', array_merge([
             'access_token' => 'frame-access',
             'refresh_token' => 'frame-refresh',
             'expires_in' => 3600,

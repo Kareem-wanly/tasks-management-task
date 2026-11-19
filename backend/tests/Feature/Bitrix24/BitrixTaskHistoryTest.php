@@ -83,7 +83,7 @@ class BitrixTaskHistoryTest extends TestCase
             $this->row(150, 'TITLE', 'Ours', 'Theirs', '2026-11-15T13:13:31+00:00', 99),
         ];
 
-        $this->getJson("/api/tasks/{$this->task->id}/history")
+        $this->getJson("/api/v1/tasks/{$this->task->id}/history")
             ->assertOk()
             ->assertJsonPath('meta.unavailable_because', null)
             ->assertJsonCount(6, 'data')
@@ -108,7 +108,7 @@ class BitrixTaskHistoryTest extends TestCase
     {
         $this->task->project->forceFill(['bitrix_group_id' => null])->save();
 
-        $this->getJson("/api/tasks/{$this->task->id}/history")->assertOk()->assertJsonPath('meta.unavailable_because', 'not_in_bitrix');
+        $this->getJson("/api/v1/tasks/{$this->task->id}/history")->assertOk()->assertJsonPath('meta.unavailable_because', 'not_in_bitrix');
 
         Http::assertNothingSent();
     }
@@ -118,21 +118,21 @@ class BitrixTaskHistoryTest extends TestCase
     {
         $this->answer = ['error' => 'ACCESS_DENIED', 'error_description' => 'Access denied.'];
 
-        $this->getJson("/api/tasks/{$this->task->id}/history")->assertOk()->assertJsonPath('meta.unavailable_because', 'unavailable')->assertJsonCount(0, 'data');
+        $this->getJson("/api/v1/tasks/{$this->task->id}/history")->assertOk()->assertJsonPath('meta.unavailable_because', 'unavailable')->assertJsonCount(0, 'data');
     }
 
     public function test_bitrix_unreachable_says_so(): void
     {
         $this->unreachable = true;
 
-        $this->getJson("/api/tasks/{$this->task->id}/history")->assertOk()->assertJsonPath('meta.unavailable_because', 'unreachable');
+        $this->getJson("/api/v1/tasks/{$this->task->id}/history")->assertOk()->assertJsonPath('meta.unavailable_because', 'unreachable');
     }
 
     public function test_only_people_who_see_the_task_read_its_history(): void
     {
         Sanctum::actingAs(User::factory()->create());
 
-        $this->getJson("/api/tasks/{$this->task->id}/history")->assertForbidden();
+        $this->getJson("/api/v1/tasks/{$this->task->id}/history")->assertForbidden();
 
         Http::assertNothingSent();
     }

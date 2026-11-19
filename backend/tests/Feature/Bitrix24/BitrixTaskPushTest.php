@@ -70,7 +70,7 @@ class BitrixTaskPushTest extends TestCase
     {
         Sanctum::actingAs($this->actor);
 
-        $this->postJson("/api/projects/{$this->project->id}/tasks", [
+        $this->postJson("/api/v1/projects/{$this->project->id}/tasks", [
             'title' => 'Write docs', 'priority' => 'high', 'due_date' => '2026-12-01', 'assigned_to' => $this->assignee->id,
         ])->assertCreated();
 
@@ -88,7 +88,7 @@ class BitrixTaskPushTest extends TestCase
     {
         Sanctum::actingAs($this->actor);
 
-        $this->postJson("/api/projects/{$this->project->id}/tasks", ['title' => 'X', 'status' => 'in_progress'])->assertCreated();
+        $this->postJson("/api/v1/projects/{$this->project->id}/tasks", ['title' => 'X', 'status' => 'in_progress'])->assertCreated();
 
         $this->assertSame(['tasks.task.add', 'tasks.task.start'], $this->calls());
         $this->assertSame('in_progress', Task::sole()->status);
@@ -100,7 +100,7 @@ class BitrixTaskPushTest extends TestCase
     {
         Sanctum::actingAs($this->actor);
 
-        $this->postJson('/api/tasks', ['title' => 'Personal'])->assertCreated()->assertJsonPath('data.project', null);
+        $this->postJson('/api/v1/tasks', ['title' => 'Personal'])->assertCreated()->assertJsonPath('data.project', null);
 
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.add.json') && $r['fields']['GROUP_ID'] === 0);
         $this->assertNull(Task::sole()->project_id);
@@ -111,7 +111,7 @@ class BitrixTaskPushTest extends TestCase
         $task = $this->bitrixTask();
         Sanctum::actingAs($this->actor);
 
-        $this->putJson("/api/tasks/{$task->id}", ['title' => 'Renamed', 'priority' => 'medium'])->assertOk();
+        $this->putJson("/api/v1/tasks/{$task->id}", ['title' => 'Renamed', 'priority' => 'medium'])->assertOk();
 
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.update.json')
             && $r['taskId'] === 100 && $r['fields'] === ['TITLE' => 'Renamed']);
@@ -123,10 +123,10 @@ class BitrixTaskPushTest extends TestCase
         $task = $this->bitrixTask();
         Sanctum::actingAs($this->actor);
 
-        $this->patchJson("/api/tasks/{$task->id}/status", ['status' => 'in_progress'])->assertOk();
-        $this->patchJson("/api/tasks/{$task->id}/status", ['status' => 'todo'])->assertOk();
-        $this->patchJson("/api/tasks/{$task->id}/status", ['status' => 'completed'])->assertOk();
-        $this->patchJson("/api/tasks/{$task->id}/status", ['status' => 'deferred'])->assertOk();
+        $this->patchJson("/api/v1/tasks/{$task->id}/status", ['status' => 'in_progress'])->assertOk();
+        $this->patchJson("/api/v1/tasks/{$task->id}/status", ['status' => 'todo'])->assertOk();
+        $this->patchJson("/api/v1/tasks/{$task->id}/status", ['status' => 'completed'])->assertOk();
+        $this->patchJson("/api/v1/tasks/{$task->id}/status", ['status' => 'deferred'])->assertOk();
 
         $this->assertSame(['tasks.task.start', 'tasks.task.pause', 'tasks.task.complete', 'tasks.task.renew', 'tasks.task.defer'], $this->calls());
         $this->assertSame('deferred', $task->fresh()->status);
@@ -139,7 +139,7 @@ class BitrixTaskPushTest extends TestCase
         Sanctum::actingAs($this->actor);
 
         // The task needs the creator's approval, so Bitrix stops at "awaiting control".
-        $this->patchJson("/api/tasks/{$task->id}/status", ['status' => 'completed'])->assertOk()->assertJsonPath('data.status', 'review');
+        $this->patchJson("/api/v1/tasks/{$task->id}/status", ['status' => 'completed'])->assertOk()->assertJsonPath('data.status', 'review');
     }
 
     public function test_creator_approves_a_task_that_awaits_review(): void
@@ -147,7 +147,7 @@ class BitrixTaskPushTest extends TestCase
         $task = $this->bitrixTask(['status' => 'review']);
         Sanctum::actingAs($this->actor);
 
-        $this->patchJson("/api/tasks/{$task->id}/status", ['status' => 'completed'])->assertOk()->assertJsonPath('data.status', 'completed');
+        $this->patchJson("/api/v1/tasks/{$task->id}/status", ['status' => 'completed'])->assertOk()->assertJsonPath('data.status', 'completed');
 
         $this->assertSame(['tasks.task.approve'], $this->calls());
     }
@@ -157,7 +157,7 @@ class BitrixTaskPushTest extends TestCase
         $task = $this->bitrixTask();
         Sanctum::actingAs($this->actor);
 
-        $this->deleteJson("/api/tasks/{$task->id}")->assertOk();
+        $this->deleteJson("/api/v1/tasks/{$task->id}")->assertOk();
 
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.delete.json') && $r['taskId'] === 100);
         $this->assertSoftDeleted($task);
@@ -170,7 +170,7 @@ class BitrixTaskPushTest extends TestCase
         $local->roles()->attach(Role::where('name', 'Administrator')->first());
         Sanctum::actingAs($local);
 
-        $this->putJson("/api/tasks/{$task->id}", ['title' => 'Renamed'])
+        $this->putJson("/api/v1/tasks/{$task->id}", ['title' => 'Renamed'])
             ->assertForbidden()
             ->assertJsonPath('message', 'Sign in with Bitrix24 to change data that is synced with Bitrix24.');
 
@@ -185,7 +185,7 @@ class BitrixTaskPushTest extends TestCase
         Sanctum::actingAs($local);
 
         // No assignee, so the creator would become responsible; the sign-in reason still comes first.
-        $this->postJson('/api/tasks', ['title' => 'Personal'])
+        $this->postJson('/api/v1/tasks', ['title' => 'Personal'])
             ->assertForbidden()
             ->assertJsonPath('message', 'Sign in with Bitrix24 to change data that is synced with Bitrix24.');
 
@@ -198,7 +198,7 @@ class BitrixTaskPushTest extends TestCase
         $this->failure = 'refuse';
         Sanctum::actingAs($this->actor);
 
-        $this->putJson("/api/tasks/{$task->id}", ['title' => 'Renamed'])->assertForbidden();
+        $this->putJson("/api/v1/tasks/{$task->id}", ['title' => 'Renamed'])->assertForbidden();
 
         $this->assertSame('T', $task->fresh()->title);
     }
@@ -209,7 +209,7 @@ class BitrixTaskPushTest extends TestCase
         $this->failure = 'unreachable';
         Sanctum::actingAs($this->actor);
 
-        $this->deleteJson("/api/tasks/{$task->id}")->assertStatus(503);
+        $this->deleteJson("/api/v1/tasks/{$task->id}")->assertStatus(503);
 
         $this->assertNotSoftDeleted($task);
     }
@@ -221,7 +221,7 @@ class BitrixTaskPushTest extends TestCase
         $this->project->members()->attach($local->id, ['role' => 'member']);
         Sanctum::actingAs($this->actor);
 
-        $this->putJson("/api/tasks/{$task->id}", ['assigned_to' => $local->id])
+        $this->putJson("/api/v1/tasks/{$task->id}", ['assigned_to' => $local->id])
             ->assertUnprocessable()
             ->assertJsonPath('message', 'Local Only is not a Bitrix24 user, so the task cannot be assigned to them.');
     }
@@ -231,7 +231,7 @@ class BitrixTaskPushTest extends TestCase
         $local = Project::forceCreate(['title' => 'Demo', 'status' => 'active', 'owner_id' => $this->actor->id]);
         Sanctum::actingAs($this->actor);
 
-        $this->postJson("/api/projects/{$local->id}/tasks", ['title' => 'Demo task'])->assertCreated();
+        $this->postJson("/api/v1/projects/{$local->id}/tasks", ['title' => 'Demo task'])->assertCreated();
 
         Http::assertNothingSent();
         $this->assertNull(Task::sole()->bitrix_task_id);

@@ -146,7 +146,7 @@ class ImportBitrixUsersTest extends TestCase
         $this->assertFalse($user->is_active);
 
         $user->forceFill(['password' => 'secret-password'])->save();
-        $this->postJson('/api/login', ['email' => 'user4@portal.test', 'password' => 'secret-password'])
+        $this->postJson('/api/v1/login', ['email' => 'user4@portal.test', 'password' => 'secret-password'])
             ->assertForbidden();
     }
 

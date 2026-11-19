@@ -97,7 +97,7 @@ class BitrixTaskFilesTest extends TestCase
     {
         $this->attach(24, 197, 'plan.pdf', 5);
 
-        $this->getJson("/api/tasks/{$this->task->id}/files")
+        $this->getJson("/api/v1/tasks/{$this->task->id}/files")
             ->assertOk()
             ->assertJsonPath('data.0.name', 'plan.pdf')
             ->assertJsonPath('data.0.size', 2048)
@@ -111,7 +111,7 @@ class BitrixTaskFilesTest extends TestCase
     {
         $this->driveChildren = [['ID' => '41', 'CODE' => 'FOR_UPLOADED_FILES']];
 
-        $this->post("/api/tasks/{$this->task->id}/files", ['file' => UploadedFile::fake()->create('report.pdf', 100)], ['Accept' => 'application/json'])
+        $this->post("/api/v1/tasks/{$this->task->id}/files", ['file' => UploadedFile::fake()->create('report.pdf', 100)], ['Accept' => 'application/json'])
             ->assertOk()
             ->assertJsonPath('data.0.name', 'report.pdf');
 
@@ -125,14 +125,14 @@ class BitrixTaskFilesTest extends TestCase
 
     public function test_without_an_uploaded_files_folder_the_file_goes_to_the_drive_root(): void
     {
-        $this->post("/api/tasks/{$this->task->id}/files", ['file' => UploadedFile::fake()->create('a.txt', 1)], ['Accept' => 'application/json'])->assertOk();
+        $this->post("/api/v1/tasks/{$this->task->id}/files", ['file' => UploadedFile::fake()->create('a.txt', 1)], ['Accept' => 'application/json'])->assertOk();
 
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'disk.folder.uploadfile.json') && $r['id'] === 38);
     }
 
     public function test_files_are_limited_to_20_mb(): void
     {
-        $this->post("/api/tasks/{$this->task->id}/files", ['file' => UploadedFile::fake()->create('big.zip', 20481)], ['Accept' => 'application/json'])
+        $this->post("/api/v1/tasks/{$this->task->id}/files", ['file' => UploadedFile::fake()->create('big.zip', 20481)], ['Accept' => 'application/json'])
             ->assertJsonValidationErrors('file');
 
         Http::assertNothingSent();
@@ -142,10 +142,10 @@ class BitrixTaskFilesTest extends TestCase
     {
         $this->attach(24, 197, 'a.pdf', 5);
         $this->attach(25, 198, 'b.pdf', 5);
-        $this->getJson("/api/tasks/{$this->task->id}/files");
+        $this->getJson("/api/v1/tasks/{$this->task->id}/files");
 
         $file = TaskFile::where('attached_object_id', 24)->sole();
-        $this->deleteJson("/api/task-files/{$file->id}")->assertOk()->assertJsonCount(1, 'data');
+        $this->deleteJson("/api/v1/task-files/{$file->id}")->assertOk()->assertJsonCount(1, 'data');
 
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.update.json') && $r['fields'] === ['UF_TASK_WEBDAV_FILES' => [25]]);
         Http::assertNotSent(fn (Request $r): bool => str_contains($r->url(), 'disk.file.delete'));
@@ -156,10 +156,10 @@ class BitrixTaskFilesTest extends TestCase
     {
         Sleep::fake(syncWithCarbon: true);
         $this->attach(24, 197, 'a.pdf', 5);
-        $this->getJson("/api/tasks/{$this->task->id}/files");
+        $this->getJson("/api/v1/tasks/{$this->task->id}/files");
         Cache::lock("bitrix-task-files:{$this->task->id}", 60)->get();
 
-        $this->deleteJson('/api/task-files/'.TaskFile::sole()->id)->assertUnprocessable();
+        $this->deleteJson('/api/v1/task-files/'.TaskFile::sole()->id)->assertUnprocessable();
 
         Http::assertNotSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.update.json'));
         $this->assertSame(1, TaskFile::count());
@@ -169,10 +169,10 @@ class BitrixTaskFilesTest extends TestCase
     public function test_a_download_streams_the_file_through_the_service_account(): void
     {
         $this->attach(24, 197, 'plan.pdf', 5);
-        $this->getJson("/api/tasks/{$this->task->id}/files");
+        $this->getJson("/api/v1/tasks/{$this->task->id}/files");
         $file = TaskFile::sole();
 
-        $response = $this->get("/api/task-files/{$file->id}/download");
+        $response = $this->get("/api/v1/task-files/{$file->id}/download");
 
         $response->assertOk()->assertHeader('content-disposition', 'attachment; filename=plan.pdf');
         $this->assertSame('file-bytes', $response->streamedContent());
@@ -191,11 +191,11 @@ class BitrixTaskFilesTest extends TestCase
             }
         });
         $this->attach(24, 197, 'plan.pdf', 5);
-        $this->getJson("/api/tasks/{$this->task->id}/files");
+        $this->getJson("/api/v1/tasks/{$this->task->id}/files");
         $this->downloadUnreachable = true;
 
         // The download is opened before the response starts, so the failure is a normal 503.
-        $response = $this->getJson('/api/task-files/'.TaskFile::sole()->id.'/download');
+        $response = $this->getJson('/api/v1/task-files/'.TaskFile::sole()->id.'/download');
 
         $response->assertStatus(503);
         $this->assertStringNotContainsString('secret', (string) $response->getContent());
@@ -209,10 +209,10 @@ class BitrixTaskFilesTest extends TestCase
     public function test_an_error_from_the_download_host_is_an_error_not_the_file(): void
     {
         $this->attach(24, 197, 'plan.pdf', 5);
-        $this->getJson("/api/tasks/{$this->task->id}/files");
+        $this->getJson("/api/v1/tasks/{$this->task->id}/files");
         $this->downloadStatus = 404;
 
-        $response = $this->getJson('/api/task-files/'.TaskFile::sole()->id.'/download');
+        $response = $this->getJson('/api/v1/task-files/'.TaskFile::sole()->id.'/download');
 
         $response->assertUnprocessable()->assertJsonPath('message', 'Bitrix24 did not return the file (HTTP 404).');
         $this->assertStringNotContainsString('Error page', (string) $response->getContent());
@@ -225,21 +225,21 @@ class BitrixTaskFilesTest extends TestCase
         $auditor = $this->user(8, 'auditor', $viewOnly);
         $this->task->auditors()->sync([$auditor->id]);
         $this->attach(24, 197, 'plan.pdf', 5);
-        $this->getJson("/api/tasks/{$this->task->id}/files");
+        $this->getJson("/api/v1/tasks/{$this->task->id}/files");
         Sanctum::actingAs($auditor);
 
-        $this->getJson("/api/tasks/{$this->task->id}/files")->assertJsonPath('meta.can_manage', false);
-        $this->get('/api/task-files/'.TaskFile::sole()->id.'/download')->assertOk();
-        $this->post("/api/tasks/{$this->task->id}/files", ['file' => UploadedFile::fake()->create('x.txt', 1)], ['Accept' => 'application/json'])->assertForbidden();
+        $this->getJson("/api/v1/tasks/{$this->task->id}/files")->assertJsonPath('meta.can_manage', false);
+        $this->get('/api/v1/task-files/'.TaskFile::sole()->id.'/download')->assertOk();
+        $this->post("/api/v1/tasks/{$this->task->id}/files", ['file' => UploadedFile::fake()->create('x.txt', 1)], ['Accept' => 'application/json'])->assertForbidden();
     }
 
     public function test_bitrix_unreachable_shows_our_last_copy(): void
     {
         $this->attach(24, 197, 'plan.pdf', 5);
-        $this->getJson("/api/tasks/{$this->task->id}/files");
+        $this->getJson("/api/v1/tasks/{$this->task->id}/files");
         $this->unreachable = true;
 
-        $this->getJson("/api/tasks/{$this->task->id}/files")->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('meta.stale', true);
+        $this->getJson("/api/v1/tasks/{$this->task->id}/files")->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('meta.stale', true);
     }
 
     public function test_a_task_outside_bitrix_keeps_its_files_here(): void
@@ -248,12 +248,12 @@ class BitrixTaskFilesTest extends TestCase
         $local = Project::forceCreate(['title' => 'Local', 'status' => 'active', 'owner_id' => $this->actor->id]);
         $this->task->forceFill(['project_id' => $local->id, 'bitrix_task_id' => null])->save();
 
-        $this->post("/api/tasks/{$this->task->id}/files", ['file' => UploadedFile::fake()->createWithContent('notes.txt', 'hello')], ['Accept' => 'application/json'])->assertOk();
+        $this->post("/api/v1/tasks/{$this->task->id}/files", ['file' => UploadedFile::fake()->createWithContent('notes.txt', 'hello')], ['Accept' => 'application/json'])->assertOk();
         $file = TaskFile::sole();
         Storage::disk('local')->assertExists($file->path);
-        $this->assertSame('hello', $this->get("/api/task-files/{$file->id}/download")->streamedContent());
+        $this->assertSame('hello', $this->get("/api/v1/task-files/{$file->id}/download")->streamedContent());
 
-        $this->deleteJson("/api/task-files/{$file->id}")->assertOk()->assertJsonCount(0, 'data');
+        $this->deleteJson("/api/v1/task-files/{$file->id}")->assertOk()->assertJsonCount(0, 'data');
         Storage::disk('local')->assertMissing($file->path);
         Http::assertNothingSent();
     }

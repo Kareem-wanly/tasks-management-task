@@ -72,9 +72,9 @@ const authApi = {
     return res.user;
   },
 
-  /** Full-page navigation target: the OAuth start lives in Laravel's web routes, outside /api. */
+  /** Full-page navigation target: the OAuth start lives in Laravel's web routes, outside /api/v1. */
   bitrixLoginUrl: (nonce: string): string =>
-    `${BASE_URL.replace(/\/api\/?$/, '')}/auth/bitrix/redirect?${new URLSearchParams({ nonce }).toString()}`,
+    `${BASE_URL.replace(/\/api(\/v\d+)?\/?$/, '')}/auth/bitrix/redirect?${new URLSearchParams({ nonce }).toString()}`,
 };
 
 export default authApi;

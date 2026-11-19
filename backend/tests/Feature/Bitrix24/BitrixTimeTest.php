@@ -78,7 +78,7 @@ class BitrixTimeTest extends TestCase
         $this->entry(15, 5, 600, 'Research');
         $this->entry(15, 99, 60);
 
-        $this->getJson("/api/tasks/{$this->task->id}/time")
+        $this->getJson("/api/v1/tasks/{$this->task->id}/time")
             ->assertOk()
             ->assertJsonCount(2, 'data')
             ->assertJsonPath('data.1.user.id', $this->actor->id)
@@ -92,50 +92,50 @@ class BitrixTimeTest extends TestCase
     public function test_bitrix_unreachable_shows_our_last_copy(): void
     {
         $this->entry(15, 5, 600);
-        $this->getJson("/api/tasks/{$this->task->id}/time");
+        $this->getJson("/api/v1/tasks/{$this->task->id}/time");
         $this->failure = 'unreachable';
 
-        $this->getJson("/api/tasks/{$this->task->id}/time")->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('meta.stale', true);
+        $this->getJson("/api/v1/tasks/{$this->task->id}/time")->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('meta.stale', true);
     }
 
     public function test_time_is_logged_edited_and_deleted_as_the_employee(): void
     {
-        $this->postJson("/api/tasks/{$this->task->id}/time", ['hours' => 1, 'minutes' => 30, 'comment' => 'Design'])
+        $this->postJson("/api/v1/tasks/{$this->task->id}/time", ['hours' => 1, 'minutes' => 30, 'comment' => 'Design'])
             ->assertOk()
             ->assertJsonPath('meta.time_spent', 5400);
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'task.elapseditem.add.json')
             && $r['auth'] === 'actor-access' && $r['ARFIELDS'] === ['SECONDS' => 5400, 'COMMENT_TEXT' => 'Design']);
 
         $entry = TaskElapsedItem::sole();
-        $this->putJson("/api/time-entries/{$entry->id}", ['hours' => 0, 'minutes' => 45, 'comment' => null])->assertJsonPath('meta.time_spent', 2700);
-        $this->deleteJson("/api/time-entries/{$entry->id}")->assertJsonCount(0, 'data')->assertJsonPath('meta.time_spent', 0);
+        $this->putJson("/api/v1/time-entries/{$entry->id}", ['hours' => 0, 'minutes' => 45, 'comment' => null])->assertJsonPath('meta.time_spent', 2700);
+        $this->deleteJson("/api/v1/time-entries/{$entry->id}")->assertJsonCount(0, 'data')->assertJsonPath('meta.time_spent', 0);
     }
 
     public function test_tracking_must_be_on_and_can_be_turned_on(): void
     {
         $this->task->forceFill(['allow_time_tracking' => false])->save();
 
-        $this->postJson("/api/tasks/{$this->task->id}/time", ['hours' => 1, 'minutes' => 0])->assertJsonValidationErrors('task');
-        $this->postJson("/api/tasks/{$this->task->id}/timer")->assertJsonValidationErrors('task');
+        $this->postJson("/api/v1/tasks/{$this->task->id}/time", ['hours' => 1, 'minutes' => 0])->assertJsonValidationErrors('task');
+        $this->postJson("/api/v1/tasks/{$this->task->id}/timer")->assertJsonValidationErrors('task');
 
-        $this->putJson("/api/tasks/{$this->task->id}", ['allow_time_tracking' => true, 'time_estimate' => 7200])->assertOk();
+        $this->putJson("/api/v1/tasks/{$this->task->id}", ['allow_time_tracking' => true, 'time_estimate' => 7200])->assertOk();
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.update.json')
             && $r['fields'] === ['ALLOW_TIME_TRACKING' => 'Y', 'TIME_ESTIMATE' => 7200]);
     }
 
     public function test_tasks_made_here_track_time(): void
     {
-        $this->postJson("/api/projects/{$this->project->id}/tasks", ['title' => 'New'])->assertCreated()->assertJsonPath('data.allow_time_tracking', true);
+        $this->postJson("/api/v1/projects/{$this->project->id}/tasks", ['title' => 'New'])->assertCreated()->assertJsonPath('data.allow_time_tracking', true);
 
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.add.json') && $r['fields']['ALLOW_TIME_TRACKING'] === 'Y');
     }
 
     public function test_stopping_the_timer_logs_the_time_in_bitrix(): void
     {
-        $this->postJson("/api/tasks/{$this->task->id}/timer")->assertOk()->assertJsonPath('meta.timer.task_id', $this->task->id);
+        $this->postJson("/api/v1/tasks/{$this->task->id}/timer")->assertOk()->assertJsonPath('meta.timer.task_id', $this->task->id);
         $this->travel(25)->minutes();
 
-        $this->postJson("/api/tasks/{$this->task->id}/timer/stop", ['comment' => 'Focus'])
+        $this->postJson("/api/v1/tasks/{$this->task->id}/timer/stop", ['comment' => 'Focus'])
             ->assertOk()
             ->assertJsonPath('meta.timer', null)
             ->assertJsonPath('meta.time_spent', 1500);
@@ -145,11 +145,11 @@ class BitrixTimeTest extends TestCase
     /** Review B2: a double click (or a second tab) on Stop logs the time once. */
     public function test_a_second_stop_logs_nothing_more(): void
     {
-        $this->postJson("/api/tasks/{$this->task->id}/timer");
+        $this->postJson("/api/v1/tasks/{$this->task->id}/timer");
         $this->travel(25)->minutes();
 
-        $this->postJson("/api/tasks/{$this->task->id}/timer/stop")->assertOk();
-        $this->postJson("/api/tasks/{$this->task->id}/timer/stop")->assertOk()->assertJsonPath('meta.timer', null);
+        $this->postJson("/api/v1/tasks/{$this->task->id}/timer/stop")->assertOk();
+        $this->postJson("/api/v1/tasks/{$this->task->id}/timer/stop")->assertOk()->assertJsonPath('meta.timer', null);
 
         $this->assertCount(1, Http::recorded(fn (Request $r): bool => str_ends_with($r->url(), 'task.elapseditem.add.json')));
     }
@@ -157,7 +157,7 @@ class BitrixTimeTest extends TestCase
     /** Review B2: of two requests stopping the same timer at once, only one gets to log it. */
     public function test_a_timer_can_be_claimed_only_once(): void
     {
-        $this->postJson("/api/tasks/{$this->task->id}/timer");
+        $this->postJson("/api/v1/tasks/{$this->task->id}/timer");
         $timer = RunningTimer::sole();
         $entries = resolve(TimeEntryRepositoryInterface::class);
 
@@ -172,7 +172,7 @@ class BitrixTimeTest extends TestCase
         // The other request's timer appears after this one looked for a running timer.
         $this->replaceMethod(TimeEntryRepositoryInterface::class, 'runningTimer', fn (): null => null);
 
-        $this->postJson("/api/tasks/{$this->task->id}/timer")->assertStatus(409);
+        $this->postJson("/api/v1/tasks/{$this->task->id}/timer")->assertStatus(409);
 
         $this->assertSame(1, RunningTimer::count());
     }
@@ -181,10 +181,10 @@ class BitrixTimeTest extends TestCase
     public function test_stop_on_another_task_is_refused(): void
     {
         $other = $this->task(16);
-        $this->postJson("/api/tasks/{$other->id}/timer");
+        $this->postJson("/api/v1/tasks/{$other->id}/timer");
         $this->travel(5)->minutes();
 
-        $this->postJson("/api/tasks/{$this->task->id}/timer/stop")->assertUnprocessable();
+        $this->postJson("/api/v1/tasks/{$this->task->id}/timer/stop")->assertUnprocessable();
 
         $this->assertSame($other->id, RunningTimer::sole()->task_id);
         Http::assertNotSent(fn (Request $r): bool => str_ends_with($r->url(), 'task.elapseditem.add.json'));
@@ -193,10 +193,10 @@ class BitrixTimeTest extends TestCase
     public function test_starting_a_timer_stops_and_logs_the_running_one(): void
     {
         $other = $this->task(16);
-        $this->postJson("/api/tasks/{$this->task->id}/timer");
+        $this->postJson("/api/v1/tasks/{$this->task->id}/timer");
         $this->travel(10)->minutes();
 
-        $this->postJson("/api/tasks/{$other->id}/timer")
+        $this->postJson("/api/v1/tasks/{$other->id}/timer")
             ->assertJsonPath('meta.timer.task_id', $other->id)
             ->assertJsonPath('meta.stopped_task.id', $this->task->id);
 
@@ -206,11 +206,11 @@ class BitrixTimeTest extends TestCase
 
     public function test_the_timer_keeps_running_when_bitrix_refuses_the_time(): void
     {
-        $this->postJson("/api/tasks/{$this->task->id}/timer");
+        $this->postJson("/api/v1/tasks/{$this->task->id}/timer");
         $this->travel(5)->minutes();
         $this->failure = 'refuse';
 
-        $this->postJson("/api/tasks/{$this->task->id}/timer/stop")->assertForbidden();
+        $this->postJson("/api/v1/tasks/{$this->task->id}/timer/stop")->assertForbidden();
 
         $this->assertSame(1, RunningTimer::count());
     }
@@ -224,18 +224,18 @@ class BitrixTimeTest extends TestCase
         $this->task->forceFill(['assigned_to' => $assignee->id])->save();
         $this->task->auditors()->sync([$auditor->id]);
         $this->entry(15, 5, 600);
-        $this->getJson("/api/tasks/{$this->task->id}/time");
+        $this->getJson("/api/v1/tasks/{$this->task->id}/time");
         $actorsEntry = TaskElapsedItem::sole();
 
         Sanctum::actingAs($auditor);
-        $this->postJson("/api/tasks/{$this->task->id}/time", ['hours' => 1, 'minutes' => 0])->assertForbidden();
+        $this->postJson("/api/v1/tasks/{$this->task->id}/time", ['hours' => 1, 'minutes' => 0])->assertForbidden();
 
         Sanctum::actingAs($assignee);
-        $this->postJson("/api/tasks/{$this->task->id}/time", ['hours' => 1, 'minutes' => 0])
+        $this->postJson("/api/v1/tasks/{$this->task->id}/time", ['hours' => 1, 'minutes' => 0])
             ->assertOk()
             ->assertJsonPath('data.0.can_edit', true)
             ->assertJsonPath('data.1.can_edit', false);
-        $this->deleteJson("/api/time-entries/{$actorsEntry->id}")->assertForbidden();
+        $this->deleteJson("/api/v1/time-entries/{$actorsEntry->id}")->assertForbidden();
     }
 
     public function test_the_nightly_pass_brings_in_every_tasks_time_log(): void

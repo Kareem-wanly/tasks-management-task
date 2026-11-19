@@ -76,7 +76,7 @@ class BitrixTaskResultsTest extends TestCase
     {
         $this->bitrixResult('Shipped the release', 5);
 
-        $this->getJson("/api/tasks/{$this->task->id}/results")
+        $this->getJson("/api/v1/tasks/{$this->task->id}/results")
             ->assertOk()
             ->assertJsonPath('data.0.text', 'Shipped the release')
             ->assertJsonPath('data.0.author.id', $this->actor->id)
@@ -87,7 +87,7 @@ class BitrixTaskResultsTest extends TestCase
 
     public function test_a_result_is_added_edited_and_deleted_as_the_employee_through_rest_3(): void
     {
-        $this->postJson("/api/tasks/{$this->task->id}/results", ['text' => '  Done and verified  '])
+        $this->postJson("/api/v1/tasks/{$this->task->id}/results", ['text' => '  Done and verified  '])
             ->assertOk()
             ->assertJsonPath('data.0.text', 'Done and verified')
             ->assertJsonPath('data.0.can_edit', true);
@@ -95,8 +95,8 @@ class BitrixTaskResultsTest extends TestCase
             && $r['auth'] === 'actor-access' && $r['fields'] === ['taskId' => 15, 'text' => 'Done and verified']);
 
         $result = TaskResult::sole();
-        $this->putJson("/api/task-results/{$result->id}", ['text' => 'Done, verified, deployed'])->assertJsonPath('data.0.text', 'Done, verified, deployed');
-        $this->deleteJson("/api/task-results/{$result->id}")->assertJsonCount(0, 'data');
+        $this->putJson("/api/v1/task-results/{$result->id}", ['text' => 'Done, verified, deployed'])->assertJsonPath('data.0.text', 'Done, verified, deployed');
+        $this->deleteJson("/api/v1/task-results/{$result->id}")->assertJsonCount(0, 'data');
     }
 
     public function test_only_the_author_changes_a_result_and_auditors_cannot_add(): void
@@ -108,23 +108,23 @@ class BitrixTaskResultsTest extends TestCase
         $this->task->forceFill(['assigned_to' => $assignee->id])->save();
         $this->task->auditors()->sync([$auditor->id]);
         $this->bitrixResult('By the actor', 5);
-        $this->getJson("/api/tasks/{$this->task->id}/results");
+        $this->getJson("/api/v1/tasks/{$this->task->id}/results");
         $actorsResult = TaskResult::sole();
 
         Sanctum::actingAs($auditor);
-        $this->getJson("/api/tasks/{$this->task->id}/results")->assertJsonPath('meta.can_add', false);
-        $this->postJson("/api/tasks/{$this->task->id}/results", ['text' => 'Nope'])->assertForbidden();
+        $this->getJson("/api/v1/tasks/{$this->task->id}/results")->assertJsonPath('meta.can_add', false);
+        $this->postJson("/api/v1/tasks/{$this->task->id}/results", ['text' => 'Nope'])->assertForbidden();
 
         Sanctum::actingAs($assignee);
-        $this->postJson("/api/tasks/{$this->task->id}/results", ['text' => 'Mine'])->assertOk();
-        $this->putJson("/api/task-results/{$actorsResult->id}", ['text' => 'Hijack'])->assertForbidden();
+        $this->postJson("/api/v1/tasks/{$this->task->id}/results", ['text' => 'Mine'])->assertOk();
+        $this->putJson("/api/v1/task-results/{$actorsResult->id}", ['text' => 'Hijack'])->assertForbidden();
     }
 
     public function test_a_bitrix_refusal_saves_nothing_and_says_why(): void
     {
         $this->failure = 'refuse';
 
-        $this->postJson("/api/tasks/{$this->task->id}/results", ['text' => 'Done'])
+        $this->postJson("/api/v1/tasks/{$this->task->id}/results", ['text' => 'Done'])
             ->assertForbidden()
             ->assertJsonPath('message', 'Bitrix24 does not allow you to do this.');
 
@@ -134,10 +134,10 @@ class BitrixTaskResultsTest extends TestCase
     public function test_bitrix_unreachable_shows_our_last_copy(): void
     {
         $this->bitrixResult('Kept', 5);
-        $this->getJson("/api/tasks/{$this->task->id}/results");
+        $this->getJson("/api/v1/tasks/{$this->task->id}/results");
         $this->failure = 'unreachable';
 
-        $this->getJson("/api/tasks/{$this->task->id}/results")->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('meta.stale', true);
+        $this->getJson("/api/v1/tasks/{$this->task->id}/results")->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('meta.stale', true);
     }
 
     public function test_a_task_outside_bitrix_keeps_its_results_here(): void
@@ -145,7 +145,7 @@ class BitrixTaskResultsTest extends TestCase
         $local = Project::forceCreate(['title' => 'Local', 'status' => 'active', 'owner_id' => $this->actor->id]);
         $this->task->forceFill(['project_id' => $local->id, 'bitrix_task_id' => null])->save();
 
-        $this->postJson("/api/tasks/{$this->task->id}/results", ['text' => 'Local result'])->assertOk()->assertJsonPath('data.0.text', 'Local result');
+        $this->postJson("/api/v1/tasks/{$this->task->id}/results", ['text' => 'Local result'])->assertOk()->assertJsonPath('data.0.text', 'Local result');
 
         Http::assertNothingSent();
     }
@@ -155,10 +155,10 @@ class BitrixTaskResultsTest extends TestCase
     {
         $result = TaskResult::create(['task_id' => $this->task->id, 'author_id' => $this->actor->id, 'text' => 'Before Bitrix']);
 
-        $this->putJson("/api/task-results/{$result->id}", ['text' => 'Reworded'])->assertOk();
+        $this->putJson("/api/v1/task-results/{$result->id}", ['text' => 'Reworded'])->assertOk();
         $this->assertSame('Reworded', $result->fresh()->text);
 
-        $this->deleteJson("/api/task-results/{$result->id}")->assertOk();
+        $this->deleteJson("/api/v1/task-results/{$result->id}")->assertOk();
         $this->assertNull($result->fresh());
 
         Http::assertNotSent(fn (Request $r): bool => str_contains($r->url(), 'tasks.task.result.update') || str_contains($r->url(), 'tasks.task.result.delete'));

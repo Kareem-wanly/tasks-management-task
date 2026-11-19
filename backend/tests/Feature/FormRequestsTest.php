@@ -37,7 +37,7 @@ class FormRequestsTest extends TestCase
         $task = $this->task($this->project($this->member()));
         Sanctum::actingAs($this->member());
 
-        $this->postJson("/api/tasks/{$task->id}/chat", ['text' => ''])->assertStatus(403);
+        $this->postJson("/api/v1/tasks/{$task->id}/chat", ['text' => ''])->assertStatus(403);
     }
 
     public function test_chat_message_is_validated_for_members(): void
@@ -46,8 +46,8 @@ class FormRequestsTest extends TestCase
         $task = $this->task($this->project($owner));
         Sanctum::actingAs($owner);
 
-        $this->postJson("/api/tasks/{$task->id}/chat", ['text' => str_repeat('a', 5001)])->assertStatus(422);
-        $this->postJson("/api/tasks/{$task->id}/chat", ['text' => 'ok'])->assertOk()->assertJsonPath('data.0.text', 'ok');
+        $this->postJson("/api/v1/tasks/{$task->id}/chat", ['text' => str_repeat('a', 5001)])->assertStatus(422);
+        $this->postJson("/api/v1/tasks/{$task->id}/chat", ['text' => 'ok'])->assertOk()->assertJsonPath('data.0.text', 'ok');
     }
 
     public function test_update_status_authorizes_before_validating(): void
@@ -57,11 +57,11 @@ class FormRequestsTest extends TestCase
         $task = $this->task($this->project($owner, [$viewer]));
 
         Sanctum::actingAs($viewer);
-        $this->patchJson("/api/tasks/{$task->id}/status", ['status' => 'nonsense'])->assertStatus(403);
+        $this->patchJson("/api/v1/tasks/{$task->id}/status", ['status' => 'nonsense'])->assertStatus(403);
 
         Sanctum::actingAs($owner);
-        $this->patchJson("/api/tasks/{$task->id}/status", ['status' => 'nonsense'])->assertStatus(422);
-        $this->patchJson("/api/tasks/{$task->id}/status", ['status' => 'review'])->assertOk();
+        $this->patchJson("/api/v1/tasks/{$task->id}/status", ['status' => 'nonsense'])->assertStatus(422);
+        $this->patchJson("/api/v1/tasks/{$task->id}/status", ['status' => 'review'])->assertOk();
     }
 
     public function test_add_member_validates_and_authorizes(): void
@@ -71,22 +71,22 @@ class FormRequestsTest extends TestCase
         $newcomer = $this->member();
 
         Sanctum::actingAs($this->member());
-        $this->postJson("/api/projects/{$project->id}/members", [])->assertStatus(403);
+        $this->postJson("/api/v1/projects/{$project->id}/members", [])->assertStatus(403);
 
         Sanctum::actingAs($owner);
-        $this->postJson("/api/projects/{$project->id}/members", [])->assertStatus(422);
-        $this->postJson("/api/projects/{$project->id}/members", ['user_id' => $newcomer->id])->assertSuccessful();
+        $this->postJson("/api/v1/projects/{$project->id}/members", [])->assertStatus(422);
+        $this->postJson("/api/v1/projects/{$project->id}/members", ['user_id' => $newcomer->id])->assertSuccessful();
         $this->assertSame('member', $project->members()->where('users.id', $newcomer->id)->first()->pivot->role);
-        $this->postJson("/api/projects/{$project->id}/members", ['user_id' => $newcomer->id])->assertStatus(422);
+        $this->postJson("/api/v1/projects/{$project->id}/members", ['user_id' => $newcomer->id])->assertStatus(422);
     }
 
     public function test_store_user_authorizes_then_validates_and_defaults_to_member_role(): void
     {
         Sanctum::actingAs($this->member());
-        $this->postJson('/api/users', [])->assertStatus(403);
+        $this->postJson('/api/v1/users', [])->assertStatus(403);
 
         Sanctum::actingAs($this->admin());
-        $this->postJson('/api/users', ['name' => 'X', 'email' => 'x@example.com'])->assertStatus(422);
+        $this->postJson('/api/v1/users', ['name' => 'X', 'email' => 'x@example.com'])->assertStatus(422);
 
         // A valid request invites the employee in Bitrix24, as a linked admin.
         config(['bitrix.portal' => 'portal.test']);
@@ -97,7 +97,7 @@ class FormRequestsTest extends TestCase
         Sanctum::actingAs($admin);
         Http::fake(['*' => Http::response(['result' => 77])]);
 
-        $id = $this->postJson('/api/users', [
+        $id = $this->postJson('/api/v1/users', [
             'name' => 'X', 'email' => 'x@example.com', 'password' => 'Secret123!',
         ])->assertStatus(201)->json('data.id');
 
@@ -110,26 +110,26 @@ class FormRequestsTest extends TestCase
         $other = $this->member();
         Sanctum::actingAs($this->admin());
 
-        $this->putJson("/api/users/{$target->id}", ['email' => $target->email])->assertOk();
-        $this->putJson("/api/users/{$target->id}", ['email' => $other->email])->assertStatus(422);
+        $this->putJson("/api/v1/users/{$target->id}", ['email' => $target->email])->assertOk();
+        $this->putJson("/api/v1/users/{$target->id}", ['email' => $other->email])->assertStatus(422);
     }
 
     public function test_sync_roles_keeps_self_modification_message_and_validates(): void
     {
         $user = $this->userWith(['roles.assign', 'users.view']);
         Sanctum::actingAs($user);
-        $this->putJson("/api/users/{$user->id}/roles", ['roles' => []])
+        $this->putJson("/api/v1/users/{$user->id}/roles", ['roles' => []])
             ->assertStatus(403)
             ->assertJsonPath('message', 'You cannot modify your own roles.');
 
         $target = $this->member();
         Sanctum::actingAs($this->admin());
-        $this->putJson("/api/users/{$target->id}/roles", [])->assertStatus(422);
+        $this->putJson("/api/v1/users/{$target->id}/roles", [])->assertStatus(422);
     }
 
     public static function outOfRangePageSizes(): array
     {
-        $endpoints = ['/api/tasks', '/api/projects', '/api/users'];
+        $endpoints = ['/api/v1/tasks', '/api/v1/projects', '/api/v1/users'];
         $sizes = ['zero' => '0', 'negative' => '-1', 'over the limit' => '101', 'not a number' => 'abc'];
         $cases = [];
         foreach ($endpoints as $endpoint) {
@@ -155,18 +155,18 @@ class FormRequestsTest extends TestCase
     {
         Sanctum::actingAs($this->admin());
 
-        $this->getJson('/api/tasks?per_page=1')->assertOk()->assertJsonPath('meta.per_page', 1);
-        $this->getJson('/api/tasks?per_page=100')->assertOk()->assertJsonPath('meta.per_page', 100);
+        $this->getJson('/api/v1/tasks?per_page=1')->assertOk()->assertJsonPath('meta.per_page', 1);
+        $this->getJson('/api/v1/tasks?per_page=100')->assertOk()->assertJsonPath('meta.per_page', 100);
     }
 
     public function test_task_list_filters_are_validated(): void
     {
         Sanctum::actingAs($this->admin());
 
-        $this->getJson('/api/tasks?assigned_to=abc&project_id=x')
+        $this->getJson('/api/v1/tasks?assigned_to=abc&project_id=x')
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['assigned_to', 'project_id']);
-        $this->getJson('/api/tasks?status[]=pending')->assertUnprocessable()->assertJsonValidationErrors(['status']);
+        $this->getJson('/api/v1/tasks?status[]=pending')->assertUnprocessable()->assertJsonValidationErrors(['status']);
     }
 
     public function test_empty_task_list_filters_filter_nothing(): void
@@ -175,7 +175,7 @@ class FormRequestsTest extends TestCase
         $this->task($this->project($admin));
         Sanctum::actingAs($admin);
 
-        $this->getJson('/api/tasks?assigned_to=&project_id=&status=&search=')
+        $this->getJson('/api/v1/tasks?assigned_to=&project_id=&status=&search=')
             ->assertOk()
             ->assertJsonPath('meta.total', Task::count());
     }
@@ -186,8 +186,8 @@ class FormRequestsTest extends TestCase
         $project = $this->project($admin);
         Sanctum::actingAs($admin);
 
-        $this->getJson("/api/projects/{$project->id}")->assertOk()->assertJsonPath('data.status', 'active');
-        $this->postJson("/api/projects/{$project->id}/archive")
+        $this->getJson("/api/v1/projects/{$project->id}")->assertOk()->assertJsonPath('data.status', 'active');
+        $this->postJson("/api/v1/projects/{$project->id}/archive")
             ->assertOk()
             ->assertJsonPath('data.status', 'archived')
             ->assertJsonPath('message', 'Project status changed to archived successfully');
