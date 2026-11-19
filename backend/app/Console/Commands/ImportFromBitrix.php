@@ -157,7 +157,7 @@ class ImportFromBitrix extends Command
 
             return [
                 $entity,
-                $cursor?->status ?? 'never run',
+                $cursor?->status->value ?? 'never run',
                 $cursor?->processed ?? 0,
                 $cursor?->total ?? 0,
                 $cursor?->last_synced_at?->toDateTimeString() ?? '-',

@@ -25,7 +25,12 @@ class SyncBitrixChanges extends Command
 
     public function handle(BitrixSyncCursorRepositoryInterface $cursors): int
     {
-        $since = $cursors->forEntity(ImportBitrixTasks::ENTITY)->last_synced_at;
+        // The full import and the changes sync each keep their own row: changes are
+        // asked for since whichever of them last finished.
+        $since = collect([ImportBitrixTasks::ENTITY, ImportBitrixTasks::CHANGES_ENTITY])
+            ->map(fn (string $entity) => $cursors->forEntity($entity)->last_synced_at)
+            ->filter()
+            ->max();
 
         // Never synced: nothing to measure changes against, so import everything.
         if ($since === null) {

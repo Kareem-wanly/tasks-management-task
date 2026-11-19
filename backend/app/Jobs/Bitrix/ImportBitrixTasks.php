@@ -33,6 +33,9 @@ class ImportBitrixTasks implements ShouldQueue
 
     public const ENTITY = 'tasks';
 
+    /** The periodic changes sync reports here, so it never overwrites the full import's row. */
+    public const CHANGES_ENTITY = 'tasks-changes';
+
     /** Bitrix STATUS of a closed (completed) task. */
     private const STATUS_COMPLETED = 5;
 
@@ -43,7 +46,7 @@ class ImportBitrixTasks implements ShouldQueue
 
     public function handle(BitrixGatewayInterface $bitrix, BitrixTaskSync $tasks, BitrixTaskMapper $mapper, BitrixRecordFetcher $fetch, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $taskRepository, BitrixDeletionGuard $guard): void
     {
-        $cursor = $cursors->start(self::ENTITY);
+        $cursor = $cursors->start($this->cursorEntity());
         $skipped = 0;
         $seen = [];
         // Totals of the passes already finished; the closed pass's own total
@@ -85,6 +88,11 @@ class ImportBitrixTasks implements ShouldQueue
         Log::info($this->changedSince instanceof CarbonImmutable ? 'Bitrix24 task changes synced.' : 'Bitrix24 tasks imported.', [
             'processed' => $cursor->processed, 'skipped' => $skipped, 'deleted' => $deleted, 'portal_total' => $earlierTotal,
         ]);
+    }
+
+    protected function cursorEntity(): string
+    {
+        return $this->changedSince instanceof CarbonImmutable ? self::CHANGES_ENTITY : self::ENTITY;
     }
 
     /** @return list<array<string, mixed>> */
