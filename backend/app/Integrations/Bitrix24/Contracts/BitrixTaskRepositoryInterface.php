@@ -101,4 +101,11 @@ interface BitrixTaskRepositoryInterface
      * @return int The filter's total.
      */
     public function eachTaskPage(array $filter, callable $onPage): int;
+
+    /**
+     * The task fields and their allowed values (tasks.task.getFields), read with the service account.
+     *
+     * @return array<string, mixed>
+     */
+    public function fieldDefinitions(): array;
 }

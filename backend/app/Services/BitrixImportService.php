@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\QueueName;
 use App\Enums\TaskMemberRole;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixChecklistSync;
@@ -19,6 +20,14 @@ use App\Integrations\Bitrix24\Contracts\BitrixTaskRepositoryInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixTimeRepositoryInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixUserRepositoryInterface;
 use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
+use App\Jobs\Bitrix\ImportBitrixChat;
+use App\Jobs\Bitrix\ImportBitrixChecklists;
+use App\Jobs\Bitrix\ImportBitrixFiles;
+use App\Jobs\Bitrix\ImportBitrixProjects;
+use App\Jobs\Bitrix\ImportBitrixResults;
+use App\Jobs\Bitrix\ImportBitrixTasks;
+use App\Jobs\Bitrix\ImportBitrixTime;
+use App\Jobs\Bitrix\ImportBitrixUsers;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -31,12 +40,28 @@ use App\Services\Contracts\TaskFileServiceInterface;
 use App\Services\Contracts\TaskResultServiceInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 
 final readonly class BitrixImportService implements BitrixImportServiceInterface
 {
     /** Tasks per chunk of the per-task passes (a Bitrix batch holds 50 commands). */
     private const CHUNK = 50;
+
+    /** Overlap of a changes sync with the previous run, against clock drift between us and Bitrix. */
+    private const OVERLAP_SECONDS = 60;
+
+    /** The job that imports each entity. */
+    private const JOBS = [
+        self::USERS => ImportBitrixUsers::class,
+        self::PROJECTS => ImportBitrixProjects::class,
+        self::TASKS => ImportBitrixTasks::class,
+        self::CHECKLISTS => ImportBitrixChecklists::class,
+        self::TIME => ImportBitrixTime::class,
+        self::FILES => ImportBitrixFiles::class,
+        self::RESULTS => ImportBitrixResults::class,
+        self::CHAT => ImportBitrixChat::class,
+    ];
 
     public function __construct(
         private BitrixSyncCursorRepositoryInterface $cursors,
@@ -59,6 +84,42 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
         private TaskFileServiceInterface $files,
         private TaskResultServiceInterface $results,
     ) {}
+
+    public function queueImport(array $entities, bool $linkByEmail): void
+    {
+        Bus::chain(array_map(fn (string $entity): object => $this->job($entity, $linkByEmail), $entities))
+            ->onQueue(QueueName::Bitrix)
+            ->dispatch();
+    }
+
+    public function runImport(string $entity, bool $linkByEmail): void
+    {
+        // Through the job, so a failure is recorded on the cursor row (its failed()) as when queued.
+        dispatch_sync($this->job($entity, $linkByEmail));
+    }
+
+    public function progress(array $entities): Collection
+    {
+        return $this->cursors->forEntities($entities);
+    }
+
+    public function lastTaskSync(): ?CarbonImmutable
+    {
+        // The full import and the changes sync each keep their own row: changes are
+        // asked for since whichever of them last finished.
+        $last = collect([self::TASKS, self::TASKS_CHANGES])
+            ->map(fn (string $entity) => $this->cursors->forEntity($entity)->last_synced_at)
+            ->filter()
+            ->max();
+
+        return $last?->toImmutable();
+    }
+
+    public function syncChanges(CarbonImmutable $since): void
+    {
+        dispatch_sync(new ImportBitrixProjects);
+        dispatch_sync(new ImportBitrixTasks($since->subSeconds(self::OVERLAP_SECONDS)));
+    }
 
     public function importUsers(bool $linkByEmail): void
     {
@@ -194,6 +255,11 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
     public function importChat(): void
     {
         $this->eachTask(self::CHAT, 'Bitrix24 task chats imported.', fn (Task $task) => $this->chat->refreshFromBitrix($task, complete: true));
+    }
+
+    private function job(string $entity, bool $linkByEmail): object
+    {
+        return $entity === self::USERS ? new ImportBitrixUsers($linkByEmail) : new (self::JOBS[$entity]);
     }
 
     /**

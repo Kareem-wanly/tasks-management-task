@@ -142,6 +142,13 @@ final readonly class BitrixTaskRepository implements BitrixTaskRepositoryInterfa
         ], $onPage);
     }
 
+    public function fieldDefinitions(): array
+    {
+        $fields = $this->bitrix->callAsService('tasks.task.getFields')['result']['fields'] ?? [];
+
+        return is_array($fields) ? $fields : [];
+    }
+
     private function nextAction(int $current, int $target): ?string
     {
         $current = $this->normalizeStatus($current);

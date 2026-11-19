@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Contracts;
 
+use App\Models\BitrixSyncCursor;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 
 /**
  * Bitrix24 → here, in bulk: the import of every record (first install, the
@@ -32,6 +34,34 @@ interface BitrixImportServiceInterface
     public const RESULTS = 'results';
 
     public const CHAT = 'chat';
+
+    /** What a full import brings in, in the order it must run (tasks need users and projects first). */
+    public const ORDER = [self::USERS, self::PROJECTS, self::TASKS, self::CHECKLISTS, self::TIME, self::FILES, self::RESULTS, self::CHAT];
+
+    /**
+     * Queues the import of the given entities as one chain: it stops at the
+     * first failure, so tasks never run on missing users or projects.
+     *
+     * @param  list<string>  $entities  In ORDER.
+     */
+    public function queueImport(array $entities, bool $linkByEmail): void;
+
+    /** Imports one entity now, in this process (its failure is recorded on its cursor row, then thrown). */
+    public function runImport(string $entity, bool $linkByEmail): void;
+
+    /**
+     * Where each entity's last import stands.
+     *
+     * @param  list<string>  $entities
+     * @return Collection<string, BitrixSyncCursor> By entity; entities never imported are missing.
+     */
+    public function progress(array $entities): Collection;
+
+    /** When the last task import or changes sync started; null when tasks were never imported. */
+    public function lastTaskSync(): ?CarbonImmutable;
+
+    /** The periodic sync: every project (no reliable change filter for groups), and the tasks changed since $since. */
+    public function syncChanges(CarbonImmutable $since): void;
 
     /** Every employee; with $linkByEmail an unlinked local account with the same email is linked. */
     public function importUsers(bool $linkByEmail): void;
