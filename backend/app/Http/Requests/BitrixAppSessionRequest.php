@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Bitrix\BitrixFrameAuthDTO;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -34,20 +35,16 @@ class BitrixAppSessionRequest extends FormRequest
         ];
     }
 
-    /**
-     * The validated tokens, with expires_in as seconds left.
-     *
-     * @return array{access_token: string, refresh_token: string, expires_in: int, domain: string, member_id: ?string}
-     */
-    public function frameAuth(): array
+    /** The validated tokens, with expires_in as seconds left. */
+    public function toDto(): BitrixFrameAuthDTO
     {
-        return [
-            'access_token' => (string) $this->validated('access_token'),
-            'refresh_token' => (string) $this->validated('refresh_token'),
-            'expires_in' => $this->lifetimeSeconds(),
-            'domain' => (string) $this->validated('domain'),
-            'member_id' => $this->validated('member_id'),
-        ];
+        return new BitrixFrameAuthDTO(
+            accessToken: (string) $this->validated('access_token'),
+            refreshToken: (string) $this->validated('refresh_token'),
+            expiresIn: $this->lifetimeSeconds(),
+            domain: (string) $this->validated('domain'),
+            memberId: $this->validated('member_id'),
+        );
     }
 
     /**

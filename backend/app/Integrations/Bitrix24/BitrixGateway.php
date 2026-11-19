@@ -16,7 +16,7 @@ use Psr\Http\Message\StreamInterface;
 /**
  * The only place that talks to the Bitrix24 REST API.
  */
-final class BitrixGateway implements BitrixGatewayInterface
+final readonly class BitrixGateway implements BitrixGatewayInterface
 {
     /** Classic REST, and REST 3.0 (newer methods such as task results). */
     private const REST_PATH = '/rest/';
@@ -25,7 +25,7 @@ final class BitrixGateway implements BitrixGatewayInterface
 
     private const RATE_LIMIT_RETRIES = 3;
 
-    public function __construct(private readonly TokenManager $tokens) {}
+    public function __construct(private TokenManager $tokens) {}
 
     /**
      * Call a method with the token of a user, so Bitrix applies that user's

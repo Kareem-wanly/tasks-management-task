@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Bitrix\ExchangeLoginCodeDTO;
 use App\Integrations\Bitrix24\BitrixLoginCodes;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -24,13 +25,11 @@ class ExchangeBitrixLoginCodeRequest extends FormRequest
         ];
     }
 
-    public function code(): string
+    public function toDto(): ExchangeLoginCodeDTO
     {
-        return (string) $this->validated('code');
-    }
+        /** @var array{code: string, nonce: string} $validated */
+        $validated = $this->validated();
 
-    public function nonce(): string
-    {
-        return (string) $this->validated('nonce');
+        return ExchangeLoginCodeDTO::fromArray($validated);
     }
 }

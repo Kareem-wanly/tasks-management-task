@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Bitrix\BitrixInstallDTO;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Exceptions\Bitrix\BitrixInstallRefusedException;
 use App\Integrations\Bitrix24\BitrixToken;
@@ -45,64 +46,41 @@ final readonly class BitrixInstallService implements BitrixInstallServiceInterfa
         private BitrixPortalRepositoryInterface $portals,
     ) {}
 
-    /** @param  array<string, mixed>  $auth  The event's auth block. */
-    public function installFromEvent(array $auth, ?string $language): void
+    public function installFromEvent(BitrixInstallDTO $install): void
     {
-        $this->ensureOurPortal($auth['domain'] ?? null);
+        $this->ensureOurPortal($install->domain);
 
-        if (empty($auth['member_id']) || empty($auth['application_token']) || empty($auth['access_token']) || empty($auth['refresh_token'])) {
+        if (empty($install->memberId) || empty($install->applicationToken) || empty($install->accessToken) || empty($install->refreshToken)) {
             throw BitrixInstallRefusedException::missingEventAuth();
         }
 
         // Anyone who knows member_id could forge this event: an installed portal
         // only accepts it with the application token Bitrix gave us before.
-        $installed = $this->portals->findByMemberId((string) $auth['member_id']);
-        if ($installed instanceof BitrixPortal && ! hash_equals((string) $installed->application_token, (string) $auth['application_token'])) {
+        $installed = $this->portals->findByMemberId($install->memberId);
+        if ($installed instanceof BitrixPortal && ! hash_equals((string) $installed->application_token, $install->applicationToken)) {
             throw BitrixInstallRefusedException::applicationTokenMismatch();
         }
 
-        $this->ensureInstallerMayInstall((string) $auth['access_token']);
+        $this->ensureInstallerMayInstall($install->accessToken);
 
-        $this->savePortal([
-            'member_id' => $auth['member_id'],
-            'domain' => $auth['domain'],
-            'application_token' => $auth['application_token'],
-            'access_token' => $auth['access_token'],
-            'refresh_token' => $auth['refresh_token'],
-            'expires_in' => $auth['expires_in'] ?? null,
-            'scope' => $auth['scope'] ?? '',
-            'language' => $language,
-        ]);
+        $this->savePortal($install);
     }
 
     /**
      * The page request comes from a browser, so anyone could forge it: the
      * token is trusted only after Bitrix confirms it is our app's and an admin's.
-     *
-     * @param  array<string, mixed>  $page  The install page's parameters.
      */
-    public function installFromPage(array $page): void
+    public function installFromPage(BitrixInstallDTO $install): void
     {
-        $this->ensureOurPortal($page['DOMAIN'] ?? null);
+        $this->ensureOurPortal($install->domain);
 
-        foreach (['REFRESH_ID', 'member_id', 'APPLICATION_TOKEN'] as $key) {
-            if (empty($page[$key])) {
-                throw BitrixInstallRefusedException::missingParameters();
-            }
+        if (empty($install->refreshToken) || empty($install->memberId) || empty($install->applicationToken)) {
+            throw BitrixInstallRefusedException::missingParameters();
         }
 
-        $this->ensureInstallerMayInstall((string) ($page['AUTH_ID'] ?? ''));
+        $this->ensureInstallerMayInstall((string) $install->accessToken);
 
-        $this->savePortal([
-            'member_id' => $page['member_id'],
-            'domain' => $page['DOMAIN'],
-            'application_token' => $page['APPLICATION_TOKEN'],
-            'access_token' => $page['AUTH_ID'],
-            'refresh_token' => $page['REFRESH_ID'],
-            'expires_in' => $page['AUTH_EXPIRES'] ?? null,
-            'scope' => $page['APPLICATION_SCOPE'] ?? '',
-            'language' => $page['LANG'] ?? null,
-        ]);
+        $this->savePortal($install);
     }
 
     /** The token must be our app's (a local app's app.info CODE is its client_id) and a portal admin's. */
@@ -131,27 +109,25 @@ final readonly class BitrixInstallService implements BitrixInstallServiceInterfa
         }
     }
 
-    /**
-     * @param  array{member_id: string, domain: string, application_token: string, access_token: string, refresh_token: string, expires_in: mixed, scope: string, language: ?string}  $install
-     */
-    private function savePortal(array $install): void
+    /** Called after the checks above, so the ids and tokens are there. */
+    private function savePortal(BitrixInstallDTO $install): void
     {
-        $scopes = $this->splitScopes($install['scope']);
+        $scopes = $this->splitScopes($install->scope);
 
-        $portal = $this->portals->saveInstall($install['member_id'], [
-            'domain' => $install['domain'],
-            'application_token' => $install['application_token'],
+        $portal = $this->portals->saveInstall((string) $install->memberId, [
+            'domain' => $install->domain,
+            'application_token' => $install->applicationToken,
             'scopes' => $scopes,
-            'language' => $install['language'],
+            'language' => $install->language,
             'installed_at' => now(),
         ]);
 
         $portal->storeBitrixToken(new BitrixToken(
-            accessToken: $install['access_token'],
-            refreshToken: $install['refresh_token'],
-            expiresAt: CarbonImmutable::now()->addSeconds((int) ($install['expires_in'] ?: 3600)),
-            domain: $install['domain'],
-            memberId: $install['member_id'],
+            accessToken: (string) $install->accessToken,
+            refreshToken: (string) $install->refreshToken,
+            expiresAt: CarbonImmutable::now()->addSeconds($install->expiresIn ?: 3600),
+            domain: (string) $install->domain,
+            memberId: $install->memberId,
             scopes: $scopes,
         ));
 

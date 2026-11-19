@@ -18,7 +18,7 @@ class BitrixEventController extends Controller
 
     public function handle(BitrixEventRequest $request): JsonResponse
     {
-        $this->events->handle((string) $request->input('event'), (array) $request->input('data', []));
+        $this->events->handle($request->toDto());
 
         return response()->json(['ok' => true]);
     }

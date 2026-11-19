@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Bitrix\BitrixInstallDTO;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -30,5 +31,13 @@ class BitrixInstallRequest extends FormRequest
     public function isInstallPage(): bool
     {
         return $this->filled('AUTH_ID');
+    }
+
+    /** The install, from the event's auth block or from the page's parameters. */
+    public function toDto(): BitrixInstallDTO
+    {
+        return $this->isInstallEvent()
+            ? BitrixInstallDTO::fromEvent((array) $this->input('auth', []), $this->input('data.LANGUAGE_ID'))
+            : BitrixInstallDTO::fromPage($this->all());
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Contracts;
 
+use App\DTOs\Bitrix\BitrixEventDTO;
+
 interface BitrixEventServiceInterface
 {
     /**
@@ -12,6 +14,5 @@ interface BitrixEventServiceInterface
      */
     public function isFromOurPortal(mixed $applicationToken, mixed $memberId): bool;
 
-    /** @param  array<string, mixed>  $data  The event's data. */
-    public function handle(string $event, array $data): void;
+    public function handle(BitrixEventDTO $bitrixEvent): void;
 }

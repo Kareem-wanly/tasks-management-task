@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Bitrix\BitrixEventDTO;
 use App\Jobs\Bitrix\SyncBitrixProject;
 use App\Jobs\Bitrix\SyncBitrixTask;
 use App\Jobs\Bitrix\SyncBitrixTaskChat;
@@ -37,10 +38,10 @@ final readonly class BitrixEventService implements BitrixEventServiceInterface
             && $memberId === $portal->member_id;
     }
 
-    /** @param  array<string, mixed>  $data  The event's data. */
-    public function handle(string $event, array $data): void
+    public function handle(BitrixEventDTO $bitrixEvent): void
     {
-        $event = strtoupper($event);
+        $event = $bitrixEvent->event;
+        $data = $bitrixEvent->data;
 
         $job = match ($event) {
             'ONTASKADD', 'ONTASKUPDATE' => $this->taskJob(data_get($data, 'FIELDS_AFTER.ID')),
