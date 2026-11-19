@@ -25,6 +25,10 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
 
+        // A broken business rule (a wrong password, a role that can't be renamed...) is an
+        // answer, not a fault: not logged. Bitrix24 failures still are (outages, refusals).
+        $exceptions->dontReportWhen(fn (Throwable $e): bool => $e instanceof BusinessException && ! $e instanceof BitrixException);
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson()
         );
