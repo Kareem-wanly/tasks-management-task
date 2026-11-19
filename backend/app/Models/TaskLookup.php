@@ -10,6 +10,14 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * Shared base of TaskStatus and TaskPriority: a row in a lookup table that
  * tasks reference by `key` (tasks.status / tasks.priority).
+ *
+ * @property int $id
+ * @property string $key
+ * @property string $name
+ * @property string|null $color
+ * @property int $sort
+ * @property int|null $bitrix_id
+ * @property bool $is_system A Bitrix24 value (synced by bitrix:sync-task-lookups), not one of ours.
  */
 abstract class TaskLookup extends Model
 {

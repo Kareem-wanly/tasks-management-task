@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Integrations\Bitrix24\Contracts;
 
 use App\Models\User;
+use Carbon\CarbonImmutable;
 
 /**
  * Tasks in Bitrix24 (tasks.task.*), through the gateway, with the acting
@@ -83,4 +84,28 @@ interface BitrixTaskRepositoryInterface
      * @return list<array<string, mixed>>
      */
     public function history(int $bitrixTaskId): array;
+
+    /**
+     * The list passes of an import: open tasks, then closed ones; or, with
+     * $changedSince, the tasks changed since then.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listFilters(?CarbonImmutable $changedSince): array;
+
+    /**
+     * The tasks one filter matches, page by page, read with the service account.
+     *
+     * @param  array<string, mixed>  $filter
+     * @param  callable(array<string, mixed>, int): void  $onPage  The page and the filter's total.
+     * @return int The filter's total.
+     */
+    public function eachTaskPage(array $filter, callable $onPage): int;
+
+    /**
+     * The task fields and their allowed values (tasks.task.getFields), read with the service account.
+     *
+     * @return array<string, mixed>
+     */
+    public function fieldDefinitions(): array;
 }

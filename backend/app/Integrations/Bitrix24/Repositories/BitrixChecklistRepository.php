@@ -66,6 +66,26 @@ final readonly class BitrixChecklistRepository implements BitrixChecklistReposit
         }
     }
 
+    public function listMany(array $bitrixTaskIds): array
+    {
+        $commands = [];
+        foreach ($bitrixTaskIds as $taskId => $bitrixTaskId) {
+            $commands["task_{$taskId}"] = ['task.checklistitem.getlist', ['TASKID' => $bitrixTaskId, 'ORDER' => ['SORT_INDEX' => 'asc']]];
+        }
+
+        $batch = $this->bitrix->batchAsService($commands);
+
+        $rows = [];
+        foreach (array_keys($bitrixTaskIds) as $taskId) {
+            $key = "task_{$taskId}";
+            $rows[$taskId] = isset($batch['result_error'][$key]) || ! isset($batch['result'][$key])
+                ? null
+                : array_values((array) $batch['result'][$key]);
+        }
+
+        return $rows;
+    }
+
     private function moveAfter(User $actor, int $bitrixTaskId, int $bitrixItemId, int $afterItemId): void
     {
         $this->call($actor, $bitrixTaskId, 'task.checklistitem.moveafteritem', ['ITEMID' => $bitrixItemId, 'AFTERITEMID' => $afterItemId]);

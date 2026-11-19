@@ -24,4 +24,12 @@ interface BitrixUserRepositoryInterface
     public function update(User $actor, int $bitrixUserId, ?string $name, ?string $email): void;
 
     public function setActive(User $actor, int $bitrixUserId, bool $active): void;
+
+    /**
+     * Every employee, page by page, read with the service account (deactivated ones too).
+     *
+     * @param  callable(list<array<string, mixed>>, int): void  $onPage  The page's rows and the portal total.
+     * @return int The portal total.
+     */
+    public function eachPage(callable $onPage): int;
 }

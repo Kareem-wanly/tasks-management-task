@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Bitrix24;
 
+use App\Enums\SyncCursorStatus;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
@@ -97,7 +98,7 @@ class ImportFromBitrixCommandTest extends TestCase
 
         foreach (['users' => 2, 'projects' => 1, 'tasks' => 2] as $entity => $count) {
             $cursor = BitrixSyncCursor::where('entity', $entity)->sole();
-            $this->assertSame(BitrixSyncCursor::COMPLETED, $cursor->status);
+            $this->assertSame(SyncCursorStatus::Completed, $cursor->status);
             $this->assertSame($count, $cursor->processed);
             $this->assertSame($count, $cursor->total);
             $this->assertNotNull($cursor->last_synced_at);
@@ -158,9 +159,9 @@ class ImportFromBitrixCommandTest extends TestCase
 
         $this->artisan('bitrix:import --sync')->assertFailed();
 
-        $this->assertSame(BitrixSyncCursor::COMPLETED, BitrixSyncCursor::where('entity', 'projects')->value('status'));
+        $this->assertSame(SyncCursorStatus::Completed, BitrixSyncCursor::where('entity', 'projects')->value('status'));
         $tasks = BitrixSyncCursor::where('entity', 'tasks')->sole();
-        $this->assertSame(BitrixSyncCursor::FAILED, $tasks->status);
+        $this->assertSame(SyncCursorStatus::Failed, $tasks->status);
         $this->assertStringContainsString('denied', $tasks->error);
     }
 
@@ -197,8 +198,10 @@ class ImportFromBitrixCommandTest extends TestCase
 
         // A minute of overlap with the previous run.
         Http::assertSent(fn (Request $r): bool => ($r['filter']['>CHANGED_DATE'] ?? null) === '2026-11-15T11:59:00+00:00');
-        // The next run starts from when this one started.
-        $this->assertSame('2026-11-15 12:05:00', BitrixSyncCursor::where('entity', 'tasks')->sole()->last_synced_at->utc()->toDateTimeString());
+        // The next run starts from when this one started; it has its own row, so the
+        // full import's "tasks" row keeps its own run.
+        $this->assertSame('2026-11-15 12:05:00', BitrixSyncCursor::where('entity', 'tasks-changes')->sole()->last_synced_at->utc()->toDateTimeString());
+        $this->assertSame('2026-11-15 12:00:00', BitrixSyncCursor::where('entity', 'tasks')->sole()->last_synced_at->utc()->toDateTimeString());
         $this->assertSame(2, Task::count());
     }
 

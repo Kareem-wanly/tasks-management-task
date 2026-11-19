@@ -7,7 +7,9 @@ namespace App\Integrations\Bitrix24\Repositories;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixTaskRepositoryInterface;
+use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 
 final readonly class BitrixTaskRepository implements BitrixTaskRepositoryInterface
@@ -120,6 +122,31 @@ final readonly class BitrixTaskRepository implements BitrixTaskRepositoryInterfa
         $rows = $this->bitrix->callAsService('tasks.task.history.list', ['taskId' => $bitrixTaskId])['result']['list'] ?? [];
 
         return is_array($rows) ? array_values($rows) : [];
+    }
+
+    public function listFilters(?CarbonImmutable $changedSince): array
+    {
+        if ($changedSince instanceof CarbonImmutable) {
+            return [['>CHANGED_DATE' => $changedSince->toIso8601String()]];
+        }
+
+        return [['!STATUS' => self::COMPLETED], ['STATUS' => self::COMPLETED]];
+    }
+
+    public function eachTaskPage(array $filter, callable $onPage): int
+    {
+        return $this->bitrix->eachPageAsService('tasks.task.list', [
+            'select' => BitrixTaskMapper::SELECT,
+            'filter' => $filter,
+            'order' => ['ID' => 'ASC'],
+        ], $onPage);
+    }
+
+    public function fieldDefinitions(): array
+    {
+        $fields = $this->bitrix->callAsService('tasks.task.getFields')['result']['fields'] ?? [];
+
+        return is_array($fields) ? $fields : [];
     }
 
     private function nextAction(int $current, int $target): ?string
