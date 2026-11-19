@@ -15,11 +15,11 @@ use Symfony\Component\Mime\MimeTypes;
  * (disk.attachedObject.get rows). Bitrix sends no events for attachments,
  * so this runs when the task is opened and every night.
  */
-class BitrixFileSync
+final readonly class BitrixFileSync
 {
     public function __construct(
-        private readonly TaskFileRepositoryInterface $files,
-        private readonly UserRepositoryInterface $users,
+        private TaskFileRepositoryInterface $files,
+        private UserRepositoryInterface $users,
     ) {}
 
     /**

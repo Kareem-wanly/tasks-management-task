@@ -10,15 +10,15 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
- * Step 2.2: copies every workgroup (groups, projects, scrum, collabs) into
- * projects, with members and roles. Run after ImportBitrixUsers.
- * Safe to re-run: rows are matched on bitrix_group_id.
+ * Step 4.3: brings every Bitrix task's checklists up to date. Bitrix sends
+ * no events for checklists, so this nightly pass (and opening a task)
+ * is how changes made there reach us. Run after ImportBitrixTasksJob.
  */
-final class ImportBitrixProjects implements ShouldQueue
+final class ImportBitrixChecklistsJob implements ShouldQueue
 {
     use Queueable, TracksSyncProgress;
 
-    public const ENTITY = BitrixImportServiceInterface::PROJECTS;
+    public const ENTITY = BitrixImportServiceInterface::CHECKLISTS;
 
     public function __construct()
     {
@@ -27,6 +27,6 @@ final class ImportBitrixProjects implements ShouldQueue
 
     public function handle(BitrixImportServiceInterface $import): void
     {
-        $import->importProjects();
+        $import->importChecklists();
     }
 }

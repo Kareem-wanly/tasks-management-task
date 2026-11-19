@@ -8,7 +8,7 @@ use App\DTOs\User\SyncUserRolesDTO;
 use App\Enums\SystemRole;
 use Illuminate\Foundation\Http\FormRequest;
 
-class SyncUserRolesRequest extends FormRequest
+final class SyncUserRolesRequest extends FormRequest
 {
     public function authorize(): bool
     {

@@ -18,7 +18,7 @@ use App\Services\Contracts\TaskServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
-class TaskController extends Controller
+final class TaskController extends Controller
 {
     public function __construct(private readonly TaskServiceInterface $tasks) {}
 

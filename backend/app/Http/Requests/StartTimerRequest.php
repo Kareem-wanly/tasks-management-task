@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Starts the caller's timer on a task. */
-class StartTimerRequest extends FormRequest
+final class StartTimerRequest extends FormRequest
 {
     public function authorize(): bool
     {

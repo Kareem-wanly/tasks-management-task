@@ -7,7 +7,7 @@ namespace Tests\Feature\Bitrix24;
 use App\Enums\OutboundOpStatus;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
-use App\Jobs\Bitrix\SyncBitrixTask;
+use App\Jobs\Bitrix\SyncBitrixTaskJob;
 use App\Models\BitrixOutboundOp;
 use App\Models\Project;
 use App\Models\Role;
@@ -125,7 +125,7 @@ class BitrixSubtasksTest extends TestCase
     {
         $this->bitrixTask = $this->bitrixRow(51, 50);
 
-        dispatch_sync(new SyncBitrixTask(51));
+        dispatch_sync(new SyncBitrixTaskJob(51));
 
         $this->assertSame($this->parent->id, Task::where('bitrix_task_id', 51)->sole()->parent_id);
     }
@@ -134,7 +134,7 @@ class BitrixSubtasksTest extends TestCase
     {
         $this->bitrixTask = $this->bitrixRow(51, 999);
 
-        dispatch_sync(new SyncBitrixTask(51));
+        dispatch_sync(new SyncBitrixTaskJob(51));
 
         $this->assertNull(Task::where('bitrix_task_id', 51)->sole()->parent_id);
     }
@@ -145,7 +145,7 @@ class BitrixSubtasksTest extends TestCase
             ->assertCreated();
         $this->bitrixTask = $this->bitrixRow(51, 50);
 
-        dispatch_sync(new SyncBitrixTask(51));
+        dispatch_sync(new SyncBitrixTaskJob(51));
 
         $this->assertSame(OutboundOpStatus::Confirmed, BitrixOutboundOp::sole()->status);
     }

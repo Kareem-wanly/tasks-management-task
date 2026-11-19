@@ -20,13 +20,13 @@ use App\Repositories\Contracts\UserRepositoryInterface;
  * values, Bitrix user/group/task IDs), so a record we sent and the same
  * record fetched back from Bitrix hash the same (step 3.5).
  */
-class BitrixFingerprint
+final readonly class BitrixFingerprint
 {
     public function __construct(
-        private readonly TaskLookupRepositoryInterface $lookups,
-        private readonly UserRepositoryInterface $users,
-        private readonly ProjectRepositoryInterface $projects,
-        private readonly TaskRepositoryInterface $tasks,
+        private TaskLookupRepositoryInterface $lookups,
+        private UserRepositoryInterface $users,
+        private ProjectRepositoryInterface $projects,
+        private TaskRepositoryInterface $tasks,
     ) {}
 
     /**

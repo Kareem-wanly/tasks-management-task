@@ -8,7 +8,7 @@ use App\DTOs\Task\TaskChatMessageDTO;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Step 4.7: a new message in the task chat. */
-class StoreTaskChatMessageRequest extends FormRequest
+final class StoreTaskChatMessageRequest extends FormRequest
 {
     public function authorize(): bool
     {

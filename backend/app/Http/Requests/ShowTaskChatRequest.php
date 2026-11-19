@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Step 4.7: reading a task's chat. */
-class ShowTaskChatRequest extends FormRequest
+final class ShowTaskChatRequest extends FormRequest
 {
     public function authorize(): bool
     {

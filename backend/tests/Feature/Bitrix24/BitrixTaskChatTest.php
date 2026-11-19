@@ -6,8 +6,8 @@ namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
-use App\Jobs\Bitrix\ImportBitrixChat;
-use App\Jobs\Bitrix\SyncBitrixTaskChat;
+use App\Jobs\Bitrix\ImportBitrixChatJob;
+use App\Jobs\Bitrix\SyncBitrixTaskChatJob;
 use App\Models\Permission;
 use App\Models\Project;
 use App\Models\Role;
@@ -121,7 +121,7 @@ class BitrixTaskChatTest extends TestCase
         $this->assertSame(1001, TaskChatMessage::sole()->bitrix_message_id);
 
         // Bitrix then sends OnTaskCommentAdd for our own message.
-        app()->call([new SyncBitrixTaskChat(15), 'handle']);
+        app()->call([new SyncBitrixTaskChatJob(15), 'handle']);
         $this->assertSame(1, TaskChatMessage::count());
     }
 
@@ -245,7 +245,7 @@ class BitrixTaskChatTest extends TestCase
 
         // An old message deleted in Bitrix is outside the newest page: only the full pass sees it.
         unset($this->messages[1001]);
-        app()->call([new ImportBitrixChat, 'handle']);
+        app()->call([new ImportBitrixChatJob, 'handle']);
 
         $this->assertSame(59, TaskChatMessage::count());
         $this->assertNull(TaskChatMessage::where('bitrix_message_id', 1001)->first());

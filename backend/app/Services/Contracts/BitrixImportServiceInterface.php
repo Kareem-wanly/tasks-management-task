@@ -84,4 +84,7 @@ interface BitrixImportServiceInterface
     public function importResults(): void;
 
     public function importChat(): void;
+
+    /** Records a failed run on its cursor row (from the job's failed()); a re-run starts it again. */
+    public function markFailed(string $entity, string $error): void;
 }

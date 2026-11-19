@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Deletes one's own time entry. */
-class DeleteTimeEntryRequest extends FormRequest
+final class DeleteTimeEntryRequest extends FormRequest
 {
     public function authorize(): bool
     {

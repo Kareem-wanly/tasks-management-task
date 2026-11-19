@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 /**
  * Turns a Bitrix24 user (user.get / user.current) into our users columns.
  */
-class BitrixUserMapper
+final class BitrixUserMapper
 {
     /**
      * Columns Bitrix owns. Name and email are left out: they need lookups

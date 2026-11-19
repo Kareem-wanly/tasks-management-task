@@ -15,7 +15,7 @@ use Illuminate\Foundation\Queue\Queueable;
  * accounts are linked by email only when an administrator asks for it
  * (bitrix:import --link-by-email), never on the scheduled runs.
  */
-final class ImportBitrixUsers implements ShouldQueue
+final class ImportBitrixUsersJob implements ShouldQueue
 {
     use Queueable, TracksSyncProgress;
 

@@ -10,15 +10,15 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
- * Step 4.4: brings every Bitrix task's time log up to date. Bitrix sends no
- * events for it, so this nightly pass (and opening a task) is how time
- * logged there reaches us. Run after ImportBitrixUsers and ImportBitrixTasks.
+ * Step 2.2: copies every workgroup (groups, projects, scrum, collabs) into
+ * projects, with members and roles. Run after ImportBitrixUsersJob.
+ * Safe to re-run: rows are matched on bitrix_group_id.
  */
-final class ImportBitrixTime implements ShouldQueue
+final class ImportBitrixProjectsJob implements ShouldQueue
 {
     use Queueable, TracksSyncProgress;
 
-    public const ENTITY = BitrixImportServiceInterface::TIME;
+    public const ENTITY = BitrixImportServiceInterface::PROJECTS;
 
     public function __construct()
     {
@@ -27,6 +27,6 @@ final class ImportBitrixTime implements ShouldQueue
 
     public function handle(BitrixImportServiceInterface $import): void
     {
-        $import->importTime();
+        $import->importProjects();
     }
 }

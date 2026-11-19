@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use App\Models\TaskLookup;
 use App\Models\TaskPriority;
 
-class UpdateTaskPriorityLookupRequest extends TaskLookupRequest
+final class UpdateTaskPriorityLookupRequest extends TaskLookupRequest
 {
     public function lookup(): ?TaskLookup
     {

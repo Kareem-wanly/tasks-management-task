@@ -15,7 +15,7 @@ use App\Models\User;
 use App\Repositories\Contracts\RoleRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Contracts\AuthServiceInterface;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\Hash;
 
 /**
@@ -29,6 +29,7 @@ final readonly class AuthService implements AuthServiceInterface
     public function __construct(
         private UserRepositoryInterface $users,
         private RoleRepositoryInterface $roles,
+        private ConnectionInterface $database,
     ) {}
 
     /**
@@ -36,7 +37,7 @@ final readonly class AuthService implements AuthServiceInterface
      */
     public function register(RegisterDTO $data): array
     {
-        $user = DB::transaction(function () use ($data): User {
+        $user = $this->database->transaction(function () use ($data): User {
             $user = $this->users->create(['name' => $data->name, 'email' => $data->email, 'password' => $data->password]);
 
             if (($member = $this->roles->findByName(SystemRole::Member->value)) instanceof \App\Models\Role) {

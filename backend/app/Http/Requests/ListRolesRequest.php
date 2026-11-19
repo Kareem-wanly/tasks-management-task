@@ -8,7 +8,7 @@ use App\Models\Role;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Lists the roles. */
-class ListRolesRequest extends FormRequest
+final class ListRolesRequest extends FormRequest
 {
     public function authorize(): bool
     {

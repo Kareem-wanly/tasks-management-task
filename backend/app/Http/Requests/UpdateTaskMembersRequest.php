@@ -11,7 +11,7 @@ use Illuminate\Validation\Rule;
 /**
  * Step 4.1: both lists, in full; an empty list removes everyone from it.
  */
-class UpdateTaskMembersRequest extends FormRequest
+final class UpdateTaskMembersRequest extends FormRequest
 {
     public function authorize(): bool
     {

@@ -8,7 +8,7 @@ use App\DTOs\Role\SyncRolePermissionsDTO;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Replaces the permissions a role grants. */
-class SyncRolePermissionsRequest extends FormRequest
+final class SyncRolePermissionsRequest extends FormRequest
 {
     public function authorize(): bool
     {

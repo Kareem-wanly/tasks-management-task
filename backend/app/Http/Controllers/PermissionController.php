@@ -8,7 +8,7 @@ use App\Http\Requests\ListPermissionsRequest;
 use App\Services\Contracts\PermissionServiceInterface;
 use Illuminate\Http\JsonResponse;
 
-class PermissionController extends Controller
+final class PermissionController extends Controller
 {
     public function __construct(private readonly PermissionServiceInterface $permissions) {}
 

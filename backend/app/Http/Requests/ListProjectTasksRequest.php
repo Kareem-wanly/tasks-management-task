@@ -8,7 +8,7 @@ use App\Http\Requests\Concerns\HasPagination;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** One project's tasks. */
-class ListProjectTasksRequest extends FormRequest
+final class ListProjectTasksRequest extends FormRequest
 {
     use HasPagination;
 

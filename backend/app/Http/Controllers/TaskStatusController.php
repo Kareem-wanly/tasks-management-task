@@ -12,7 +12,7 @@ use App\Models\TaskStatus;
 use App\Services\Contracts\TaskLookupServiceInterface;
 use Illuminate\Http\JsonResponse;
 
-class TaskStatusController extends Controller
+final class TaskStatusController extends Controller
 {
     public function __construct(private readonly TaskLookupServiceInterface $lookups) {}
 

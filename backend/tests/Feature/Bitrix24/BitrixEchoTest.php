@@ -7,8 +7,8 @@ namespace Tests\Feature\Bitrix24;
 use App\Enums\OutboundOpStatus;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
-use App\Jobs\Bitrix\SyncBitrixProject;
-use App\Jobs\Bitrix\SyncBitrixTask;
+use App\Jobs\Bitrix\SyncBitrixProjectJob;
+use App\Jobs\Bitrix\SyncBitrixTaskJob;
 use App\Models\ActivityLog;
 use App\Models\BitrixOutboundOp;
 use App\Models\Project;
@@ -73,7 +73,7 @@ class BitrixEchoTest extends TestCase
         $this->bitrixTask['title'] = 'Ours';
         $logs = ActivityLog::count();
 
-        dispatch_sync(new SyncBitrixTask(15));
+        dispatch_sync(new SyncBitrixTaskJob(15));
 
         $this->assertSame(OutboundOpStatus::Confirmed, BitrixOutboundOp::sole()->status);
         $this->assertSame($logs, ActivityLog::count());
@@ -89,7 +89,7 @@ class BitrixEchoTest extends TestCase
             ->first(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.update.json'));
         $this->bitrixTask['deadline'] = $sent['fields']['DEADLINE'];
 
-        dispatch_sync(new SyncBitrixTask(15));
+        dispatch_sync(new SyncBitrixTaskJob(15));
 
         $this->assertSame(OutboundOpStatus::Confirmed, BitrixOutboundOp::sole()->status);
     }
@@ -100,7 +100,7 @@ class BitrixEchoTest extends TestCase
         // Someone renamed it in Bitrix right after us.
         $this->bitrixTask['title'] = 'Theirs';
 
-        dispatch_sync(new SyncBitrixTask(15));
+        dispatch_sync(new SyncBitrixTaskJob(15));
 
         $this->assertSame('Theirs', $this->task->fresh()->title);
         $this->assertSame(OutboundOpStatus::Conflict, BitrixOutboundOp::sole()->status);
@@ -113,7 +113,7 @@ class BitrixEchoTest extends TestCase
         $this->putJson("/api/v1/tasks/{$this->task->id}", ['priority' => 'urgent'])->assertOk();
         $this->bitrixTask['priority'] = '2';
 
-        dispatch_sync(new SyncBitrixTask(15));
+        dispatch_sync(new SyncBitrixTaskJob(15));
 
         $this->assertSame('urgent', $this->task->fresh()->priority);
     }
@@ -123,7 +123,7 @@ class BitrixEchoTest extends TestCase
         $this->task->forceFill(['priority' => 'urgent'])->save();
         $this->bitrixTask = [...$this->bitrixTask, 'priority' => '2', 'title' => 'Renamed in Bitrix'];
 
-        dispatch_sync(new SyncBitrixTask(15));
+        dispatch_sync(new SyncBitrixTaskJob(15));
 
         $task = $this->task->fresh();
         $this->assertSame(['Renamed in Bitrix', 'urgent'], [$task->title, $task->priority]);
@@ -135,7 +135,7 @@ class BitrixEchoTest extends TestCase
         $this->travel(BitrixOutboundOp::WINDOW_SECONDS + 1)->seconds();
         $this->bitrixTask['title'] = 'Later Bitrix edit';
 
-        dispatch_sync(new SyncBitrixTask(15));
+        dispatch_sync(new SyncBitrixTaskJob(15));
 
         $this->assertSame('Later Bitrix edit', $this->task->fresh()->title);
         $this->assertSame(OutboundOpStatus::Sent, BitrixOutboundOp::sole()->status);
@@ -147,7 +147,7 @@ class BitrixEchoTest extends TestCase
         $this->deleteJson("/api/v1/tasks/{$this->task->id}")->assertOk();
         $this->bitrixTask = [];
 
-        dispatch_sync(new SyncBitrixTask(15));
+        dispatch_sync(new SyncBitrixTaskJob(15));
 
         $this->assertSame(OutboundOpStatus::Confirmed, BitrixOutboundOp::sole()->status);
     }
@@ -158,7 +158,7 @@ class BitrixEchoTest extends TestCase
         $this->deleteJson("/api/v1/projects/{$project->id}")->assertOk();
         $this->bitrixGroup = ['id' => '40', 'name' => 'P', 'ownerId' => '5', 'closed' => 'Y'];
 
-        dispatch_sync(new SyncBitrixProject(40));
+        dispatch_sync(new SyncBitrixProjectJob(40));
 
         $this->assertSame(OutboundOpStatus::Confirmed, BitrixOutboundOp::where('entity', 'project')->sole()->status);
         $this->assertSoftDeleted($project);
@@ -170,7 +170,7 @@ class BitrixEchoTest extends TestCase
         // Bitrix keeps the day as portal-midnight and returns it in UTC.
         $this->bitrixGroup = ['id' => '40', 'name' => 'Launch', 'description' => '', 'ownerId' => '5', 'closed' => 'N', 'projectDateStart' => '2026-11-30T21:00:00+00:00'];
 
-        dispatch_sync(new SyncBitrixProject(40));
+        dispatch_sync(new SyncBitrixProjectJob(40));
 
         $this->assertSame(OutboundOpStatus::Confirmed, BitrixOutboundOp::where('entity', 'project')->sole()->status);
     }
@@ -182,8 +182,8 @@ class BitrixEchoTest extends TestCase
         // By the time the first event is handled, Bitrix already has the second change.
         $this->bitrixTask['title'] = 'Second';
 
-        dispatch_sync(new SyncBitrixTask(15));
-        dispatch_sync(new SyncBitrixTask(15));
+        dispatch_sync(new SyncBitrixTaskJob(15));
+        dispatch_sync(new SyncBitrixTaskJob(15));
 
         $this->assertSame([OutboundOpStatus::Confirmed, OutboundOpStatus::Confirmed], BitrixOutboundOp::orderBy('id')->pluck('status')->all());
         $this->assertFalse(ActivityLog::where('action', 'bitrix_conflict')->exists());
@@ -197,7 +197,7 @@ class BitrixEchoTest extends TestCase
         // Fetched before our second change reached Bitrix.
         $this->bitrixTask['title'] = 'First';
 
-        dispatch_sync(new SyncBitrixTask(15));
+        dispatch_sync(new SyncBitrixTaskJob(15));
 
         $this->assertSame([OutboundOpStatus::Confirmed, OutboundOpStatus::Sent], BitrixOutboundOp::orderBy('id')->pluck('status')->all());
         $this->assertSame('Second', $this->task->fresh()->title);

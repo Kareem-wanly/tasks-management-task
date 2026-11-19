@@ -23,7 +23,7 @@ use App\Services\Contracts\ProjectServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
-class ProjectController extends Controller
+final class ProjectController extends Controller
 {
     public function __construct(
         private readonly ProjectServiceInterface $projects,

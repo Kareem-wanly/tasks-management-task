@@ -10,15 +10,15 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
- * Step 4.6: brings every Bitrix task's results up to date. Bitrix sends no
- * events for results, so this nightly pass (and opening a task) is how
- * results added there reach us. REST 3.0 has no batch: one call per task.
+ * Step 4.4: brings every Bitrix task's time log up to date. Bitrix sends no
+ * events for it, so this nightly pass (and opening a task) is how time
+ * logged there reaches us. Run after ImportBitrixUsersJob and ImportBitrixTasksJob.
  */
-final class ImportBitrixResults implements ShouldQueue
+final class ImportBitrixTimeJob implements ShouldQueue
 {
     use Queueable, TracksSyncProgress;
 
-    public const ENTITY = BitrixImportServiceInterface::RESULTS;
+    public const ENTITY = BitrixImportServiceInterface::TIME;
 
     public function __construct()
     {
@@ -27,6 +27,6 @@ final class ImportBitrixResults implements ShouldQueue
 
     public function handle(BitrixImportServiceInterface $import): void
     {
-        $import->importResults();
+        $import->importTime();
     }
 }

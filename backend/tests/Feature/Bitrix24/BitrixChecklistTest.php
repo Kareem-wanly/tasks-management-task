@@ -6,7 +6,7 @@ namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
-use App\Jobs\Bitrix\ImportBitrixChecklists;
+use App\Jobs\Bitrix\ImportBitrixChecklistsJob;
 use App\Models\Permission;
 use App\Models\Project;
 use App\Models\Role;
@@ -176,7 +176,7 @@ class BitrixChecklistTest extends TestCase
     {
         $this->row('From Bitrix', $this->row('BX_CHECKLIST_1', 0));
 
-        dispatch_sync(new ImportBitrixChecklists);
+        dispatch_sync(new ImportBitrixChecklistsJob);
 
         $this->assertSame(['From Bitrix'], $this->titles());
     }

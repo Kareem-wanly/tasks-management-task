@@ -14,7 +14,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *
  * @property TaskFilesDTO $resource
  */
-class TaskFilesResource extends JsonResource
+final class TaskFilesResource extends JsonResource
 {
     public static $wrap;
 

@@ -14,7 +14,7 @@ use App\Models\User;
 use App\Services\Contracts\AuthServiceInterface;
 use Illuminate\Http\JsonResponse;
 
-class AuthController extends Controller
+final class AuthController extends Controller
 {
     public function __construct(private readonly AuthServiceInterface $auth) {}
 

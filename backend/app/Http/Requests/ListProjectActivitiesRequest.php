@@ -8,7 +8,7 @@ use App\Http\Requests\Concerns\HasPagination;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** A project's activity log. */
-class ListProjectActivitiesRequest extends FormRequest
+final class ListProjectActivitiesRequest extends FormRequest
 {
     use HasPagination;
 

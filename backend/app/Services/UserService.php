@@ -19,8 +19,8 @@ use App\Repositories\Contracts\RoleRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Contracts\UserServiceInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Employees. Changes go to Bitrix24 first, with the acting employee's token,
@@ -37,6 +37,7 @@ final readonly class UserService implements UserServiceInterface
         private RoleRepositoryInterface $roles,
         private BitrixUserRepositoryInterface $bitrixUsers,
         private BitrixPortalRepositoryInterface $portals,
+        private ConnectionInterface $database,
     ) {}
 
     public function list(UserFiltersDTO $filters, int $perPage): LengthAwarePaginator
@@ -64,7 +65,7 @@ final readonly class UserService implements UserServiceInterface
         $user = new User(['name' => $data->name, 'email' => $data->email, 'password' => $data->password]);
         $this->inviteInBitrix($actor, $user);
 
-        DB::transaction(function () use ($user, $data): void {
+        $this->database->transaction(function () use ($user, $data): void {
             $this->users->save($user);
             $this->users->attachRole($user, $data->roleId ?? $this->roles->memberRole()->id);
         });

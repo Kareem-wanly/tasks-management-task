@@ -14,7 +14,7 @@ use Illuminate\Console\Command;
  * renames our Bitrix-linked rows and adds any value we don't have yet.
  * Our own values (is_system = false) are never touched.
  */
-final class SyncBitrixTaskLookups extends Command
+final class SyncBitrixTaskLookupsCommand extends Command
 {
     protected $signature = 'bitrix:sync-task-lookups';
 

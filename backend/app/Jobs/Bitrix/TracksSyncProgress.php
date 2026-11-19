@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Bitrix;
 
-use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
+use App\Services\Contracts\BitrixImportServiceInterface;
 use Throwable;
 
 /**
@@ -21,7 +21,7 @@ trait TracksSyncProgress
 
     public function failed(?Throwable $exception): void
     {
-        resolve(BitrixSyncCursorRepositoryInterface::class)->fail($this->cursorEntity(), $exception?->getMessage() ?: 'Unknown error');
+        resolve(BitrixImportServiceInterface::class)->markFailed($this->cursorEntity(), $exception?->getMessage() ?: 'Unknown error');
     }
 
     /** The bitrix_sync_cursors row this run reports to. */

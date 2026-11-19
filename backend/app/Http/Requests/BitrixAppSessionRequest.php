@@ -12,7 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * JS SDK gave it (BX24.getAuth(), from the Bitrix page around it). They are
  * only trusted after Bitrix confirms them.
  */
-class BitrixAppSessionRequest extends FormRequest
+final class BitrixAppSessionRequest extends FormRequest
 {
     /** Bitrix tokens live an hour; used when the SDK's expiry can't be read. */
     private const DEFAULT_LIFETIME_SECONDS = 3600;

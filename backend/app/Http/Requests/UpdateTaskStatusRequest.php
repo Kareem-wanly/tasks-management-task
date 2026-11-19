@@ -8,7 +8,7 @@ use App\DTOs\Task\ChangeTaskStatusDTO;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class UpdateTaskStatusRequest extends FormRequest
+final class UpdateTaskStatusRequest extends FormRequest
 {
     public function authorize(): bool
     {

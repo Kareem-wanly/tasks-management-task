@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Archives or reopens a project. */
-class ToggleProjectArchiveRequest extends FormRequest
+final class ToggleProjectArchiveRequest extends FormRequest
 {
     public function authorize(): bool
     {

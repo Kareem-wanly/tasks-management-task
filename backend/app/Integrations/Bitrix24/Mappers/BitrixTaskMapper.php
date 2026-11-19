@@ -15,7 +15,7 @@ use Carbon\CarbonImmutable;
  * columns. People and project are returned as Bitrix IDs; BitrixTaskSync
  * resolves them.
  */
-class BitrixTaskMapper
+final readonly class BitrixTaskMapper
 {
     /** The fields tasks.task.list must select for this mapper. */
     public const SELECT = ['ID', 'TITLE', 'DESCRIPTION', 'STATUS', 'PRIORITY', 'RESPONSIBLE_ID', 'CREATED_BY', 'GROUP_ID', 'DEADLINE', 'CREATED_DATE', 'CLOSED_DATE', 'ACCOMPLICES', 'AUDITORS', 'PARENT_ID', 'ALLOW_TIME_TRACKING', 'TIME_ESTIMATE', 'TIME_SPENT_IN_LOGS'];
@@ -25,7 +25,7 @@ class BitrixTaskMapper
 
     private const DEFAULT_PRIORITY = 1;
 
-    public function __construct(private readonly TaskLookupRepositoryInterface $lookups) {}
+    public function __construct(private TaskLookupRepositoryInterface $lookups) {}
 
     /**
      * @return array<string, mixed>

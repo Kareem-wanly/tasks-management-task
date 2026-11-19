@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Deletes a checklist item. */
-class DeleteChecklistItemRequest extends FormRequest
+final class DeleteChecklistItemRequest extends FormRequest
 {
     public function authorize(): bool
     {
