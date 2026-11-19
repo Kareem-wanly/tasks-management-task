@@ -21,6 +21,7 @@ use function Illuminate\Support\enum_value;
 
 /**
  * @property CarbonImmutable|null $bitrix_synced_at
+ * @property list<int>|null $bitrix_department_ids
  */
 class User extends Authenticatable implements HasBitrixToken
 {
