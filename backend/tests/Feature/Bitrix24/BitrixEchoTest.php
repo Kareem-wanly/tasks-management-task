@@ -81,6 +81,19 @@ class BitrixEchoTest extends TestCase
         $this->assertSame(['tasks.task.update'], $this->writes());
     }
 
+    public function test_the_echo_of_a_due_date_is_confirmed(): void
+    {
+        $this->putJson("/api/tasks/{$this->task->id}", ['due_date' => '2026-11-26'])->assertOk();
+        // Bitrix keeps the deadline we sent, in its own ISO form.
+        $sent = collect(Http::recorded())->map(fn (array $pair) => $pair[0])
+            ->first(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.update.json'));
+        $this->bitrixTask['deadline'] = $sent['fields']['DEADLINE'];
+
+        dispatch_sync(new SyncBitrixTask(15));
+
+        $this->assertSame(OutboundOpStatus::Confirmed, BitrixOutboundOp::sole()->status);
+    }
+
     public function test_two_concurrent_edits_end_with_the_bitrix_version(): void
     {
         $this->putJson("/api/tasks/{$this->task->id}", ['title' => 'Ours'])->assertOk();
