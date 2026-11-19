@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Jobs\Bitrix;
 
 use App\Enums\QueueName;
-use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixTimeSync;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
 use App\Repositories\Contracts\TaskRepositoryInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -32,7 +32,7 @@ class ImportBitrixTime implements ShouldQueue
         $this->onQueue(QueueName::Bitrix);
     }
 
-    public function handle(BitrixClient $bitrix, BitrixTimeSync $time, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $taskRepository): void
+    public function handle(BitrixGatewayInterface $bitrix, BitrixTimeSync $time, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $taskRepository): void
     {
         $cursor = $cursors->start(self::ENTITY);
         $total = $taskRepository->countInBitrix();

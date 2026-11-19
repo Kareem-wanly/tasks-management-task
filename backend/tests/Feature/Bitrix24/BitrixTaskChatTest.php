@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Bitrix24;
 
-use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Jobs\Bitrix\ImportBitrixChat;
 use App\Jobs\Bitrix\SyncBitrixTaskChat;
 use App\Models\Permission;
@@ -64,7 +64,7 @@ class BitrixTaskChatTest extends TestCase
         $member = Role::create(['name' => 'Chatter', 'display_name' => 'Chatter', 'description' => 'x']);
         $member->permissions()->sync(Permission::whereIn('name', ['tasks.view', 'comments.view', 'comments.create'])->pluck('id'));
         $this->colleague = $this->user(6, 'colleague', $member);
-        app()->instance(BitrixClient::SERVICE_ACCOUNT, $this->actor);
+        app()->instance(BitrixGatewayInterface::SERVICE_ACCOUNT, $this->actor);
 
         $project = Project::forceCreate(['title' => 'P', 'status' => 'active', 'owner_id' => $this->actor->id, 'bitrix_group_id' => 3]);
         $project->members()->attach($this->colleague->id, ['role' => 'member']);

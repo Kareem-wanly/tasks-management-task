@@ -24,7 +24,7 @@ class BitrixInstallController extends Controller
     public function install(BitrixInstallRequest $request): Response
     {
         if ($request->isInstallEvent()) {
-            $this->installs->installFromEvent((array) $request->input('auth', []), $request->input('data.LANGUAGE_ID'));
+            $this->installs->installFromEvent($request->toDto());
 
             return response()->json(['message' => 'Installed.']);
         }
@@ -32,7 +32,7 @@ class BitrixInstallController extends Controller
         if ($request->isInstallPage()) {
             // The admin sees this page inside Bitrix, so a refusal is a page too.
             try {
-                $this->installs->installFromPage($request->all());
+                $this->installs->installFromPage($request->toDto());
             } catch (BitrixInstallRefusedException $e) {
                 return response()->view('bitrix.install-refused', ['message' => $e->getMessage()], $e->status());
             }

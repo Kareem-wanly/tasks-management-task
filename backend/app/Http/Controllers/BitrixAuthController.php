@@ -81,7 +81,7 @@ class BitrixAuthController extends Controller
     /** POST /api/auth/bitrix/exchange: the one-time code and this browser's nonce, for an API token. */
     public function exchange(ExchangeBitrixLoginCodeRequest $request): JsonResponse
     {
-        return response()->json(['token' => $this->auth->exchangeCode($request->code(), $request->nonce())]);
+        return response()->json(['token' => $this->auth->exchangeCode($request->toDto())]);
     }
 
     /**
@@ -91,7 +91,7 @@ class BitrixAuthController extends Controller
     public function appSession(BitrixAppSessionRequest $request): JsonResponse
     {
         // A refusal is a BitrixSignInException, rendered as {message, reason} with 422.
-        return response()->json(['token' => $this->auth->signInFromFrame($request->frameAuth())]);
+        return response()->json(['token' => $this->auth->signInFromFrame($request->toDto())]);
     }
 
     private function fromOAuth(BitrixSignInRequest $request): string

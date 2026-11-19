@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Bitrix24;
 
-use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -70,7 +70,7 @@ class BitrixUserColumnsTest extends TestCase
         $this->assertArrayNotHasKey('bitrix_access_token', $user->toArray());
         $this->assertArrayNotHasKey('bitrix_refresh_token', $user->toArray());
 
-        resolve(BitrixClient::class)->callAsUser($user, 'user.current');
+        resolve(BitrixGatewayInterface::class)->callAsUser($user, 'user.current');
 
         $this->assertSame('user-new-access', $user->fresh()->bitrixToken()->accessToken);
         Http::assertSent(fn (Request $r): bool => str_contains($r->url(), '/rest/user.current.json') && $r['auth'] === 'user-new-access');

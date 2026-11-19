@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Integrations\Bitrix24;
 
 use App\Exceptions\Bitrix\BitrixException;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
@@ -15,22 +16,8 @@ use Psr\Http\Message\StreamInterface;
 /**
  * The only place that talks to the Bitrix24 REST API.
  */
-class BitrixClient
+final readonly class BitrixGateway implements BitrixGatewayInterface
 {
-    public const MAX_BATCH_COMMANDS = 50;
-
-    /** Bytes per read when streaming a download. */
-    public const DOWNLOAD_CHUNK_BYTES = 1048576;
-
-    /** List methods return fixed pages of 50 rows. */
-    public const PAGE_SIZE = 50;
-
-    /**
-     * Container key for the service account used by background sync,
-     * bound to the installed portal in AppServiceProvider.
-     */
-    public const SERVICE_ACCOUNT = 'bitrix.service_account';
-
     /** Classic REST, and REST 3.0 (newer methods such as task results). */
     private const REST_PATH = '/rest/';
 
@@ -38,7 +25,7 @@ class BitrixClient
 
     private const RATE_LIMIT_RETRIES = 3;
 
-    public function __construct(private readonly TokenManager $tokens) {}
+    public function __construct(private TokenManager $tokens) {}
 
     /**
      * Call a method with the token of a user, so Bitrix applies that user's

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Bitrix24;
 
 use App\Enums\ProjectStatus;
-use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use App\Models\Project;
 use App\Models\Role;
@@ -40,7 +40,7 @@ class BitrixProjectPushTest extends TestCase
         $this->actor->storeBitrixToken(new BitrixToken('actor-access', 'actor-refresh', CarbonImmutable::now()->addHour()));
         $this->colleague = User::factory()->create(['bitrix_user_id' => 6, 'name' => 'Colleague']);
 
-        app()->instance(BitrixClient::SERVICE_ACCOUNT, new class implements HasBitrixToken
+        app()->instance(BitrixGatewayInterface::SERVICE_ACCOUNT, new class implements HasBitrixToken
         {
             public function bitrixToken(): BitrixToken
             {

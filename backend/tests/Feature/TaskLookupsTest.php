@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use App\Models\Permission;
 use App\Models\Project;
@@ -232,7 +232,7 @@ class TaskLookupsTest extends TestCase
     private function fakeServiceAccount(): void
     {
         config(['bitrix.portal' => 'portal.test']);
-        $this->app->instance(BitrixClient::SERVICE_ACCOUNT, new class implements HasBitrixToken
+        $this->app->instance(BitrixGatewayInterface::SERVICE_ACCOUNT, new class implements HasBitrixToken
         {
             public function bitrixToken(): BitrixToken
             {

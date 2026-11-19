@@ -6,6 +6,7 @@ namespace App\Integrations\Bitrix24;
 
 use App\Enums\TaskMemberRole;
 use App\Exceptions\Bitrix\BitrixException;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
 use App\Models\BitrixOutboundOp;
 use App\Models\Task;
@@ -24,7 +25,7 @@ use App\Repositories\Contracts\UserRepositoryInterface;
 class BitrixTaskMemberPusher
 {
     public function __construct(
-        private readonly BitrixClient $bitrix,
+        private readonly BitrixGatewayInterface $bitrix,
         private readonly BitrixTaskPusher $tasks,
         private readonly BitrixRecordFetcher $fetch,
         private readonly BitrixTaskSync $sync,
