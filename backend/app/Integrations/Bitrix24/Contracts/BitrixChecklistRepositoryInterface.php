@@ -33,4 +33,13 @@ interface BitrixChecklistRepositoryInterface
      * when there is no item to follow.
      */
     public function move(User $actor, int $bitrixTaskId, int $bitrixItemId, ?int $afterItemId, ?int $firstItemId): void;
+
+    /**
+     * The same for many tasks, in one batched request. A task Bitrix refuses
+     * (e.g. deleted meanwhile) comes back as null, so its copy is kept.
+     *
+     * @param  array<int, int>  $bitrixTaskIds  Bitrix task ID by our task ID.
+     * @return array<int, list<array<string, mixed>>|null> By our task ID.
+     */
+    public function listMany(array $bitrixTaskIds): array;
 }
