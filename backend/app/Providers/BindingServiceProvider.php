@@ -26,7 +26,9 @@ final class BindingServiceProvider extends ServiceProvider
         Bitrix\Contracts\BitrixProjectRepositoryInterface::class => Bitrix\Repositories\BitrixProjectRepository::class,
         Bitrix\Contracts\BitrixUserRepositoryInterface::class => Bitrix\Repositories\BitrixUserRepository::class,
         Bitrix\Contracts\BitrixTaskRepositoryInterface::class => Bitrix\Repositories\BitrixTaskRepository::class,
+        Bitrix\Contracts\BitrixChatRepositoryInterface::class => Bitrix\Repositories\BitrixChatRepository::class,
         Bitrix\Contracts\BitrixChecklistRepositoryInterface::class => Bitrix\Repositories\BitrixChecklistRepository::class,
+        Bitrix\Contracts\BitrixFileRepositoryInterface::class => Bitrix\Repositories\BitrixFileRepository::class,
         Bitrix\Contracts\BitrixResultRepositoryInterface::class => Bitrix\Repositories\BitrixResultRepository::class,
         Bitrix\Contracts\BitrixTimeRepositoryInterface::class => Bitrix\Repositories\BitrixTimeRepository::class,
 

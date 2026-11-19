@@ -8,12 +8,15 @@ use App\DTOs\Task\FileDownloadDTO;
 use App\DTOs\Task\TaskFilesDTO;
 use App\DTOs\Task\UploadTaskFileDTO;
 use App\Exceptions\Bitrix\BitrixException;
-use App\Integrations\Bitrix24\BitrixFilePusher;
+use App\Integrations\Bitrix24\BitrixFileSync;
+use App\Integrations\Bitrix24\Contracts\BitrixFileRepositoryInterface;
 use App\Models\Task;
 use App\Models\TaskFile;
 use App\Models\User;
 use App\Repositories\Contracts\TaskFileRepositoryInterface;
 use App\Services\Contracts\TaskFileServiceInterface;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -30,9 +33,13 @@ final readonly class TaskFileService implements TaskFileServiceInterface
 
     private const FOLDER = 'task-files';
 
+    /** How long a change to a task's attachments may hold (and wait for) the lock. */
+    private const FILES_LOCK_SECONDS = 15;
+
     public function __construct(
         private TaskFileRepositoryInterface $files,
-        private BitrixFilePusher $bitrix,
+        private BitrixFileRepositoryInterface $bitrixFiles,
+        private BitrixFileSync $fileSync,
     ) {}
 
     /** The files, fresh from Bitrix; our last copy when Bitrix can't be reached. */
@@ -40,9 +47,9 @@ final readonly class TaskFileService implements TaskFileServiceInterface
     {
         $stale = false;
 
-        if ($this->bitrix->handles($task)) {
+        if ($task->isInBitrix()) {
             try {
-                $this->bitrix->refresh($task);
+                $this->refreshFromBitrix($task);
             } catch (BitrixException $e) {
                 Log::warning('Bitrix24 task files not refreshed; showing our copy.', ['task_id' => $task->id, 'error' => $e->getMessage()]);
                 $stale = true;
@@ -56,8 +63,8 @@ final readonly class TaskFileService implements TaskFileServiceInterface
     {
         $upload = $file->file;
 
-        if ($this->bitrix->handles($task)) {
-            $this->bitrix->upload($actor, $task, $upload);
+        if ($task->isInBitrix()) {
+            $this->uploadToBitrix($actor, $task, (string) $upload->getRealPath(), $upload->getClientOriginalName());
         } else {
             $path = $upload->store(self::FOLDER."/{$task->id}", self::DISK);
             $this->files->createLocal($task, $actor->id, $upload->getClientOriginalName(), (int) $upload->getSize(), $upload->getMimeType(), $path);
@@ -72,7 +79,7 @@ final readonly class TaskFileService implements TaskFileServiceInterface
         $task = $file->task;
 
         if ($file->isInBitrix()) {
-            $this->bitrix->detach($actor, $file);
+            $this->detachInBitrix($actor, $task, $file);
         } else {
             Storage::disk(self::DISK)->delete((string) $file->path);
             $this->files->delete($file);
@@ -89,14 +96,91 @@ final readonly class TaskFileService implements TaskFileServiceInterface
             });
         }
 
-        // Opened before the response starts, so a refusal is a normal error.
-        $body = $this->bitrix->open($this->bitrix->downloadUrl($file));
+        // Asked for with the service account: who may download is decided by our own
+        // rules (whoever sees the task), so people without a Bitrix sign-in can download
+        // too. Opened before the response starts, so a refusal is a normal error.
+        $body = $this->bitrixFiles->openAttachment((int) $file->attached_object_id);
 
         return FileDownloadDTO::fromStream($file->name, $file->mime, $body);
+    }
+
+    /** Brings our list of the task's files up to date. */
+    public function refreshFromBitrix(Task $task): void
+    {
+        $attachedIds = $this->bitrixFiles->attachedIds((int) $task->bitrix_task_id);
+        $this->fileSync->sync($task, array_values($this->bitrixFiles->attachments($attachedIds)));
+    }
+
+    /**
+     * The nightly pass: a chunk of tasks in batched requests. A task Bitrix
+     * refuses (e.g. deleted meanwhile) is skipped, its list kept.
+     *
+     * @param  iterable<Task>  $tasks
+     * @return int How many tasks were skipped.
+     */
+    public function refreshManyFromBitrix(iterable $tasks): int
+    {
+        $byId = [];
+        foreach ($tasks as $task) {
+            $byId[$task->id] = $task;
+        }
+        if ($byId === []) {
+            return 0;
+        }
+
+        $attachedByTask = $this->bitrixFiles->attachedIdsMany(array_map(fn (Task $task): int => (int) $task->bitrix_task_id, $byId));
+        $attachments = $this->bitrixFiles->attachments(array_merge(...array_values($attachedByTask ?: [[]])));
+
+        foreach ($attachedByTask as $taskId => $attachedIds) {
+            $this->fileSync->sync($byId[$taskId], array_values(array_intersect_key($attachments, array_flip($attachedIds))));
+        }
+
+        return count($byId) - count($attachedByTask);
     }
 
     private function current(Task $task, bool $stale = false): TaskFilesDTO
     {
         return new TaskFilesDTO($task, $this->files->forTask($task), $stale);
+    }
+
+    private function uploadToBitrix(User $actor, Task $task, string $path, string $name): void
+    {
+        $this->ensureSignedInWithBitrix($actor);
+        $diskFileId = $this->bitrixFiles->uploadToDrive($actor, $path, $name);
+
+        $this->whileChangingFiles($task, fn () => $this->bitrixFiles->attach($actor, (int) $task->bitrix_task_id, $diskFileId));
+        $this->refreshFromBitrix($task);
+    }
+
+    /** Takes the file off the task; it stays on the uploader's Drive. */
+    private function detachInBitrix(User $actor, Task $task, TaskFile $file): void
+    {
+        $this->ensureSignedInWithBitrix($actor);
+
+        // Bitrix only takes the whole list, so reading and writing it happen under
+        // a lock: two changes made here can't overwrite each other's file.
+        $this->whileChangingFiles($task, function () use ($actor, $task, $file): void {
+            $left = array_values(array_diff($this->bitrixFiles->attachedIds((int) $task->bitrix_task_id), [$file->attached_object_id]));
+            $this->bitrixFiles->setAttachments($actor, (int) $task->bitrix_task_id, $left);
+        });
+        $this->refreshFromBitrix($task);
+    }
+
+    /** One change to a task's attachments at a time. */
+    private function whileChangingFiles(Task $task, callable $change): void
+    {
+        try {
+            Cache::lock("bitrix-task-files:{$task->id}", self::FILES_LOCK_SECONDS)->block(self::FILES_LOCK_SECONDS, $change);
+        } catch (LockTimeoutException) {
+            throw BitrixException::cannotSync('Another change to the files of this task is in progress. Try again in a moment.');
+        }
+    }
+
+    /** Changes go to Bitrix with the employee's own token. */
+    private function ensureSignedInWithBitrix(User $actor): void
+    {
+        if (! $actor->isLinkedToBitrix()) {
+            throw BitrixException::missingToken();
+        }
     }
 }
