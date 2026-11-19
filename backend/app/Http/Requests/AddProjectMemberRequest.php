@@ -20,7 +20,7 @@ class AddProjectMemberRequest extends FormRequest
     {
         return [
             // Only active accounts; the add is written to Bitrix with the service account (SEC-2).
-            // Users who aren't in Bitrix are refused by BitrixProjectPusher before any call.
+            // Users who aren't in Bitrix are refused by ProjectService before any call.
             'user_id' => ['required', 'integer', Rule::exists('users', 'id')->where('is_active', true)],
             'role' => ['sometimes', 'string', Rule::in([ProjectMemberRole::Member->value, ProjectMemberRole::Moderator->value])],
         ];

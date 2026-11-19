@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Integrations\Bitrix24 as Bitrix;
 use App\Integrations\Bitrix24\BitrixGateway;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Repositories\Contracts as RepositoryContracts;
@@ -22,6 +23,8 @@ final class BindingServiceProvider extends ServiceProvider
     public array $bindings = [
         // Integrations
         BitrixGatewayInterface::class => BitrixGateway::class,
+        Bitrix\Contracts\BitrixProjectRepositoryInterface::class => Bitrix\Repositories\BitrixProjectRepository::class,
+        Bitrix\Contracts\BitrixUserRepositoryInterface::class => Bitrix\Repositories\BitrixUserRepository::class,
 
         // Repositories
         RepositoryContracts\ActivityLogRepositoryInterface::class => Eloquent\EloquentActivityLogRepository::class,
