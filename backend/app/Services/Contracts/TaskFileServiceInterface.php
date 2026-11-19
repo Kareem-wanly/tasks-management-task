@@ -22,4 +22,12 @@ interface TaskFileServiceInterface
     public function remove(User $actor, TaskFile $file): TaskFilesDTO;
 
     public function download(TaskFile $file): FileDownloadDTO;
+
+    /**
+     * The nightly pass over a chunk of tasks (batched); a task Bitrix refuses is skipped.
+     *
+     * @param  iterable<Task>  $tasks
+     * @return int How many tasks were skipped.
+     */
+    public function refreshManyFromBitrix(iterable $tasks): int;
 }

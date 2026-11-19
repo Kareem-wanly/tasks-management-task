@@ -81,6 +81,7 @@ class Task extends Model
         return $this->exists && DB::table('task_members')->where('task_id', $this->id)->where('user_id', $user->id)->exists();
     }
 
+    /** @return HasMany<TaskChecklistItem, $this> */
     public function checklistItems(): HasMany
     {
         return $this->hasMany(TaskChecklistItem::class);

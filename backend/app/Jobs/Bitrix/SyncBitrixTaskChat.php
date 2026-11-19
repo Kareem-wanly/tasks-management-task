@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Jobs\Bitrix;
 
 use App\Enums\QueueName;
-use App\Integrations\Bitrix24\BitrixChatPusher;
 use App\Repositories\Contracts\TaskRepositoryInterface;
+use App\Services\Contracts\TaskChatServiceInterface;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -39,12 +39,12 @@ class SyncBitrixTaskChat implements ShouldBeUniqueUntilProcessing, ShouldQueue
         return 'chat:'.$this->bitrixTaskId;
     }
 
-    public function handle(BitrixChatPusher $chat, TaskRepositoryInterface $tasks): void
+    public function handle(TaskChatServiceInterface $chat, TaskRepositoryInterface $tasks): void
     {
         $task = $tasks->findByBitrixId($this->bitrixTaskId);
 
-        if ($task instanceof \App\Models\Task && $chat->handles($task)) {
-            $chat->refresh($task);
+        if ($task instanceof \App\Models\Task && $task->isInBitrix()) {
+            $chat->refreshFromBitrix($task);
         }
     }
 }

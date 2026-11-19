@@ -20,4 +20,7 @@ interface TaskResultServiceInterface
     public function update(User $actor, TaskResult $result, TaskResultDTO $change): TaskResultsDTO;
 
     public function delete(User $actor, TaskResult $result): TaskResultsDTO;
+
+    /** Brings our copy of the task's results up to date (also the nightly import). */
+    public function refreshFromBitrix(Task $task): void;
 }

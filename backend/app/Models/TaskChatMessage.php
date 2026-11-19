@@ -14,6 +14,7 @@ class TaskChatMessage extends Model
 {
     protected $fillable = ['task_id', 'bitrix_message_id', 'author_id', 'is_system', 'text', 'files', 'created_at', 'updated_at'];
 
+    /** @return BelongsTo<Task, $this> */
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class);

@@ -397,12 +397,6 @@ parameters:
 			path: app/Http/Resources/TaskResultResource.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/TimeLogResource.php
-
-		-
 			message: '#^Cannot call method toISOString\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
@@ -457,64 +451,16 @@ parameters:
 			path: app/Http/Resources/UserResource.php
 
 		-
-			message: '#^Parameter \#1 \$task of method App\\Integrations\\Bitrix24\\BitrixChecklistPusher\:\:refresh\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Integrations/Bitrix24/BitrixChecklistPusher.php
-
-		-
-			message: '#^Parameter \#2 \$task of method App\\Integrations\\Bitrix24\\BitrixChecklistPusher\:\:call\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 6
-			path: app/Integrations/Bitrix24/BitrixChecklistPusher.php
-
-		-
 			message: '#^Parameter \#1 \$array \(non\-empty\-list\<int\>\) of array_values is already a list, call has no effect\.$#'
 			identifier: arrayValues.list
 			count: 1
 			path: app/Integrations/Bitrix24/BitrixDeletionGuard.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bitrix_task_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Integrations/Bitrix24/BitrixFilePusher.php
-
-		-
-			message: '#^Parameter \#1 \$task of method App\\Integrations\\Bitrix24\\BitrixFilePusher\:\:attachedIds\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Integrations/Bitrix24/BitrixFilePusher.php
-
-		-
-			message: '#^Parameter \#1 \$task of method App\\Integrations\\Bitrix24\\BitrixFilePusher\:\:refresh\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Integrations/Bitrix24/BitrixFilePusher.php
-
-		-
-			message: '#^Parameter \#1 \$task of method App\\Integrations\\Bitrix24\\BitrixFilePusher\:\:whileChangingFiles\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Integrations/Bitrix24/BitrixFilePusher.php
-
-		-
 			message: '#^Cannot call method utc\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
 			path: app/Integrations/Bitrix24/BitrixFingerprint.php
-
-		-
-			message: '#^Parameter \#1 \$task of method App\\Integrations\\Bitrix24\\BitrixResultPusher\:\:refresh\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Integrations/Bitrix24/BitrixResultPusher.php
-
-		-
-			message: '#^Parameter \#2 \$task of method App\\Integrations\\Bitrix24\\BitrixTimePusher\:\:call\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Integrations/Bitrix24/BitrixTimePusher.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:onlyTrashed\(\)\.$#'
@@ -571,31 +517,7 @@ parameters:
 			path: app/Repositories/Eloquent/EloquentTaskChatMessageRepository.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:checklistItems\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Repositories/Eloquent/EloquentTaskChecklistRepository.php
-
-		-
-			message: '#^Method App\\Repositories\\Eloquent\\EloquentTaskChecklistRepository\:\:bitrixItems\(\) should return Illuminate\\Support\\Collection\<int, App\\Models\\TaskChecklistItem\> but returns Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Illuminate\\Database\\Eloquent\\Model\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Repositories/Eloquent/EloquentTaskChecklistRepository.php
-
-		-
-			message: '#^Method App\\Repositories\\Eloquent\\EloquentTaskChecklistRepository\:\:createList\(\) should return App\\Models\\TaskChecklistItem but returns Illuminate\\Database\\Eloquent\\Model\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Repositories/Eloquent/EloquentTaskChecklistRepository.php
-
-		-
 			message: '#^Method App\\Repositories\\Eloquent\\EloquentTaskChecklistRepository\:\:firstItemOf\(\) should return App\\Models\\TaskChecklistItem\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Repositories/Eloquent/EloquentTaskChecklistRepository.php
-
-		-
-			message: '#^Method App\\Repositories\\Eloquent\\EloquentTaskChecklistRepository\:\:firstList\(\) should return App\\Models\\TaskChecklistItem\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
 			identifier: return.type
 			count: 1
 			path: app/Repositories/Eloquent/EloquentTaskChecklistRepository.php
@@ -661,61 +583,13 @@ parameters:
 			path: app/Repositories/Eloquent/EloquentTimeEntryRepository.php
 
 		-
-			message: '#^Parameter \#1 \$task of method App\\Services\\TaskChatService\:\:current\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/TaskChatService.php
-
-		-
 			message: '#^Parameter \#1 \$list of method App\\Repositories\\Contracts\\TaskChecklistRepositoryInterface\:\:firstItemOf\(\) expects App\\Models\\TaskChecklistItem, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Services/TaskChecklistService.php
 
 		-
-			message: '#^Parameter \#1 \$task of method App\\Integrations\\Bitrix24\\BitrixChecklistPusher\:\:handles\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 4
-			path: app/Services/TaskChecklistService.php
-
-		-
-			message: '#^Parameter \#1 \$task of method App\\Services\\TaskChecklistService\:\:current\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Services/TaskChecklistService.php
-
-		-
-			message: '#^Parameter \#1 \$task of method App\\Services\\TaskFileService\:\:current\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/TaskFileService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\TaskLookup\:\:\$is_system\.$#'
 			identifier: property.notFound
 			count: 2
 			path: app/Services/TaskLookupService.php
-
-		-
-			message: '#^Parameter \#1 \$task of method App\\Services\\TaskResultService\:\:current\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/TaskResultService.php
-
-		-
-			message: '#^Parameter \#1 \$task of method App\\Integrations\\Bitrix24\\BitrixTimePusher\:\:handles\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/TaskTimeService.php
-
-		-
-			message: '#^Parameter \#1 \$task of method App\\Repositories\\Contracts\\TimeEntryRepositoryInterface\:\:updateTaskTotal\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/TaskTimeService.php
-
-		-
-			message: '#^Parameter \#2 \$task of method App\\Services\\TaskTimeService\:\:current\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/TaskTimeService.php

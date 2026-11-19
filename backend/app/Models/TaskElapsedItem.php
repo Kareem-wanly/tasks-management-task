@@ -14,6 +14,7 @@ class TaskElapsedItem extends Model
 {
     protected $fillable = ['task_id', 'bitrix_item_id', 'user_id', 'seconds', 'comment', 'created_date'];
 
+    /** @return BelongsTo<Task, $this> */
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class);

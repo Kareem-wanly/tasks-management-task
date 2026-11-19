@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Jobs\Bitrix;
 
 use App\Enums\QueueName;
-use App\Integrations\Bitrix24\BitrixFilePusher;
 use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
 use App\Repositories\Contracts\TaskRepositoryInterface;
+use App\Services\Contracts\TaskFileServiceInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -31,14 +31,14 @@ class ImportBitrixFiles implements ShouldQueue
         $this->onQueue(QueueName::Bitrix);
     }
 
-    public function handle(BitrixFilePusher $files, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $tasks): void
+    public function handle(TaskFileServiceInterface $files, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $tasks): void
     {
         $cursor = $cursors->start(self::ENTITY);
         $total = $tasks->countInBitrix();
         $skipped = 0;
 
         $tasks->chunkInBitrix(self::BATCH, function ($chunk) use ($files, $cursor, $cursors, $total, &$skipped): void {
-            $skipped += $files->refreshMany($chunk);
+            $skipped += $files->refreshManyFromBitrix($chunk);
             $cursors->advance($cursor, $chunk->count(), $total);
         });
 
