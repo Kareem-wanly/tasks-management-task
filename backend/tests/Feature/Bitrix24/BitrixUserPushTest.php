@@ -54,7 +54,7 @@ class BitrixUserPushTest extends TestCase
     {
         Sanctum::actingAs($this->admin);
 
-        $this->postJson('/api/users', ['name' => 'Sara Al Ali', 'email' => 'sara@example.com', 'password' => 'Secret123!'])
+        $this->postJson('/api/v1/users', ['name' => 'Sara Al Ali', 'email' => 'sara@example.com', 'password' => 'Secret123!'])
             ->assertCreated();
 
         $request = $this->sent('user.add');
@@ -72,7 +72,7 @@ class BitrixUserPushTest extends TestCase
         $this->refuse = true;
         Sanctum::actingAs($this->admin);
 
-        $this->postJson('/api/users', ['name' => 'Sara', 'email' => 'sara@example.com', 'password' => 'Secret123!'])
+        $this->postJson('/api/v1/users', ['name' => 'Sara', 'email' => 'sara@example.com', 'password' => 'Secret123!'])
             ->assertUnprocessable()
             ->assertJsonPath('message', 'Bitrix24 rejected the change: A user with this e-mail already exists in Bitrix24.');
 
@@ -84,7 +84,7 @@ class BitrixUserPushTest extends TestCase
         $user = User::factory()->create(['bitrix_user_id' => 6, 'name' => 'Old Name']);
         Sanctum::actingAs($this->admin);
 
-        $this->putJson("/api/users/{$user->id}", ['name' => 'New Name'])->assertOk();
+        $this->putJson("/api/v1/users/{$user->id}", ['name' => 'New Name'])->assertOk();
 
         $request = $this->sent('user.update');
         $this->assertSame([6, 'New', 'Name'], [$request['ID'], $request['NAME'], $request['LAST_NAME']]);
@@ -97,12 +97,12 @@ class BitrixUserPushTest extends TestCase
         $user->createToken('auth_token');
         Sanctum::actingAs($this->admin);
 
-        $this->patchJson("/api/users/{$user->id}/active", ['active' => false])->assertOk();
+        $this->patchJson("/api/v1/users/{$user->id}/active", ['active' => false])->assertOk();
         $this->assertFalse($user->fresh()->is_active);
         // Their open sessions end with it.
         $this->assertSame(0, $user->tokens()->count());
 
-        $this->patchJson("/api/users/{$user->id}/active", ['active' => true])->assertOk();
+        $this->patchJson("/api/v1/users/{$user->id}/active", ['active' => true])->assertOk();
         $this->assertTrue($user->fresh()->is_active);
 
         $active = Http::recorded()->map(fn (array $pair) => $pair[0]['ACTIVE'])->all();
@@ -114,7 +114,7 @@ class BitrixUserPushTest extends TestCase
         $user = User::factory()->create(['is_active' => false]);
         Sanctum::actingAs($this->admin);
 
-        $ids = collect($this->getJson('/api/users/options')->assertOk()->json('data'))->pluck('id');
+        $ids = collect($this->getJson('/api/v1/users/options')->assertOk()->json('data'))->pluck('id');
 
         $this->assertFalse($ids->contains($user->id));
     }
@@ -124,7 +124,7 @@ class BitrixUserPushTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($this->admin);
 
-        $this->patchJson("/api/users/{$user->id}/active", ['active' => false])->assertOk();
+        $this->patchJson("/api/v1/users/{$user->id}/active", ['active' => false])->assertOk();
 
         Http::assertNothingSent();
         $this->assertFalse($user->fresh()->is_active);
@@ -136,7 +136,7 @@ class BitrixUserPushTest extends TestCase
         $local->roles()->attach(Role::where('name', 'Administrator')->first());
         Sanctum::actingAs($local);
 
-        $this->postJson('/api/users', ['name' => 'Sara', 'email' => 'sara@example.com', 'password' => 'Secret123!'])
+        $this->postJson('/api/v1/users', ['name' => 'Sara', 'email' => 'sara@example.com', 'password' => 'Secret123!'])
             ->assertForbidden();
 
         Http::assertNothingSent();

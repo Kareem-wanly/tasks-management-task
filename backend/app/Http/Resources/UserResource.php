@@ -20,7 +20,8 @@ class UserResource extends JsonResource
             'roles' => $this->whenLoaded('roles', fn () => $this->roles->pluck('name')),
 
             'effective_permissions' => $this->when(
-                $request->is('api/me', 'api/login', 'api/register'),
+                // Only the signed-in user's own account carries what they may do.
+                $request->routeIs('api.v1.me.show', 'api.v1.auth.login', 'api.v1.auth.register'),
                 fn () => method_exists($this->resource, 'permissionNames')
                     ? $this->resource->permissionNames()->values()
                     : []

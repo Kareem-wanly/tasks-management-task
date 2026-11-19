@@ -2,7 +2,8 @@ import { getToken, clearToken } from '@/lib/tokenStorage';
 import type { ValidationErrors } from '@/types/api';
 
 // Same address as the SPA by default: the dev server (and the production web server) forwards /api to Laravel.
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+// The app's API is versioned (/api/v1); Bitrix24's own install and event URLs stay outside it.
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 type Body = Record<string, unknown> | unknown[] | FormData;
 

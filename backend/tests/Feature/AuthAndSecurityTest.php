@@ -22,7 +22,7 @@ class AuthAndSecurityTest extends TestCase
 
     public function test_user_can_register_and_receives_token(): void
     {
-        $response = $this->postJson('/api/register', [
+        $response = $this->postJson('/api/v1/register', [
             'name' => 'Test User',
             'email' => 'newuser@example.com',
             'password' => 'Secret123!',
@@ -37,7 +37,7 @@ class AuthAndSecurityTest extends TestCase
 
     public function test_user_can_login_with_valid_credentials(): void
     {
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson('/api/v1/login', [
             'email' => 'admin@example.com',
             'password' => 'Password123!',
         ]);
@@ -60,7 +60,7 @@ class AuthAndSecurityTest extends TestCase
         $targetUser->roles()->attach($memberRole);
 
         $response = $this->actingAs($normalUser)
-            ->putJson("/api/users/{$targetUser->id}/roles", [
+            ->putJson("/api/v1/users/{$targetUser->id}/roles", [
                 'roles' => [$adminRole->id],
             ]);
 
@@ -76,7 +76,7 @@ class AuthAndSecurityTest extends TestCase
         $user->roles()->attach($memberRole);
 
         $response = $this->actingAs($user)
-            ->putJson("/api/users/{$user->id}/roles", [
+            ->putJson("/api/v1/users/{$user->id}/roles", [
                 'roles' => [$memberRole->id],
             ]);
 
@@ -98,7 +98,7 @@ class AuthAndSecurityTest extends TestCase
         ]);
 
         $response = $this->actingAs($owner)
-            ->postJson("/api/projects/{$project->id}/tasks", [
+            ->postJson("/api/v1/projects/{$project->id}/tasks", [
                 'title' => 'Test Task',
                 'assigned_to' => $outsider->id,
             ]);
@@ -120,7 +120,7 @@ class AuthAndSecurityTest extends TestCase
 
         // Deactivating (which replaced deleting) keeps their projects intact.
         $this->actingAs($admin)
-            ->patchJson("/api/users/{$owner->id}/active", ['active' => false])
+            ->patchJson("/api/v1/users/{$owner->id}/active", ['active' => false])
             ->assertOk();
 
         $this->assertFalse($owner->fresh()->is_active);
@@ -132,7 +132,7 @@ class AuthAndSecurityTest extends TestCase
         $admin = User::where('email', 'admin@example.com')->first();
 
         $response = $this->actingAs($admin)
-            ->getJson('/api/users/options');
+            ->getJson('/api/v1/users/options');
 
         $response->assertStatus(200)
             ->assertJsonStructure(['data']);

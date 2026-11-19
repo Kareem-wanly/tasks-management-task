@@ -31,7 +31,7 @@ class BitrixUserColumnsTest extends TestCase
     {
         $this->bitrixEmployee();
 
-        $this->postJson('/api/login', ['email' => 'employee@portal.test', 'password' => 'anything'])
+        $this->postJson('/api/v1/login', ['email' => 'employee@portal.test', 'password' => 'anything'])
             ->assertStatus(401)
             ->assertJson(['message' => 'Invalid login credentials']);
     }

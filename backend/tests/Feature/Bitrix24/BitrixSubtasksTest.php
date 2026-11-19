@@ -61,7 +61,7 @@ class BitrixSubtasksTest extends TestCase
 
     public function test_a_subtask_is_created_under_its_parent_in_bitrix(): void
     {
-        $this->postJson("/api/projects/{$this->project->id}/tasks", ['title' => 'Child', 'parent_id' => $this->parent->id])
+        $this->postJson("/api/v1/projects/{$this->project->id}/tasks", ['title' => 'Child', 'parent_id' => $this->parent->id])
             ->assertCreated();
 
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.add.json')
@@ -71,7 +71,7 @@ class BitrixSubtasksTest extends TestCase
 
     public function test_a_plain_task_has_no_parent_in_bitrix(): void
     {
-        $this->postJson("/api/projects/{$this->project->id}/tasks", ['title' => 'Alone'])->assertCreated();
+        $this->postJson("/api/v1/projects/{$this->project->id}/tasks", ['title' => 'Alone'])->assertCreated();
 
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.add.json') && $r['fields']['PARENT_ID'] === 0);
     }
@@ -80,7 +80,7 @@ class BitrixSubtasksTest extends TestCase
     {
         $child = $this->task(['bitrix_task_id' => 51, 'parent_id' => $this->parent->id]);
 
-        $this->putJson("/api/tasks/{$child->id}", ['parent_id' => null])->assertOk();
+        $this->putJson("/api/v1/tasks/{$child->id}", ['parent_id' => null])->assertOk();
 
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.update.json') && $r['fields'] === ['PARENT_ID' => 0]);
         $this->assertNull($child->fresh()->parent_id);
@@ -90,8 +90,8 @@ class BitrixSubtasksTest extends TestCase
     {
         $child = $this->task(['bitrix_task_id' => 51, 'parent_id' => $this->parent->id]);
 
-        $this->putJson("/api/tasks/{$this->parent->id}", ['parent_id' => $child->id])->assertJsonValidationErrors('parent_id');
-        $this->putJson("/api/tasks/{$this->parent->id}", ['parent_id' => $this->parent->id])->assertJsonValidationErrors('parent_id');
+        $this->putJson("/api/v1/tasks/{$this->parent->id}", ['parent_id' => $child->id])->assertJsonValidationErrors('parent_id');
+        $this->putJson("/api/v1/tasks/{$this->parent->id}", ['parent_id' => $this->parent->id])->assertJsonValidationErrors('parent_id');
 
         Http::assertNothingSent();
     }
@@ -106,17 +106,17 @@ class BitrixSubtasksTest extends TestCase
         Sanctum::actingAs($member);
 
         // Not in the project, so the parent is hidden from them.
-        $this->putJson("/api/tasks/{$mine->id}", ['parent_id' => $this->parent->id])->assertJsonValidationErrors('parent_id');
+        $this->putJson("/api/v1/tasks/{$mine->id}", ['parent_id' => $this->parent->id])->assertJsonValidationErrors('parent_id');
     }
 
     public function test_the_task_page_shows_its_parent_and_subtasks(): void
     {
         $child = $this->task(['title' => 'Child', 'bitrix_task_id' => 51, 'parent_id' => $this->parent->id]);
 
-        $this->getJson("/api/tasks/{$this->parent->id}")
+        $this->getJson("/api/v1/tasks/{$this->parent->id}")
             ->assertJsonPath('data.subtasks.0.id', $child->id)
             ->assertJsonPath('data.parent', null);
-        $this->getJson("/api/tasks/{$child->id}")
+        $this->getJson("/api/v1/tasks/{$child->id}")
             ->assertJsonPath('data.parent', ['id' => $this->parent->id, 'title' => 'Parent'])
             ->assertJsonCount(0, 'data.subtasks');
     }
@@ -141,7 +141,7 @@ class BitrixSubtasksTest extends TestCase
 
     public function test_the_echo_of_a_new_subtask_is_confirmed(): void
     {
-        $this->postJson("/api/projects/{$this->project->id}/tasks", ['title' => 'Child', 'parent_id' => $this->parent->id])
+        $this->postJson("/api/v1/projects/{$this->project->id}/tasks", ['title' => 'Child', 'parent_id' => $this->parent->id])
             ->assertCreated();
         $this->bitrixTask = $this->bitrixRow(51, 50);
 

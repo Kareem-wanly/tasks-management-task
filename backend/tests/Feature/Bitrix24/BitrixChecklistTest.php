@@ -72,7 +72,7 @@ class BitrixChecklistTest extends TestCase
         $this->row('Write tests', $list);
         $this->items[$this->row('Ship it', $list)]['IS_COMPLETE'] = 'Y';
 
-        $this->getJson("/api/tasks/{$this->task->id}/checklist")
+        $this->getJson("/api/v1/tasks/{$this->task->id}/checklist")
             ->assertOk()
             ->assertJsonPath('data.0.title', 'Checklist 1')
             ->assertJsonPath('data.1.title', 'Write tests')
@@ -85,19 +85,19 @@ class BitrixChecklistTest extends TestCase
     {
         $list = $this->row('BX_CHECKLIST_1', 0);
         $gone = $this->row('Old', $list);
-        $this->getJson("/api/tasks/{$this->task->id}/checklist");
+        $this->getJson("/api/v1/tasks/{$this->task->id}/checklist");
 
         unset($this->items[$gone]);
-        $this->getJson("/api/tasks/{$this->task->id}/checklist")->assertJsonCount(1, 'data');
+        $this->getJson("/api/v1/tasks/{$this->task->id}/checklist")->assertJsonCount(1, 'data');
     }
 
     public function test_bitrix_unreachable_shows_our_last_copy(): void
     {
         $this->row('Kept', $this->row('BX_CHECKLIST_1', 0));
-        $this->getJson("/api/tasks/{$this->task->id}/checklist");
+        $this->getJson("/api/v1/tasks/{$this->task->id}/checklist");
         $this->unreachable = true;
 
-        $this->getJson("/api/tasks/{$this->task->id}/checklist")
+        $this->getJson("/api/v1/tasks/{$this->task->id}/checklist")
             ->assertOk()
             ->assertJsonPath('data.1.title', 'Kept')
             ->assertJsonPath('meta.stale', true);
@@ -105,13 +105,13 @@ class BitrixChecklistTest extends TestCase
 
     public function test_adding_ticking_renaming_and_deleting_go_to_bitrix_as_the_employee(): void
     {
-        $this->postJson("/api/tasks/{$this->task->id}/checklist", ['title' => 'First'])->assertOk()->assertJsonCount(2, 'data');
+        $this->postJson("/api/v1/tasks/{$this->task->id}/checklist", ['title' => 'First'])->assertOk()->assertJsonCount(2, 'data');
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'task.checklistitem.add.json') && $r['auth'] === 'actor-access' && $r['TASKID'] === 15);
 
         $item = $this->local('First');
-        $this->patchJson("/api/checklist-items/{$item->id}", ['is_complete' => true])->assertJsonPath('data.1.is_complete', true);
-        $this->patchJson("/api/checklist-items/{$item->id}", ['title' => 'Renamed'])->assertJsonPath('data.1.title', 'Renamed');
-        $this->deleteJson("/api/checklist-items/{$item->id}")->assertJsonCount(1, 'data');
+        $this->patchJson("/api/v1/checklist-items/{$item->id}", ['is_complete' => true])->assertJsonPath('data.1.is_complete', true);
+        $this->patchJson("/api/v1/checklist-items/{$item->id}", ['title' => 'Renamed'])->assertJsonPath('data.1.title', 'Renamed');
+        $this->deleteJson("/api/v1/checklist-items/{$item->id}")->assertJsonCount(1, 'data');
 
         $this->assertSame([], $this->titles());
     }
@@ -119,24 +119,24 @@ class BitrixChecklistTest extends TestCase
     public function test_items_are_reordered_in_bitrix(): void
     {
         foreach (['A', 'B', 'C'] as $title) {
-            $this->postJson("/api/tasks/{$this->task->id}/checklist", ['title' => $title]);
+            $this->postJson("/api/v1/tasks/{$this->task->id}/checklist", ['title' => $title]);
         }
 
-        $this->postJson("/api/checklist-items/{$this->local('A')->id}/move", ['after_id' => $this->local('C')->id])->assertOk();
+        $this->postJson("/api/v1/checklist-items/{$this->local('A')->id}/move", ['after_id' => $this->local('C')->id])->assertOk();
         $this->assertSame(['B', 'C', 'A'], $this->titles());
 
         // First place: Bitrix only moves "after an item", so it takes two moves.
-        $this->postJson("/api/checklist-items/{$this->local('A')->id}/move", ['after_id' => null])->assertOk();
+        $this->postJson("/api/v1/checklist-items/{$this->local('A')->id}/move", ['after_id' => null])->assertOk();
         $this->assertSame(['A', 'B', 'C'], $this->titles());
     }
 
     public function test_an_item_moves_only_within_its_list(): void
     {
-        $this->postJson("/api/tasks/{$this->task->id}/checklist", ['title' => 'A']);
+        $this->postJson("/api/v1/tasks/{$this->task->id}/checklist", ['title' => 'A']);
         $list = TaskChecklistItem::whereNull('parent_id')->sole();
 
-        $this->postJson("/api/checklist-items/{$this->local('A')->id}/move", ['after_id' => $list->id])->assertJsonValidationErrors('after_id');
-        $this->patchJson("/api/checklist-items/{$list->id}", ['is_complete' => true])->assertJsonValidationErrors('is_complete');
+        $this->postJson("/api/v1/checklist-items/{$this->local('A')->id}/move", ['after_id' => $list->id])->assertJsonValidationErrors('after_id');
+        $this->patchJson("/api/v1/checklist-items/{$list->id}", ['is_complete' => true])->assertJsonValidationErrors('is_complete');
     }
 
     public function test_the_people_working_on_the_task_may_edit_it_but_auditors_may_not(): void
@@ -150,11 +150,11 @@ class BitrixChecklistTest extends TestCase
         $this->task->auditors()->sync([$auditor->id]);
 
         Sanctum::actingAs($auditor);
-        $this->getJson("/api/tasks/{$this->task->id}/checklist")->assertOk()->assertJsonPath('meta.can_edit', false);
-        $this->postJson("/api/tasks/{$this->task->id}/checklist", ['title' => 'Nope'])->assertForbidden();
+        $this->getJson("/api/v1/tasks/{$this->task->id}/checklist")->assertOk()->assertJsonPath('meta.can_edit', false);
+        $this->postJson("/api/v1/tasks/{$this->task->id}/checklist", ['title' => 'Nope'])->assertForbidden();
 
         Sanctum::actingAs($assignee);
-        $this->postJson("/api/tasks/{$this->task->id}/checklist", ['title' => 'Mine'])->assertOk();
+        $this->postJson("/api/v1/tasks/{$this->task->id}/checklist", ['title' => 'Mine'])->assertOk();
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'task.checklistitem.add.json') && $r['auth'] === 'assignee-access');
     }
 
@@ -164,9 +164,9 @@ class BitrixChecklistTest extends TestCase
         $this->task->forceFill(['project_id' => $local->id, 'bitrix_task_id' => null])->save();
 
         foreach (['A', 'B'] as $title) {
-            $this->postJson("/api/tasks/{$this->task->id}/checklist", ['title' => $title])->assertOk();
+            $this->postJson("/api/v1/tasks/{$this->task->id}/checklist", ['title' => $title])->assertOk();
         }
-        $this->postJson("/api/checklist-items/{$this->local('B')->id}/move", ['after_id' => null])->assertOk();
+        $this->postJson("/api/v1/checklist-items/{$this->local('B')->id}/move", ['after_id' => null])->assertOk();
 
         Http::assertNothingSent();
         $this->assertSame(['B', 'A'], $this->titles());

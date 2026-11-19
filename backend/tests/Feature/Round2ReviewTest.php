@@ -33,7 +33,7 @@ class Round2ReviewTest extends TestCase
         $role = $user->roles()->first();
         Sanctum::actingAs($user);
 
-        $this->putJson("/api/roles/{$role->id}", [
+        $this->putJson("/api/v1/roles/{$role->id}", [
             'permissions' => Permission::pluck('id')->all(),
         ])->assertStatus(403);
     }
@@ -45,7 +45,7 @@ class Round2ReviewTest extends TestCase
         $project = $this->project($owner, [$member]);
         Sanctum::actingAs($owner);
 
-        $this->deleteJson("/api/projects/{$project->id}/members/{$member->id}")->assertOk();
+        $this->deleteJson("/api/v1/projects/{$project->id}/members/{$member->id}")->assertOk();
         $this->assertFalse($project->members()->where('users.id', $member->id)->exists());
     }
 
@@ -56,7 +56,7 @@ class Round2ReviewTest extends TestCase
         $project = $this->project($owner);
         Sanctum::actingAs($owner);
 
-        $this->postJson("/api/projects/{$project->id}/tasks", [
+        $this->postJson("/api/v1/projects/{$project->id}/tasks", [
             'title' => 'x', 'assigned_to' => $outsider->id,
         ])->assertStatus(422);
     }
@@ -69,7 +69,7 @@ class Round2ReviewTest extends TestCase
         $task = $this->task($project);
         Sanctum::actingAs($owner);
 
-        $this->putJson("/api/tasks/{$task->id}", [
+        $this->putJson("/api/v1/tasks/{$task->id}", [
             'assigned_to' => $outsider->id,
         ])->assertStatus(422);
     }
@@ -82,7 +82,7 @@ class Round2ReviewTest extends TestCase
         $task = $this->task($project, ['assigned_to' => $viewer->id]);
         Sanctum::actingAs($viewer);
 
-        $this->patchJson("/api/tasks/{$task->id}/status", ['status' => 'review'])->assertStatus(403);
+        $this->patchJson("/api/v1/tasks/{$task->id}/status", ['status' => 'review'])->assertStatus(403);
     }
 
     public function test_r6_task_of_deleted_project_does_not_500(): void
@@ -95,7 +95,7 @@ class Round2ReviewTest extends TestCase
         $project->delete();
 
         $this->assertSoftDeleted('tasks', ['id' => $task->id]);
-        $this->assertNotEquals(500, $this->getJson("/api/tasks/{$task->id}")->status());
+        $this->assertNotEquals(500, $this->getJson("/api/v1/tasks/{$task->id}")->status());
     }
 
     public function test_r7_roles_assign_user_cannot_give_self_a_role(): void
@@ -104,7 +104,7 @@ class Round2ReviewTest extends TestCase
         $pm = Role::where('name', 'Project Manager')->first();
         Sanctum::actingAs($user);
 
-        $this->putJson("/api/users/{$user->id}/roles", ['roles' => [$pm->id]])->assertStatus(403);
+        $this->putJson("/api/v1/users/{$user->id}/roles", ['roles' => [$pm->id]])->assertStatus(403);
     }
 
     public function test_r8_saving_user_after_permission_lookup_works(): void
@@ -123,7 +123,7 @@ class Round2ReviewTest extends TestCase
         $user = $this->memberUser();
         Sanctum::actingAs($user);
 
-        $this->getJson('/api/me')
+        $this->getJson('/api/v1/me')
             ->assertOk()
             ->assertJsonPath('user.effective_permissions', fn ($p): bool => in_array('projects.view', (array) $p));
     }
@@ -135,7 +135,7 @@ class Round2ReviewTest extends TestCase
         $project = $this->project($owner, [$member]);
         Sanctum::actingAs($owner);
 
-        $json = json_encode($this->getJson("/api/projects/{$project->id}")->assertOk()->json());
+        $json = json_encode($this->getJson("/api/v1/projects/{$project->id}")->assertOk()->json());
         $this->assertStringNotContainsString('effective_permissions', $json);
     }
 
@@ -147,7 +147,7 @@ class Round2ReviewTest extends TestCase
         $this->task($project, ['title' => 'late', 'due_date' => '2026-12-01']);
         Sanctum::actingAs($owner);
 
-        $titles = collect($this->getJson('/api/tasks?due_date_from=2026-06-01')->json('data'))->pluck('title');
+        $titles = collect($this->getJson('/api/v1/tasks?due_date_from=2026-06-01')->json('data'))->pluck('title');
         $this->assertTrue($titles->contains('late'));
         $this->assertFalse($titles->contains('early'));
     }
@@ -159,7 +159,7 @@ class Round2ReviewTest extends TestCase
         $this->project($owner);
         Sanctum::actingAs($admin);
 
-        $this->patchJson("/api/users/{$owner->id}/active", ['active' => false])->assertOk();
+        $this->patchJson("/api/v1/users/{$owner->id}/active", ['active' => false])->assertOk();
         $this->assertNotNull(User::find($owner->id));
     }
 
@@ -168,7 +168,7 @@ class Round2ReviewTest extends TestCase
         $user = $this->memberUser();
         Sanctum::actingAs($user);
 
-        $this->getJson("/api/users/{$user->id}/roles")->assertOk();
+        $this->getJson("/api/v1/users/{$user->id}/roles")->assertOk();
     }
 
     public function test_r13_member_and_pm_can_open_activities(): void
@@ -177,7 +177,7 @@ class Round2ReviewTest extends TestCase
             $user = User::factory()->create();
             $user->roles()->attach(Role::where('name', $roleName)->first());
             Sanctum::actingAs($user);
-            $this->getJson('/api/activities')->assertOk();
+            $this->getJson('/api/v1/activities')->assertOk();
         }
     }
 
@@ -187,7 +187,7 @@ class Round2ReviewTest extends TestCase
         $project = $this->project($user);
         Sanctum::actingAs($user);
 
-        $this->postJson("/api/projects/{$project->id}/tasks", ['title' => 'ok'])->assertStatus(201);
+        $this->postJson("/api/v1/projects/{$project->id}/tasks", ['title' => 'ok'])->assertStatus(201);
     }
 
     public function test_r14_projects_update_alone_is_not_enough_to_create_tasks(): void
@@ -196,7 +196,7 @@ class Round2ReviewTest extends TestCase
         $project = $this->project($user);
         Sanctum::actingAs($user);
 
-        $this->postJson("/api/projects/{$project->id}/tasks", ['title' => 'no'])->assertStatus(403);
+        $this->postJson("/api/v1/projects/{$project->id}/tasks", ['title' => 'no'])->assertStatus(403);
     }
 
     public function test_r15_task_created_as_completed_gets_completed_at(): void
@@ -205,7 +205,7 @@ class Round2ReviewTest extends TestCase
         $project = $this->project($owner);
         Sanctum::actingAs($owner);
 
-        $id = $this->postJson("/api/projects/{$project->id}/tasks", [
+        $id = $this->postJson("/api/v1/projects/{$project->id}/tasks", [
             'title' => 'done', 'status' => 'completed',
         ])->assertStatus(201)->json('data.id');
 
@@ -219,7 +219,7 @@ class Round2ReviewTest extends TestCase
         $this->task($project, ['due_date' => '2026-12-01']);
         Sanctum::actingAs($owner);
 
-        $this->putJson("/api/projects/{$project->id}", ['due_date' => '2026-11-01'])->assertStatus(422);
+        $this->putJson("/api/v1/projects/{$project->id}", ['due_date' => '2026-11-01'])->assertStatus(422);
     }
 
     private function userWith(array $permissions, ?string $roleName = null): User
