@@ -6,7 +6,8 @@ namespace App\Services;
 
 use App\DTOs\Task\TaskHistoryDTO;
 use App\Exceptions\Bitrix\BitrixException;
-use App\Integrations\Bitrix24\BitrixTaskHistoryReader;
+use App\Integrations\Bitrix24\Contracts\BitrixTaskRepositoryInterface;
+use App\Integrations\Bitrix24\Mappers\BitrixHistoryMapper;
 use App\Models\Task;
 use App\Services\Contracts\TaskHistoryServiceInterface;
 use Illuminate\Support\Facades\Log;
@@ -17,16 +18,20 @@ use Illuminate\Support\Facades\Log;
  */
 final readonly class TaskHistoryService implements TaskHistoryServiceInterface
 {
-    public function __construct(private BitrixTaskHistoryReader $bitrix) {}
+    public function __construct(
+        private BitrixTaskRepositoryInterface $bitrixTasks,
+        private BitrixHistoryMapper $mapper,
+    ) {}
 
     public function forTask(Task $task): TaskHistoryDTO
     {
-        if (! $this->bitrix->handles($task)) {
+        if (! $task->isInBitrix()) {
             return new TaskHistoryDTO([], TaskHistoryDTO::NOT_IN_BITRIX);
         }
 
         try {
-            return new TaskHistoryDTO($this->bitrix->entries($task));
+            // Read with the service account: who may see it is decided by our own rules (whoever sees the task).
+            return new TaskHistoryDTO($this->mapper->entries($this->bitrixTasks->history($task->bitrix_task_id)));
         } catch (BitrixException $e) {
             Log::warning('Bitrix24 task history not available.', ['task_id' => $task->id, 'error' => $e->errorCode]);
 

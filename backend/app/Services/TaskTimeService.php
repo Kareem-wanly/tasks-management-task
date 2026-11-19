@@ -10,7 +10,8 @@ use App\DTOs\Task\TimeLogDTO;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Exceptions\Task\TimerRunningOnAnotherTaskException;
 use App\Exceptions\Task\TimerStartedElsewhereException;
-use App\Integrations\Bitrix24\BitrixTimePusher;
+use App\Integrations\Bitrix24\BitrixTimeSync;
+use App\Integrations\Bitrix24\Contracts\BitrixTimeRepositoryInterface;
 use App\Models\RunningTimer;
 use App\Models\Task;
 use App\Models\TaskElapsedItem;
@@ -37,7 +38,8 @@ final readonly class TaskTimeService implements TaskTimeServiceInterface
     public function __construct(
         private TimeEntryRepositoryInterface $entries,
         private TaskRepositoryInterface $tasks,
-        private BitrixTimePusher $bitrix,
+        private BitrixTimeRepositoryInterface $bitrixTime,
+        private BitrixTimeSync $timeSync,
     ) {}
 
     /** The log, fresh from Bitrix; our last copy when Bitrix can't be reached. */
@@ -45,9 +47,9 @@ final readonly class TaskTimeService implements TaskTimeServiceInterface
     {
         $stale = false;
 
-        if ($this->bitrix->handles($task)) {
+        if ($task->isInBitrix()) {
             try {
-                $this->bitrix->refresh($task);
+                $this->refreshFromBitrix($task);
             } catch (BitrixException $e) {
                 Log::warning('Bitrix24 time log not refreshed; showing our copy.', ['task_id' => $task->id, 'error' => $e->getMessage()]);
                 $stale = true;
@@ -71,8 +73,10 @@ final readonly class TaskTimeService implements TaskTimeServiceInterface
         $comment = $time->comment;
         $task = $entry->task;
 
-        if ($this->bitrix->handles($task)) {
-            $this->bitrix->update($actor, $entry, $seconds, $comment);
+        if ($task->isInBitrix()) {
+            $this->ensureSignedInWithBitrix($actor);
+            $this->bitrixTime->update($actor, $task->bitrix_task_id, (int) $entry->bitrix_item_id, $seconds, $comment);
+            $this->refreshFromBitrix($task);
         } else {
             $this->entries->update($entry, ['seconds' => $seconds, 'comment' => $comment]);
             $this->entries->updateTaskTotal($task);
@@ -85,8 +89,10 @@ final readonly class TaskTimeService implements TaskTimeServiceInterface
     {
         $task = $entry->task;
 
-        if ($this->bitrix->handles($task)) {
-            $this->bitrix->delete($actor, $entry);
+        if ($task->isInBitrix()) {
+            $this->ensureSignedInWithBitrix($actor);
+            $this->bitrixTime->delete($actor, $task->bitrix_task_id, (int) $entry->bitrix_item_id);
+            $this->refreshFromBitrix($task);
         } else {
             $this->entries->delete($entry);
             $this->entries->updateTaskTotal($task);
@@ -169,8 +175,10 @@ final readonly class TaskTimeService implements TaskTimeServiceInterface
 
     private function logTime(User $actor, Task $task, int $seconds, ?string $comment): void
     {
-        if ($this->bitrix->handles($task)) {
-            $this->bitrix->add($actor, $task, $seconds, $comment);
+        if ($task->isInBitrix()) {
+            $this->ensureSignedInWithBitrix($actor);
+            $this->bitrixTime->add($actor, $task->bitrix_task_id, $seconds, $comment);
+            $this->refreshFromBitrix($task);
 
             return;
         }
@@ -189,5 +197,19 @@ final readonly class TaskTimeService implements TaskTimeServiceInterface
     private function current(User $viewer, Task $task, bool $stale = false, ?Task $stoppedTask = null): TimeLogDTO
     {
         return new TimeLogDTO($task, $this->entries->forTask($task), $this->entries->runningTimer($viewer), $stale, $stoppedTask);
+    }
+
+    /** Brings our copy of the task's time log up to date. */
+    private function refreshFromBitrix(Task $task): void
+    {
+        $this->timeSync->sync($task, $this->bitrixTime->list($task->bitrix_task_id));
+    }
+
+    /** Changes go to Bitrix with the employee's own token. */
+    private function ensureSignedInWithBitrix(User $actor): void
+    {
+        if (! $actor->isLinkedToBitrix()) {
+            throw BitrixException::missingToken();
+        }
     }
 }

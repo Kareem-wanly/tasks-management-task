@@ -10,7 +10,8 @@ use App\DTOs\Task\TaskChecklistDTO;
 use App\DTOs\Task\UpdateChecklistItemDTO;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Exceptions\Task\ChecklistListNotMovableException;
-use App\Integrations\Bitrix24\BitrixChecklistPusher;
+use App\Integrations\Bitrix24\BitrixChecklistSync;
+use App\Integrations\Bitrix24\Contracts\BitrixChecklistRepositoryInterface;
 use App\Models\Task;
 use App\Models\TaskChecklistItem;
 use App\Models\User;
@@ -31,7 +32,8 @@ final readonly class TaskChecklistService implements TaskChecklistServiceInterfa
 
     public function __construct(
         private TaskChecklistRepositoryInterface $checklists,
-        private BitrixChecklistPusher $bitrix,
+        private BitrixChecklistRepositoryInterface $bitrixChecklists,
+        private BitrixChecklistSync $checklistSync,
         private ConnectionInterface $database,
     ) {}
 
@@ -40,9 +42,9 @@ final readonly class TaskChecklistService implements TaskChecklistServiceInterfa
     {
         $stale = false;
 
-        if ($this->bitrix->handles($task)) {
+        if ($task->isInBitrix()) {
             try {
-                $this->bitrix->refresh($task);
+                $this->refreshFromBitrix($task);
             } catch (BitrixException $e) {
                 Log::warning('Bitrix24 checklist not refreshed; showing our copy.', ['task_id' => $task->id, 'error' => $e->getMessage()]);
                 $stale = true;
@@ -59,8 +61,10 @@ final readonly class TaskChecklistService implements TaskChecklistServiceInterfa
         $listId = $item->listId;
         $list = $listId ? $this->checklists->find($listId) : $this->checklists->firstList($task);
 
-        if ($this->bitrix->handles($task)) {
-            $this->bitrix->add($actor, $task, $title, $list);
+        if ($task->isInBitrix()) {
+            $this->ensureSignedInWithBitrix($actor);
+            $this->bitrixChecklists->add($actor, $task->bitrix_task_id, $title, $list?->bitrix_item_id);
+            $this->refreshFromBitrix($task);
         } else {
             $this->checklists->addItem($list ?? $this->checklists->createList($task, self::DEFAULT_LIST_TITLE), $title);
         }
@@ -73,14 +77,15 @@ final readonly class TaskChecklistService implements TaskChecklistServiceInterfa
         $task = $item->task;
 
         if ($changes->title !== null) {
-            $this->bitrix->handles($task)
-                ? $this->bitrix->rename($actor, $item, $changes->title)
+            $task->isInBitrix()
+                ? $this->changeInBitrix($actor, $task, fn () => $this->bitrixChecklists->rename($actor, $task->bitrix_task_id, (int) $item->bitrix_item_id, $changes->title))
                 : $this->checklists->update($item, ['title' => $changes->title]);
         }
 
         if ($changes->isComplete !== null) {
-            $this->bitrix->handles($task)
-                ? $this->bitrix->toggle($actor, $this->checklists->find($item->id), $changes->isComplete)
+            $task->isInBitrix()
+                // The item as the rename above left it.
+                ? $this->changeInBitrix($actor, $task, fn () => $this->bitrixChecklists->setComplete($actor, $task->bitrix_task_id, (int) $this->checklists->find($item->id)->bitrix_item_id, $changes->isComplete))
                 : $this->checklists->update($item, ['is_complete' => $changes->isComplete]);
         }
 
@@ -91,7 +96,9 @@ final readonly class TaskChecklistService implements TaskChecklistServiceInterfa
     {
         $task = $item->task;
 
-        $this->bitrix->handles($task) ? $this->bitrix->delete($actor, $item) : $this->checklists->delete($item);
+        $task->isInBitrix()
+            ? $this->changeInBitrix($actor, $task, fn () => $this->bitrixChecklists->delete($actor, $task->bitrix_task_id, (int) $item->bitrix_item_id))
+            : $this->checklists->delete($item);
 
         return $this->current($task);
     }
@@ -108,8 +115,8 @@ final readonly class TaskChecklistService implements TaskChecklistServiceInterfa
         $task = $item->task;
         $after = $afterId ? $this->checklists->find($afterId) : null;
 
-        if ($this->bitrix->handles($task)) {
-            $this->bitrix->move($actor, $item, $after, $this->checklists->firstItemOf($item->parent));
+        if ($task->isInBitrix()) {
+            $this->moveInBitrix($actor, $task, $item, $after);
         } else {
             $siblings = $this->checklists->siblingsOf($item)->all();
             $position = $after instanceof TaskChecklistItem ? array_search($after->id, array_map(fn ($s) => $s->id, $siblings), true) + 1 : 0;
@@ -123,5 +130,41 @@ final readonly class TaskChecklistService implements TaskChecklistServiceInterfa
     private function current(Task $task, bool $stale = false): TaskChecklistDTO
     {
         return new TaskChecklistDTO($task, $this->checklists->forTask($task), $stale);
+    }
+
+    /** Brings our copy of the task's checklist up to date. */
+    private function refreshFromBitrix(Task $task): void
+    {
+        $this->checklistSync->sync($task, $this->bitrixChecklists->list($task->bitrix_task_id));
+    }
+
+    /** One change in Bitrix, then our copy as Bitrix has it. */
+    private function changeInBitrix(User $actor, Task $task, callable $change): void
+    {
+        $this->ensureSignedInWithBitrix($actor);
+        $change();
+        $this->refreshFromBitrix($task);
+    }
+
+    /** After $after, or first (when it isn't already). Nothing to send leaves Bitrix alone. */
+    private function moveInBitrix(User $actor, Task $task, TaskChecklistItem $item, ?TaskChecklistItem $after): void
+    {
+        $first = $this->checklists->firstItemOf($item->parent);
+        $firstId = $first instanceof TaskChecklistItem && $first->id !== $item->id ? $first->bitrix_item_id : null;
+
+        if ($after instanceof TaskChecklistItem || $firstId !== null) {
+            $this->ensureSignedInWithBitrix($actor);
+            $this->bitrixChecklists->move($actor, $task->bitrix_task_id, (int) $item->bitrix_item_id, $after?->bitrix_item_id, $firstId);
+        }
+
+        $this->refreshFromBitrix($task);
+    }
+
+    /** Changes go to Bitrix with the employee's own token. */
+    private function ensureSignedInWithBitrix(User $actor): void
+    {
+        if (! $actor->isLinkedToBitrix()) {
+            throw BitrixException::missingToken();
+        }
     }
 }

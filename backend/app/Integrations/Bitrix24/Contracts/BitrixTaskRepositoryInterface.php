@@ -76,4 +76,11 @@ interface BitrixTaskRepositoryInterface
 
     /** Hands the task to another responsible person. */
     public function delegate(User $actor, int $bitrixTaskId, int $toBitrixUserId): void;
+
+    /**
+     * The task's change history, newest first, read with the service account.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function history(int $bitrixTaskId): array;
 }

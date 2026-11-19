@@ -15,6 +15,7 @@ class TaskFile extends Model
 {
     protected $fillable = ['task_id', 'bitrix_disk_file_id', 'attached_object_id', 'uploaded_by', 'name', 'size', 'mime', 'path', 'created_at'];
 
+    /** @return BelongsTo<Task, $this> */
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class);

@@ -115,6 +115,13 @@ final readonly class BitrixTaskRepository implements BitrixTaskRepositoryInterfa
         $this->bitrix->callAsUser($actor, 'tasks.task.delegate', ['taskId' => $bitrixTaskId, 'userId' => $toBitrixUserId]);
     }
 
+    public function history(int $bitrixTaskId): array
+    {
+        $rows = $this->bitrix->callAsService('tasks.task.history.list', ['taskId' => $bitrixTaskId])['result']['list'] ?? [];
+
+        return is_array($rows) ? array_values($rows) : [];
+    }
+
     private function nextAction(int $current, int $target): ?string
     {
         $current = $this->normalizeStatus($current);

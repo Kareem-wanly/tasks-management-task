@@ -7,7 +7,8 @@ namespace App\Services;
 use App\DTOs\Task\TaskResultDTO;
 use App\DTOs\Task\TaskResultsDTO;
 use App\Exceptions\Bitrix\BitrixException;
-use App\Integrations\Bitrix24\BitrixResultPusher;
+use App\Integrations\Bitrix24\BitrixResultSync;
+use App\Integrations\Bitrix24\Contracts\BitrixResultRepositoryInterface;
 use App\Models\Task;
 use App\Models\TaskResult;
 use App\Models\User;
@@ -24,7 +25,8 @@ final readonly class TaskResultService implements TaskResultServiceInterface
 {
     public function __construct(
         private TaskResultRepositoryInterface $results,
-        private BitrixResultPusher $bitrix,
+        private BitrixResultRepositoryInterface $bitrixResults,
+        private BitrixResultSync $resultSync,
     ) {}
 
     /** The results, fresh from Bitrix; our last copy when Bitrix can't be reached. */
@@ -32,9 +34,9 @@ final readonly class TaskResultService implements TaskResultServiceInterface
     {
         $stale = false;
 
-        if ($this->bitrix->handles($task)) {
+        if ($task->isInBitrix()) {
             try {
-                $this->bitrix->refresh($task);
+                $this->refreshFromBitrix($task);
             } catch (BitrixException $e) {
                 Log::warning('Bitrix24 task results not refreshed; showing our copy.', ['task_id' => $task->id, 'error' => $e->getMessage()]);
                 $stale = true;
@@ -48,9 +50,13 @@ final readonly class TaskResultService implements TaskResultServiceInterface
     {
         $text = $result->text;
 
-        $this->bitrix->handles($task)
-            ? $this->bitrix->add($actor, $task, $text)
-            : $this->results->create($task, $actor->id, $text);
+        if ($task->isInBitrix()) {
+            $this->ensureSignedInWithBitrix($actor);
+            $this->bitrixResults->add($actor, $task->bitrix_task_id, $text);
+            $this->refreshFromBitrix($task);
+        } else {
+            $this->results->create($task, $actor->id, $text);
+        }
 
         return $this->current($task);
     }
@@ -61,9 +67,14 @@ final readonly class TaskResultService implements TaskResultServiceInterface
         $task = $result->task;
 
         // Decided by the result itself: one made here before the task was linked stays here.
-        $result->bitrix_result_id !== null
-            ? $this->bitrix->update($actor, $result, $text)
-            : $this->results->update($result, $text);
+        if ($result->bitrix_result_id !== null) {
+            // Bitrix lets only the result's author change it.
+            $this->ensureSignedInWithBitrix($actor);
+            $this->bitrixResults->update($actor, $result->bitrix_result_id, $text);
+            $this->refreshFromBitrix($task);
+        } else {
+            $this->results->update($result, $text);
+        }
 
         return $this->current($task);
     }
@@ -72,15 +83,33 @@ final readonly class TaskResultService implements TaskResultServiceInterface
     {
         $task = $result->task;
 
-        $result->bitrix_result_id !== null
-            ? $this->bitrix->delete($actor, $result)
-            : $this->results->delete($result);
+        if ($result->bitrix_result_id !== null) {
+            $this->ensureSignedInWithBitrix($actor);
+            $this->bitrixResults->delete($actor, $result->bitrix_result_id);
+            $this->refreshFromBitrix($task);
+        } else {
+            $this->results->delete($result);
+        }
 
         return $this->current($task);
+    }
+
+    /** Brings our copy of the task's results up to date (also the nightly import). */
+    public function refreshFromBitrix(Task $task): void
+    {
+        $this->resultSync->sync($task, $this->bitrixResults->list((int) $task->bitrix_task_id));
     }
 
     private function current(Task $task, bool $stale = false): TaskResultsDTO
     {
         return new TaskResultsDTO($task, $this->results->forTask($task), $stale);
+    }
+
+    /** Changes go to Bitrix with the employee's own token. */
+    private function ensureSignedInWithBitrix(User $actor): void
+    {
+        if (! $actor->isLinkedToBitrix()) {
+            throw BitrixException::missingToken();
+        }
     }
 }

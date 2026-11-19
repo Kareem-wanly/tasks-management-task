@@ -14,6 +14,7 @@ class TaskResult extends Model
 {
     protected $fillable = ['task_id', 'bitrix_result_id', 'author_id', 'text', 'status', 'created_at', 'updated_at'];
 
+    /** @return BelongsTo<Task, $this> */
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class);
