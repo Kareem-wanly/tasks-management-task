@@ -19,14 +19,13 @@ class BitrixTimePusher
 {
     public function __construct(
         private readonly BitrixGatewayInterface $bitrix,
-        private readonly BitrixTaskPusher $tasks,
         private readonly BitrixTimeSync $sync,
     ) {}
 
     /** Whether the task lives in Bitrix. */
     public function handles(Task $task): bool
     {
-        return $task->bitrix_task_id !== null && $this->tasks->syncs($task);
+        return $task->isInBitrix();
     }
 
     /** Brings our copy of the task's time log up to date. */
