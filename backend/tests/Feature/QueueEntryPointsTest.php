@@ -37,14 +37,14 @@ it('declares its retries, backoff, timeout and failure handling (QUE-1)', functi
 ]);
 
 it('does not log broken business rules', function (): void {
-    $handler = app(ExceptionHandler::class);
+    $handler = resolve(ExceptionHandler::class);
 
     expect($handler->shouldReport(new InvalidCredentialsException))->toBeFalse()
         ->and($handler->shouldReport(new ProjectHasUnfinishedTasksException))->toBeFalse();
 });
 
 it('still logs Bitrix24 failures', function (): void {
-    $handler = app(ExceptionHandler::class);
+    $handler = resolve(ExceptionHandler::class);
 
     expect($handler->shouldReport(BitrixException::unreachable('timeout')))->toBeTrue()
         ->and($handler->shouldReport(BitrixException::fromResponse(['error' => 'ERROR_CORE'], 400)))->toBeTrue();
