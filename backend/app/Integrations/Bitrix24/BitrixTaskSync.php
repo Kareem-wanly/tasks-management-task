@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Integrations\Bitrix24;
 
 use App\Enums\TaskMemberRole;
+use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
 use App\Models\Task;
 use App\Models\TaskPriority;
@@ -27,7 +28,23 @@ class BitrixTaskSync
         private readonly ProjectRepositoryInterface $projects,
         private readonly UserRepositoryInterface $users,
         private readonly TaskLookupRepositoryInterface $lookups,
+        private readonly BitrixRecordFetcher $fetch,
     ) {}
+
+    /**
+     * Saves the task as Bitrix now has it, importing members we don't know
+     * yet. Used after our own member changes: Bitrix adds people of its own
+     * (a delegator who did not create the task becomes an auditor).
+     */
+    public function refresh(int $bitrixTaskId): void
+    {
+        $row = $this->fetch->task($bitrixTaskId)
+            ?? throw BitrixException::cannotSync('The task is no longer in Bitrix24.');
+
+        $members = $this->mapper->members($row);
+        $this->fetch->importMissingUsers([...$members[TaskMemberRole::Accomplice->value] ?? [], ...$members[TaskMemberRole::Auditor->value] ?? []]);
+        $this->upsert($row);
+    }
 
     /**
      * @return Task|null Null when its creator or project isn't imported.

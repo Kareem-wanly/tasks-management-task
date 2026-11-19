@@ -34,14 +34,13 @@ class BitrixFilePusher
 
     public function __construct(
         private readonly BitrixGatewayInterface $bitrix,
-        private readonly BitrixTaskPusher $tasks,
         private readonly BitrixFileSync $sync,
     ) {}
 
     /** Whether the task lives in Bitrix. */
     public function handles(Task $task): bool
     {
-        return $task->bitrix_task_id !== null && $this->tasks->syncs($task);
+        return $task->isInBitrix();
     }
 
     /** Brings our list of the task's files up to date. */

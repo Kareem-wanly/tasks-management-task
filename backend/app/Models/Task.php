@@ -40,6 +40,7 @@ class Task extends Model
 
     protected $appends = ['is_overdue'];
 
+    /** @return BelongsTo<Project, $this> */
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
@@ -109,6 +110,21 @@ class Task extends Model
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);
+    }
+
+    /**
+     * Tasks of a project linked to a Bitrix group, and tasks without a
+     * project, live in Bitrix24. Local-only projects (old demo data) are not in Bitrix.
+     */
+    public function syncsWithBitrix(): bool
+    {
+        return $this->project_id === null || $this->project?->bitrix_group_id !== null;
+    }
+
+    /** Already created in Bitrix24, and still synced with it. */
+    public function isInBitrix(): bool
+    {
+        return $this->bitrix_task_id !== null && $this->syncsWithBitrix();
     }
 
     /** Whether the task is in a closing status (is_final), not just "completed". */

@@ -17,14 +17,13 @@ class BitrixTaskHistoryReader
 {
     public function __construct(
         private readonly BitrixGatewayInterface $bitrix,
-        private readonly BitrixTaskPusher $tasks,
         private readonly BitrixHistoryMapper $mapper,
     ) {}
 
     /** Whether the task lives in Bitrix (so it has a history there). */
     public function handles(Task $task): bool
     {
-        return $task->bitrix_task_id !== null && $this->tasks->syncs($task);
+        return $task->isInBitrix();
     }
 
     /**
