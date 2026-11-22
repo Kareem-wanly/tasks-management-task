@@ -97,7 +97,7 @@ interface BitrixTaskRepositoryInterface
      * The tasks one filter matches, page by page, read with the service account.
      *
      * @param  array<string, mixed>  $filter
-     * @param  callable(array<string, mixed>, int): void  $onPage  The page and the filter's total.
+     * @param  callable(list<array<string, mixed>>, int): void  $onPage  The page's tasks and the filter's total.
      * @return int The filter's total.
      */
     public function eachTaskPage(array $filter, callable $onPage): int;

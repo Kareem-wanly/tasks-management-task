@@ -19,6 +19,7 @@ use LogicException;
 
 /**
  * @property int|null $bitrix_task_id
+ * @property CarbonImmutable|null $due_date
  * @property CarbonImmutable|null $completed_at
  * @property CarbonImmutable|null $bitrix_synced_at
  */

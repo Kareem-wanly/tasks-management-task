@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24\Mappers;
 
+use App\Integrations\Bitrix24\BitrixPayload;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Str;
 
 /**
@@ -16,12 +18,13 @@ final class BitrixUserMapper
      * (fallbacks, uniqueness) that BitrixUserSync does.
      *
      * @param  array<string, mixed>  $row
-     * @return array<string, mixed>
+     * @return array{bitrix_user_id: int, avatar_url: string|null, position: string|null, bitrix_synced_at: CarbonInterface, is_active?: bool, bitrix_department_ids?: list<int>}
      */
     public function attributes(array $row): array
     {
+        $user = BitrixPayload::of($row, 'user.get');
         $attributes = [
-            'bitrix_user_id' => (int) $row['ID'],
+            'bitrix_user_id' => $user->int('ID'),
             'avatar_url' => $this->nullIfBlank($row['PERSONAL_PHOTO'] ?? null),
             'position' => $this->nullIfBlank($row['WORK_POSITION'] ?? null),
             'bitrix_synced_at' => now(),
@@ -33,7 +36,7 @@ final class BitrixUserMapper
         }
 
         if (array_key_exists('UF_DEPARTMENT', $row)) {
-            $attributes['bitrix_department_ids'] = array_values(array_map('intval', (array) $row['UF_DEPARTMENT']));
+            $attributes['bitrix_department_ids'] = $user->ints('UF_DEPARTMENT');
         }
 
         return $attributes;
@@ -42,13 +45,15 @@ final class BitrixUserMapper
     /** @param  array<string, mixed>  $row */
     public function name(array $row): ?string
     {
-        return $this->nullIfBlank(trim(($row['NAME'] ?? '').' '.($row['LAST_NAME'] ?? '')));
+        $user = BitrixPayload::of($row, 'user.get');
+
+        return $this->nullIfBlank(trim(($user->stringOrNull('NAME') ?? '').' '.($user->stringOrNull('LAST_NAME') ?? '')));
     }
 
     /** @param  array<string, mixed>  $row */
     public function email(array $row): ?string
     {
-        return $this->nullIfBlank(Str::lower(trim((string) ($row['EMAIL'] ?? ''))));
+        return $this->nullIfBlank(Str::lower(trim(BitrixPayload::of($row, 'user.get')->stringOrNull('EMAIL') ?? '')));
     }
 
     /**

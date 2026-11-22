@@ -89,7 +89,7 @@ final readonly class BitrixDeletionGuard
     public function recordDeleted(string $entity, array $bitrixIds, string $via): void
     {
         if ($bitrixIds !== []) {
-            Log::info("Bitrix24 {$entity} deleted here: gone from Bitrix.", ['bitrix_ids' => array_values($bitrixIds), 'via' => $via]);
+            Log::info("Bitrix24 {$entity} deleted here: gone from Bitrix.", ['bitrix_ids' => $bitrixIds, 'via' => $via]);
         }
     }
 }

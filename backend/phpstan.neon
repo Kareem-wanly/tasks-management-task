@@ -1,13 +1,11 @@
 includes:
     - vendor/larastan/larastan/extension.neon
-    # Legacy findings only (PR4a). New code is never added to the baseline; it shrinks to zero in PR10.
-    - phpstan-baseline.neon
 
 parameters:
     paths:
         - app/
-    # Legacy project: raised per PR, up to 9 (PR10b: 8).
-    level: 8
+    # The skill's level (tooling.md). Reached in PR10e.
+    level: 9
 
 services:
     # transaction() on the injected ConnectionInterface returns what its callback returns.

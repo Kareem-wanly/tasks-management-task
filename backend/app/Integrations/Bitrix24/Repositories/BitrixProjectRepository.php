@@ -88,7 +88,9 @@ final readonly class BitrixProjectRepository implements BitrixProjectRepositoryI
             'order' => ['ID' => 'ASC'],
             // Without it the list is limited to groups the service user can see.
             'params' => ['IS_ADMIN' => 'Y'],
-        ], $onPage);
+        ], function (array $page, int $total) use ($onPage): void {
+            $onPage(BitrixPayload::of($page, 'socialnetwork.api.workgroup.list')->rows('workgroups'), $total);
+        });
     }
 
     public function membersOf(array $groups): array

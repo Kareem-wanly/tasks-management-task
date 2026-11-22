@@ -9,6 +9,7 @@ use App\Models\TaskChatMessage;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin TaskChatMessage */
 final class TaskChatMessageResource extends JsonResource
 {
     use ResolvesViewer;

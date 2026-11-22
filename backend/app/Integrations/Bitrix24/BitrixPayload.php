@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Integrations\Bitrix24;
 
 use App\Exceptions\Bitrix\BitrixException;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Config;
 
 /**
  * A decoded Bitrix24 answer, read with its types checked.
@@ -69,6 +71,26 @@ final readonly class BitrixPayload
         };
     }
 
+    /** Whether the field is exactly this value (e.g. a Bitrix "Y" flag); any other type is simply no. */
+    public function equals(string $path, string|int $expected): bool
+    {
+        return $this->value($path) === $expected;
+    }
+
+    /** An ISO 8601 date-time as Bitrix sends it; empty text is "not there". */
+    public function dateOrNull(string $path): ?CarbonImmutable
+    {
+        $text = $this->stringOrNull($path);
+
+        return $text === null || $text === '' ? null : CarbonImmutable::parse($text);
+    }
+
+    /** dateOrNull() in the app's timezone, as our columns store it. */
+    public function localDateOrNull(string $path): ?CarbonImmutable
+    {
+        return $this->dateOrNull($path)?->setTimezone(Config::string('app.timezone'));
+    }
+
     /** A nested object or list; when it is not there, an empty one. */
     public function payload(string $path): self
     {
@@ -120,6 +142,21 @@ final readonly class BitrixPayload
         }
 
         return $ints;
+    }
+
+    /**
+     * Text values of a list or keyed object, keys kept (e.g. status ID => name).
+     *
+     * @return array<array-key, string>
+     */
+    public function strings(string $path): array
+    {
+        $strings = [];
+        foreach (array_keys($this->payload($path)->data) as $key) {
+            $strings[$key] = $this->string($this->join($path, (string) $key));
+        }
+
+        return $strings;
     }
 
     /**

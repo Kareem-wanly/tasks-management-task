@@ -8,7 +8,6 @@ use App\Models\Task;
 use App\Models\TaskResult;
 use App\Repositories\Contracts\TaskResultRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
-use Carbon\CarbonImmutable;
 
 /**
  * Step 4.6: makes our copy of a task's results match Bitrix's
@@ -28,22 +27,23 @@ final readonly class BitrixResultSync
     public function sync(Task $task, array $items): void
     {
         $ours = $this->results->bitrixResults($task);
-        $authors = $this->users->idsByBitrixIds(array_map(fn (array $i): int => (int) ($i['authorId'] ?? 0), $items));
+        $items = array_map(fn (array $item): BitrixPayload => BitrixPayload::of($item, 'tasks.task.result.list'), $items);
+        $authors = $this->users->idsByBitrixIds(array_map(fn (BitrixPayload $i): int => $i->intOrNull('authorId') ?? 0, $items));
         $seen = [];
 
         foreach ($items as $item) {
-            $bitrixId = (int) $item['id'];
+            $bitrixId = $item->int('id');
             $seen[] = $bitrixId;
 
             $result = $ours->get($bitrixId) ?? new TaskResult(['task_id' => $task->id, 'bitrix_result_id' => $bitrixId]);
             $result->fill([
-                'author_id' => $authors[(int) ($item['authorId'] ?? 0)] ?? null,
-                'text' => (string) ($item['text'] ?? ''),
-                'status' => (string) ($item['status'] ?? 'open'),
+                'author_id' => $authors[$item->intOrNull('authorId') ?? 0] ?? null,
+                'text' => $item->stringOrNull('text') ?? '',
+                'status' => $item->stringOrNull('status') ?? 'open',
             ]);
             // Bitrix's own times, so the list reads the same in both places.
-            $result->created_at = $this->time($item['createdAt'] ?? null) ?? $result->created_at;
-            $result->updated_at = $this->time($item['updatedAt'] ?? null) ?? $result->updated_at;
+            $result->created_at = $item->localDateOrNull('createdAt') ?? $result->created_at;
+            $result->updated_at = $item->localDateOrNull('updatedAt') ?? $result->updated_at;
 
             if (! $result->exists || $result->isDirty()) {
                 $result->timestamps = false;
@@ -52,10 +52,5 @@ final readonly class BitrixResultSync
         }
 
         $this->results->deleteBitrixResultsExcept($task, $seen);
-    }
-
-    private function time(mixed $value): ?CarbonImmutable
-    {
-        return is_string($value) && $value !== '' ? \Illuminate\Support\Facades\Date::parse($value)->setTimezone(config('app.timezone')) : null;
     }
 }

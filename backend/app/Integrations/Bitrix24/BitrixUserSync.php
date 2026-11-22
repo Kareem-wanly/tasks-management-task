@@ -9,6 +9,7 @@ use App\Integrations\Bitrix24\Mappers\BitrixUserMapper;
 use App\Models\User;
 use App\Repositories\Contracts\RoleRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -105,6 +106,6 @@ final readonly class BitrixUserSync
 
     private function placeholderEmail(int $bitrixId): string
     {
-        return "bitrix-{$bitrixId}@".config('bitrix.portal');
+        return "bitrix-{$bitrixId}@".Config::string('bitrix.portal');
     }
 }

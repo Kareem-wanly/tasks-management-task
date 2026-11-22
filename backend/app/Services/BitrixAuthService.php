@@ -10,6 +10,7 @@ use App\Exceptions\Bitrix\BitrixException;
 use App\Exceptions\Bitrix\BitrixLoginCodeExpiredException;
 use App\Exceptions\Bitrix\BitrixSignInException;
 use App\Integrations\Bitrix24\BitrixLoginCodes;
+use App\Integrations\Bitrix24\BitrixPayload;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\BitrixUserSync;
 use App\Integrations\Bitrix24\Contracts\BitrixAppRepositoryInterface;
@@ -18,6 +19,7 @@ use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Contracts\BitrixAuthServiceInterface;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Config;
 
 /**
  * Step 1.6: "Sign in with Bitrix24".
@@ -47,7 +49,7 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
     /** Bitrix's consent page; $state comes back with the code. */
     public function authorizeUrl(string $state): string
     {
-        return 'https://'.config('bitrix.portal').'/oauth/authorize/?'.http_build_query([
+        return 'https://'.Config::string('bitrix.portal').'/oauth/authorize/?'.http_build_query([
             'client_id' => config('bitrix.client_id'),
             'state' => $state,
         ]);
@@ -152,16 +154,24 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
     private function isOurAppToken(string $accessToken): bool
     {
         try {
-            $code = (string) ($this->bitrixApp->appInfo($accessToken)['CODE'] ?? '');
+            $code = BitrixPayload::of($this->bitrixApp->appInfo($accessToken), 'app.info')->stringOrNull('CODE') ?? '';
         } catch (BitrixException) {
             return false;
         }
 
-        return hash_equals((string) config('bitrix.client_id'), $code);
+        return hash_equals($this->configText('bitrix.client_id'), $code);
     }
 
     private function isOurPortal(mixed $domain): bool
     {
-        return is_string($domain) && $domain !== '' && hash_equals((string) config('bitrix.portal'), $domain);
+        return is_string($domain) && $domain !== '' && hash_equals($this->configText('bitrix.portal'), $domain);
+    }
+
+    /** A setting that may be unset: then it matches nothing. */
+    private function configText(string $key): string
+    {
+        $value = config($key);
+
+        return is_string($value) ? $value : '';
     }
 }

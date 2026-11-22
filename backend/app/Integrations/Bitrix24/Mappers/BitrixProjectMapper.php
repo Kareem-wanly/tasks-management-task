@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Integrations\Bitrix24\Mappers;
 
 use App\Enums\ProjectMemberRole;
+use App\Integrations\Bitrix24\BitrixPayload;
+use Carbon\CarbonImmutable;
 
 /**
  * Turns a Bitrix24 workgroup (socialnetwork.api.workgroup.list, camelCase
@@ -29,26 +31,28 @@ final class BitrixProjectMapper
      * state comes from Bitrix, see isClosed().
      *
      * @param  array<string, mixed>  $group
-     * @return array<string, mixed>
+     * @return array{bitrix_group_id: int, title: string, description: string|null, start_date: string|null, due_date: string|null}
      */
     public function attributes(array $group): array
     {
-        $name = trim((string) ($group['name'] ?? ''));
-        $description = trim((string) ($group['description'] ?? ''));
+        $row = BitrixPayload::of($group, 'socialnetwork.api.workgroup.list');
+        $bitrixId = $row->int('id');
+        $name = trim($row->stringOrNull('name') ?? '');
+        $description = trim($row->stringOrNull('description') ?? '');
 
         return [
-            'bitrix_group_id' => (int) $group['id'],
-            'title' => $name !== '' ? $name : "Bitrix group {$group['id']}",
+            'bitrix_group_id' => $bitrixId,
+            'title' => $name !== '' ? $name : "Bitrix group {$bitrixId}",
             'description' => $description !== '' ? $description : null,
-            'start_date' => $this->date($group['projectDateStart'] ?? null),
-            'due_date' => $this->date($group['projectDateFinish'] ?? null),
+            'start_date' => $this->day($row->dateOrNull('projectDateStart')),
+            'due_date' => $this->day($row->dateOrNull('projectDateFinish')),
         ];
     }
 
     /** @param  array<string, mixed>  $group */
     public function ownerBitrixId(array $group): int
     {
-        return (int) ($group['ownerId'] ?? 0);
+        return BitrixPayload::of($group, 'socialnetwork.api.workgroup.list')->intOrNull('ownerId') ?? 0;
     }
 
     /** @param  array<string, mixed>  $group */
@@ -66,10 +70,11 @@ final class BitrixProjectMapper
         $roles = [];
 
         foreach ($members as $member) {
-            $role = self::ROLES[$member['ROLE'] ?? ''] ?? null;
+            $row = BitrixPayload::of($member, 'sonet_group.user.get');
+            $role = self::ROLES[$row->stringOrNull('ROLE') ?? ''] ?? null;
 
             if ($role !== null) {
-                $roles[(int) $member['USER_ID']] = $role;
+                $roles[$row->int('USER_ID')] = $role;
             }
         }
 
@@ -82,10 +87,8 @@ final class BitrixProjectMapper
      * 2026-11-14T21:00:00+00:00. Rounding to the nearest midnight gives the
      * day back for any timezone between -12:00 and +12:00.
      */
-    private function date(mixed $value): ?string
+    private function day(?CarbonImmutable $midnight): ?string
     {
-        return is_string($value) && $value !== ''
-            ? \Illuminate\Support\Facades\Date::parse($value)->utc()->addHours(12)->toDateString()
-            : null;
+        return $midnight?->utc()->addHours(12)->toDateString();
     }
 }

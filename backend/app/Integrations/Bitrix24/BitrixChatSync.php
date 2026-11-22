@@ -8,7 +8,6 @@ use App\Models\Task;
 use App\Models\TaskChatMessage;
 use App\Repositories\Contracts\TaskChatMessageRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
-use Carbon\CarbonImmutable;
 
 /**
  * Step 4.7: makes our copy of a task's chat match Bitrix's
@@ -18,6 +17,8 @@ use Carbon\CarbonImmutable;
  */
 final readonly class BitrixChatSync
 {
+    private const SOURCE = 'im.dialog.messages.get';
+
     public function __construct(
         private TaskChatMessageRepositoryInterface $messages,
         private UserRepositoryInterface $users,
@@ -31,22 +32,26 @@ final readonly class BitrixChatSync
      */
     public function sync(Task $task, array $rows, array $files, bool $complete): void
     {
-        $rows = array_values(array_filter($rows, fn (array $row): bool => ! $this->isDeleted($row)));
+        $rows = array_values(array_filter(
+            array_map(fn (array $row): BitrixPayload => BitrixPayload::of($row, self::SOURCE), $rows),
+            fn (BitrixPayload $row): bool => ! $row->equals('params.IS_DELETED', 'Y'),
+        ));
         // Bitrix pages newest first; saved oldest first, so messages of the same second keep their order.
-        usort($rows, fn (array $a, array $b): int => (int) $a['id'] <=> (int) $b['id']);
-        $ids = array_map(fn (array $row): int => (int) $row['id'], $rows);
+        usort($rows, fn (BitrixPayload $a, BitrixPayload $b): int => $a->int('id') <=> $b->int('id'));
+        $ids = array_map(fn (BitrixPayload $row): int => $row->int('id'), $rows);
         $from = $complete || $ids === [] ? null : min($ids);
 
         $ours = $this->messages->bitrixMessages($task, $from);
-        $authors = $this->users->idsByBitrixIds(array_map(fn (array $row): int => (int) ($row['author_id'] ?? 0), $rows));
+        $authors = $this->users->idsByBitrixIds(array_map(fn (BitrixPayload $row): int => $row->intOrNull('author_id') ?? 0, $rows));
         $filesById = [];
         foreach ($files as $file) {
-            $filesById[(int) ($file['id'] ?? 0)] = $file;
+            $file = BitrixPayload::of($file, self::SOURCE);
+            $filesById[$file->intOrNull('id') ?? 0] = $file;
         }
 
         foreach ($rows as $row) {
-            $bitrixId = (int) $row['id'];
-            $authorBitrixId = (int) ($row['author_id'] ?? 0);
+            $bitrixId = $row->int('id');
+            $authorBitrixId = $row->intOrNull('author_id') ?? 0;
 
             $message = $ours->get($bitrixId) ?? new TaskChatMessage(['task_id' => $task->id, 'bitrix_message_id' => $bitrixId]);
             $message->fill([
@@ -56,7 +61,7 @@ final readonly class BitrixChatSync
                 'files' => $this->files($row, $filesById),
             ]);
             // Bitrix's own time, so the chat reads the same in both places.
-            $message->created_at = $this->time($row['date'] ?? null) ?? $message->created_at ?? now();
+            $message->created_at = $row->localDateOrNull('date') ?? $message->created_at ?? now();
             $message->updated_at ??= $message->created_at;
 
             if (! $message->exists || $message->isDirty()) {
@@ -70,25 +75,17 @@ final readonly class BitrixChatSync
         }
     }
 
-    /** @param  array<string, mixed>  $row */
-    private function isDeleted(array $row): bool
+    /** The text, plus the blocks Bitrix attaches to system lines (e.g. a result's summary). */
+    private function text(BitrixPayload $row): string
     {
-        return ($row['params']['IS_DELETED'] ?? 'N') === 'Y';
-    }
+        $parts = [$row->stringOrNull('text') ?? ''];
 
-    /**
-     * The text, plus the blocks Bitrix attaches to system lines (e.g. a result's summary).
-     *
-     * @param  array<string, mixed>  $row
-     */
-    private function text(array $row): string
-    {
-        $parts = [(string) ($row['text'] ?? '')];
-
-        foreach ((array) ($row['params']['ATTACH'] ?? []) as $attach) {
-            foreach ((array) ($attach['BLOCKS'] ?? []) as $block) {
-                if (is_string($block['MESSAGE'] ?? null) && $block['MESSAGE'] !== '') {
-                    $parts[] = $block['MESSAGE'];
+        foreach ($row->payloads('params.ATTACH') as $attach) {
+            foreach ($attach->payloads('BLOCKS') as $block) {
+                // Blocks other than text (images, links...) have no MESSAGE.
+                $message = $block->toArray()['MESSAGE'] ?? null;
+                if (is_string($message) && $message !== '') {
+                    $parts[] = $message;
                 }
             }
         }
@@ -97,30 +94,24 @@ final readonly class BitrixChatSync
     }
 
     /**
-     * @param  array<int, array<string, mixed>>  $filesById
-     * @param  array<string, mixed>  $row
+     * @param  array<int, BitrixPayload>  $filesById
      * @return list<array{id: int, name: string, size: int, type: string}>|null
      */
-    private function files(array $row, array $filesById): ?array
+    private function files(BitrixPayload $row, array $filesById): ?array
     {
         $list = [];
-        foreach ((array) ($row['params']['FILE_ID'] ?? []) as $fileId) {
-            $file = $filesById[(int) $fileId] ?? null;
-            if ($file !== null) {
+        foreach ($row->ints('params.FILE_ID') as $fileId) {
+            $file = $filesById[$fileId] ?? null;
+            if ($file instanceof BitrixPayload) {
                 $list[] = [
-                    'id' => (int) $fileId,
-                    'name' => (string) ($file['name'] ?? 'file'),
-                    'size' => (int) ($file['size'] ?? 0),
-                    'type' => (string) ($file['type'] ?? 'file'),
+                    'id' => $fileId,
+                    'name' => $file->stringOrNull('name') ?? 'file',
+                    'size' => $file->intOrNull('size') ?? 0,
+                    'type' => $file->stringOrNull('type') ?? 'file',
                 ];
             }
         }
 
         return $list === [] ? null : $list;
-    }
-
-    private function time(mixed $value): ?CarbonImmutable
-    {
-        return is_string($value) && $value !== '' ? \Illuminate\Support\Facades\Date::parse($value)->setTimezone(config('app.timezone')) : null;
     }
 }

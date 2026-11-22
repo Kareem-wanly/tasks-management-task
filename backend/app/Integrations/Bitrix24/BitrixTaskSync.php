@@ -14,11 +14,14 @@ use App\Repositories\Contracts\ProjectRepositoryInterface;
 use App\Repositories\Contracts\TaskLookupRepositoryInterface;
 use App\Repositories\Contracts\TaskRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Creates or updates our copy of a Bitrix24 task. Bitrix wins on conflict.
  * Users and projects must be imported first (steps 2.1 and 2.2).
+ *
+ * @phpstan-type ResolvedTask array{bitrix_task_id: int, title: string, description: string|null, status: string|null, priority: string|null, due_date: CarbonImmutable|null, allow_time_tracking: bool, time_estimate: int, time_spent: int, completed_at: CarbonImmutable|null, created_at?: CarbonImmutable, project_id: int|null, parent_id: int|null, created_by: int, assigned_to: int|null}
  */
 final readonly class BitrixTaskSync
 {
@@ -86,7 +89,7 @@ final readonly class BitrixTaskSync
      * without saving anything.
      *
      * @param  array<string, mixed>  $row
-     * @return array<string, mixed>|null Null when its creator or project isn't imported.
+     * @return ResolvedTask|null Null when its creator or project isn't imported.
      */
     public function resolve(array $row): ?array
     {
@@ -128,8 +131,8 @@ final readonly class BitrixTaskSync
      * goes as "high"). While Bitrix still has that value, keep our key, or
      * every sync would turn urgent back into high.
      *
-     * @param  array<string, mixed>  $attributes
-     * @return array<string, mixed>
+     * @param  ResolvedTask  $attributes
+     * @return ResolvedTask
      */
     private function keepCustomLookups(Task $task, array $attributes): array
     {
@@ -138,8 +141,9 @@ final readonly class BitrixTaskSync
         }
 
         foreach (['status' => TaskStatus::class, 'priority' => TaskPriority::class] as $column => $lookup) {
+            // The stored key (a text column): null when the task has none.
             $current = $task->getRawOriginal($column);
-            if ($current !== null && $current !== $attributes[$column]
+            if (is_string($current) && $current !== $attributes[$column]
                 && $this->lookups->bitrixIdForKey($lookup, $current) === $this->lookups->bitrixIdForKey($lookup, $attributes[$column])) {
                 $attributes[$column] = $current;
             }

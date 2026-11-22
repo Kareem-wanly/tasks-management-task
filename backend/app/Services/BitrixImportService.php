@@ -9,6 +9,7 @@ use App\Enums\TaskMemberRole;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixChecklistSync;
 use App\Integrations\Bitrix24\BitrixDeletionGuard;
+use App\Integrations\Bitrix24\BitrixPayload;
 use App\Integrations\Bitrix24\BitrixProjectSync;
 use App\Integrations\Bitrix24\BitrixRecordFetcher;
 use App\Integrations\Bitrix24\BitrixTaskSync;
@@ -112,12 +113,14 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
     {
         // The full import and the changes sync each keep their own row: changes are
         // asked for since whichever of them last finished.
-        $last = collect([self::TASKS, self::TASKS_CHANGES])
-            ->map(fn (string $entity) => $this->cursors->forEntity($entity)->last_synced_at)
-            ->filter()
-            ->max();
+        $finished = [];
+        foreach ([self::TASKS, self::TASKS_CHANGES] as $entity) {
+            if (($at = $this->cursors->forEntity($entity)->last_synced_at) instanceof CarbonImmutable) {
+                $finished[] = $at;
+            }
+        }
 
-        return $last?->toImmutable();
+        return $finished === [] ? null : max($finished);
     }
 
     public function syncChanges(CarbonImmutable $since): void
@@ -150,15 +153,13 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
         $skipped = 0;
         $seen = [];
 
-        $total = $this->bitrixProjects->eachGroupPage(function (array $page, int $total) use ($cursor, &$skipped, &$seen): void {
-            $groups = $page['workgroups'] ?? [];
-
+        $total = $this->bitrixProjects->eachGroupPage(function (array $groups, int $total) use ($cursor, &$skipped, &$seen): void {
             if ($groups !== []) {
                 $members = $this->bitrixProjects->membersOf($groups);
 
                 foreach ($groups as $group) {
-                    $seen[] = (int) $group['id'];
-                    if (! $this->projectSync->upsert($group, $members[(int) $group['id']]) instanceof Project) {
+                    $seen[] = $groupId = BitrixPayload::of($group, 'socialnetwork.api.workgroup.list')->int('id');
+                    if (! $this->projectSync->upsert($group, $members[$groupId] ?? []) instanceof Project) {
                         $skipped++;
                     }
                 }
@@ -184,16 +185,14 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
         $earlierTotal = 0;
 
         foreach ($this->bitrixTasks->listFilters($changedSince) as $filter) {
-            $earlierTotal += $this->bitrixTasks->eachTaskPage($filter, function (array $page, int $total) use ($delta, $cursor, $earlierTotal, &$skipped, &$seen): void {
-                $rows = $page['tasks'] ?? [];
-
+            $earlierTotal += $this->bitrixTasks->eachTaskPage($filter, function (array $rows, int $total) use ($delta, $cursor, $earlierTotal, &$skipped, &$seen): void {
                 // A full import runs after the users; a delta may meet someone new.
                 if ($delta) {
                     $this->importPeopleOf($rows);
                 }
 
                 foreach ($rows as $row) {
-                    $seen[] = (int) $row['id'];
+                    $seen[] = BitrixPayload::of($row, 'tasks.task.list')->int('id');
                     if (! $this->taskSync->upsert($row) instanceof Task) {
                         $skipped++;
                     }

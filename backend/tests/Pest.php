@@ -11,7 +11,7 @@ pest()->extend(Tests\TestCase::class)
     ->in('Feature');
 
 pest()->extend(Tests\TestCase::class)
-    ->in('Unit/Services', 'Unit/Actions', 'Unit/Jobs');
+    ->in('Unit/Services', 'Unit/Actions', 'Unit/Jobs', 'Unit/Integrations');
 
 /**
  * An unsaved user whose roles are known without the database (the model's

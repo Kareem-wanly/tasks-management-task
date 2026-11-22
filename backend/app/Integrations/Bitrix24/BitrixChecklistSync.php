@@ -30,13 +30,15 @@ final readonly class BitrixChecklistSync
 
         // Every row first, then the links: an item may come before its parent
         // (Bitrix nests items under items too).
+        $rows = array_map(fn (array $row): BitrixPayload => BitrixPayload::of($row, 'task.checklistitem.getlist'), $rows);
+
         foreach ($rows as $row) {
-            $bitrixId = (int) $row['ID'];
+            $bitrixId = $row->int('ID');
             $item = $ours->get($bitrixId) ?? new TaskChecklistItem(['task_id' => $task->id, 'bitrix_item_id' => $bitrixId]);
             $item->fill([
-                'title' => (string) ($row['TITLE'] ?? ''),
-                'is_complete' => ($row['IS_COMPLETE'] ?? 'N') === 'Y',
-                'sort_index' => (int) ($row['SORT_INDEX'] ?? 0),
+                'title' => $row->stringOrNull('TITLE') ?? '',
+                'is_complete' => $row->equals('IS_COMPLETE', 'Y'),
+                'sort_index' => $row->intOrNull('SORT_INDEX') ?? 0,
             ]);
             $byBitrixId[$bitrixId] = $item;
         }
@@ -48,8 +50,8 @@ final readonly class BitrixChecklistSync
         }
 
         foreach ($rows as $row) {
-            $item = $byBitrixId[(int) $row['ID']];
-            $parentBitrixId = (int) ($row['PARENT_ID'] ?? 0);
+            $item = $byBitrixId[$row->int('ID')];
+            $parentBitrixId = $row->intOrNull('PARENT_ID') ?? 0;
             $item->parent_id = $parentBitrixId === 0 ? null : ($byBitrixId[$parentBitrixId] ?? null)?->id;
 
             if ($item->isDirty()) {
