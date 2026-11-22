@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -23,7 +24,7 @@ final class UserResource extends JsonResource
             'effective_permissions' => $this->when(
                 // Only the signed-in user's own account carries what they may do.
                 $request->routeIs('api.v1.me.show', 'api.v1.auth.login', 'api.v1.auth.register'),
-                fn () => method_exists($this->resource, 'permissionNames')
+                fn () => $this->resource instanceof User
                     ? $this->resource->permissionNames()->values()
                     : []
             ),

@@ -93,7 +93,7 @@ final readonly class BitrixEchoGuard
             return true;
         }
 
-        $newest = $ops->first();
+        $newest = $ops->firstOrFail();
         $this->ops->settle($newest, OutboundOpStatus::Conflict);
         $this->logConflict($newest, $record);
 

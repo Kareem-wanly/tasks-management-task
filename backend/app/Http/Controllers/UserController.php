@@ -27,7 +27,7 @@ final class UserController extends Controller
     {
         return response()->json([
             'message' => 'User created successfully',
-            'data' => $this->users->invite($request->user(), $request->toDto()),
+            'data' => $this->users->invite($request->actor(), $request->toDto()),
         ], 201);
     }
 
@@ -40,7 +40,7 @@ final class UserController extends Controller
     {
         return response()->json([
             'message' => 'User details updated successfully',
-            'data' => $this->users->update($request->user(), $user, $request->toDto()),
+            'data' => $this->users->update($request->actor(), $user, $request->toDto()),
         ]);
     }
 
@@ -50,7 +50,7 @@ final class UserController extends Controller
 
         return response()->json([
             'message' => $data->active ? 'User activated' : 'User deactivated',
-            'data' => $this->users->setActive($request->user(), $user, $data),
+            'data' => $this->users->setActive($request->actor(), $user, $data),
         ]);
     }
 

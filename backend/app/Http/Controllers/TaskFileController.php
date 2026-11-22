@@ -28,12 +28,12 @@ final class TaskFileController extends Controller
 
     public function store(UploadTaskFileRequest $request, Task $task): TaskFilesResource
     {
-        return new TaskFilesResource($this->files->upload($request->user(), $task, $request->toDto()));
+        return new TaskFilesResource($this->files->upload($request->actor(), $task, $request->toDto()));
     }
 
     public function destroy(RemoveTaskFileRequest $request, TaskFile $file): TaskFilesResource
     {
-        return new TaskFilesResource($this->files->remove($request->user(), $file));
+        return new TaskFilesResource($this->files->remove($request->actor(), $file));
     }
 
     public function download(DownloadTaskFileRequest $request, TaskFile $file): StreamedResponse

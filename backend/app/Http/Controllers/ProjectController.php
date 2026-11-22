@@ -32,7 +32,7 @@ final class ProjectController extends Controller
 
     public function index(ListProjectsRequest $request): AnonymousResourceCollection
     {
-        return ProjectResource::collection($this->projects->list($request->user(), $request->toDto(), $request->perPage()));
+        return ProjectResource::collection($this->projects->list($request->actor(), $request->toDto(), $request->perPage()));
     }
 
     public function show(ShowProjectRequest $request, Project $project): ProjectResource
@@ -42,19 +42,19 @@ final class ProjectController extends Controller
 
     public function store(StoreProjectRequest $request): JsonResponse
     {
-        return (new ProjectResource($this->projects->create($request->user(), $request->toDto())))
+        return (new ProjectResource($this->projects->create($request->actor(), $request->toDto())))
             ->response()
             ->setStatusCode(201);
     }
 
     public function update(UpdateProjectRequest $request, Project $project): ProjectResource
     {
-        return new ProjectResource($this->projects->update($request->user(), $project, $request->toDto()));
+        return new ProjectResource($this->projects->update($request->actor(), $project, $request->toDto()));
     }
 
     public function destroy(DeleteProjectRequest $request, Project $project): JsonResponse
     {
-        $this->projects->delete($request->user(), $project);
+        $this->projects->delete($request->actor(), $project);
 
         return response()->json(['success' => true, 'message' => 'Project deleted successfully', 'data' => null]);
     }
@@ -70,7 +70,7 @@ final class ProjectController extends Controller
 
     public function addMember(AddProjectMemberRequest $request, Project $project): JsonResponse
     {
-        $project = $this->projects->addMember($request->user(), $project, $request->toDto());
+        $project = $this->projects->addMember($request->actor(), $project, $request->toDto());
 
         return response()->json(['success' => true, 'message' => 'Member added to project successfully', 'data' => $project]);
     }
@@ -80,13 +80,13 @@ final class ProjectController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Member removed from project successfully',
-            'data' => $this->projects->removeMember($request->user(), $project, $user),
+            'data' => $this->projects->removeMember($request->actor(), $project, $user),
         ]);
     }
 
     public function toggleArchive(ToggleProjectArchiveRequest $request, Project $project): JsonResponse
     {
-        $project = $this->projects->toggleArchive($request->user(), $project);
+        $project = $this->projects->toggleArchive($request->actor(), $project);
 
         return response()->json([
             'success' => true,
@@ -102,11 +102,11 @@ final class ProjectController extends Controller
 
     public function allActivities(ListActivitiesRequest $request): JsonResponse
     {
-        return $this->paginated($this->activityLog->forUser($request->user(), $request->perPage()), 'All activity logs retrieved successfully');
+        return $this->paginated($this->activityLog->forUser($request->actor(), $request->perPage()), 'All activity logs retrieved successfully');
     }
 
     public function options(ProjectOptionsRequest $request): JsonResponse
     {
-        return response()->json(['data' => $this->projects->options($request->user(), $request->includeArchived())]);
+        return response()->json(['data' => $this->projects->options($request->actor(), $request->includeArchived())]);
     }
 }

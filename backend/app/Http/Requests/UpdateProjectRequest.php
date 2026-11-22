@@ -6,15 +6,19 @@ namespace App\Http\Requests;
 
 use App\DTOs\Project\UpdateProjectDTO;
 use App\Enums\ProjectStatus;
+use App\Http\Requests\Concerns\ResolvesActor;
+use App\Models\Project;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 final class UpdateProjectRequest extends FormRequest
 {
+    use ResolvesActor;
+
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('project'));
+        return $this->actor()->can('update', $this->routeModel('project', Project::class));
     }
 
     /** @return array<string, mixed> */
@@ -32,9 +36,9 @@ final class UpdateProjectRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function ($validator): void {
-            $project = $this->route('project');
+            $project = $this->routeModel('project', Project::class);
 
-            if ($project && $this->filled('due_date')) {
+            if ($this->filled('due_date')) {
                 $newDueDate = \Illuminate\Support\Facades\Date::parse($this->input('due_date'))->startOfDay();
 
                 $latestUnfinishedTask = $project->tasks()

@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\DTOs\Role\SyncRolePermissionsDTO;
+use App\Http\Requests\Concerns\ResolvesActor;
+use App\Models\Role;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Replaces the permissions a role grants. */
 final class SyncRolePermissionsRequest extends FormRequest
 {
+    use ResolvesActor;
+
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('role'));
+        return $this->actor()->can('update', $this->routeModel('role', Role::class));
     }
 
     /** @return array<string, mixed> */

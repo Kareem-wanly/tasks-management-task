@@ -27,7 +27,7 @@ final class UserRoleController extends Controller
     {
         return response()->json([
             'message' => 'User roles updated successfully',
-            'user' => $this->roles->sync($request->user(), $user, $request->toDto()),
+            'user' => $this->roles->sync($request->actor(), $user, $request->toDto()),
         ]);
     }
 }

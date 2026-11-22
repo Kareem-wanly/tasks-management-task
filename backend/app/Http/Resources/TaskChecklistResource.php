@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\DTOs\Task\TaskChecklistDTO;
+use App\Http\Resources\Concerns\ResolvesViewer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -15,6 +16,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 final class TaskChecklistResource extends JsonResource
 {
+    use ResolvesViewer;
+
     public static $wrap;
 
     /** @return array<string, mixed> */
@@ -24,7 +27,7 @@ final class TaskChecklistResource extends JsonResource
             'data' => TaskChecklistItemResource::collection($this->resource->items),
             'meta' => [
                 'stale' => $this->resource->stale,
-                'can_edit' => $request->user()->can('updateChecklist', $this->resource->task),
+                'can_edit' => $this->viewer($request)->can('updateChecklist', $this->resource->task),
             ],
         ];
     }

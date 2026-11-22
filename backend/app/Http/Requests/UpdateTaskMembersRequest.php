@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\DTOs\Task\TaskMembersDTO;
+use App\Http\Requests\Concerns\ResolvesActor;
+use App\Models\Task;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -13,9 +15,11 @@ use Illuminate\Validation\Rule;
  */
 final class UpdateTaskMembersRequest extends FormRequest
 {
+    use ResolvesActor;
+
     public function authorize(): bool
     {
-        return $this->user()->can('update', $this->route('task'));
+        return $this->actor()->can('update', $this->routeModel('task', Task::class));
     }
 
     /** @return array<string, mixed> */

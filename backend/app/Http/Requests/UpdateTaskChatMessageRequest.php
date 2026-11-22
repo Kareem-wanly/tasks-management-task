@@ -5,16 +5,20 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\DTOs\Task\TaskChatMessageDTO;
+use App\Http\Requests\Concerns\ResolvesActor;
+use App\Models\TaskChatMessage;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Step 4.7: rewords one's own message (see TaskChatMessage::isChangeableBy()). */
 final class UpdateTaskChatMessageRequest extends FormRequest
 {
+    use ResolvesActor;
+
     public function authorize(): bool
     {
-        $message = $this->route('message');
+        $message = $this->routeModel('message', TaskChatMessage::class);
 
-        return $message->isChangeableBy($this->user()) && $this->user()->can('manageChatMessage', [$message->task, $message]);
+        return $message->isChangeableBy($this->actor()) && $this->actor()->can('manageChatMessage', [$message->task, $message]);
     }
 
     /** @return array<string, mixed> */

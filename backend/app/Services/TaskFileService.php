@@ -19,6 +19,7 @@ use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 
 /**
  * Step 4.5: files attached to a task. Bitrix sends no events for
@@ -66,7 +67,7 @@ final readonly class TaskFileService implements TaskFileServiceInterface
         if ($task->isInBitrix()) {
             $this->uploadToBitrix($actor, $task, (string) $upload->getRealPath(), $upload->getClientOriginalName());
         } else {
-            $path = $upload->store(self::FOLDER."/{$task->id}", self::DISK);
+            $path = $upload->store(self::FOLDER."/{$task->id}", self::DISK) ?: throw new RuntimeException('The upload could not be stored.');
             $this->files->createLocal($task, $actor->id, $upload->getClientOriginalName(), (int) $upload->getSize(), $upload->getMimeType(), $path);
         }
 
@@ -92,7 +93,7 @@ final readonly class TaskFileService implements TaskFileServiceInterface
     {
         if (! $file->isInBitrix()) {
             return new FileDownloadDTO($file->name, $file->mime, function () use ($file): void {
-                fpassthru(Storage::disk(self::DISK)->readStream((string) $file->path));
+                fpassthru(Storage::disk(self::DISK)->readStream((string) $file->path) ?? throw new RuntimeException("File {$file->id} is missing from storage."));
             });
         }
 

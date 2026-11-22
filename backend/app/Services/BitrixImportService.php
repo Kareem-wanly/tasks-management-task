@@ -217,7 +217,8 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
             $failed = 0;
             foreach ($this->bitrixChecklists->listMany($this->bitrixIdsOf($chunk)) as $taskId => $rows) {
                 // One task Bitrix refuses (e.g. deleted meanwhile) must not stop the rest, nor wipe its list.
-                $rows === null ? $failed++ : $this->checklistSync->sync($chunk->firstWhere('id', $taskId), $rows);
+                $task = $chunk->firstWhere('id', $taskId);
+                $rows === null || ! $task instanceof Task ? $failed++ : $this->checklistSync->sync($task, $rows);
             }
 
             return $failed;
@@ -230,7 +231,8 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
             $failed = 0;
             foreach ($this->bitrixTime->listMany($this->bitrixIdsOf($chunk)) as $taskId => $rows) {
                 // One task Bitrix refuses must not stop the rest, nor wipe its log.
-                $rows === null ? $failed++ : $this->timeSync->sync($chunk->firstWhere('id', $taskId), $rows);
+                $task = $chunk->firstWhere('id', $taskId);
+                $rows === null || ! $task instanceof Task ? $failed++ : $this->timeSync->sync($task, $rows);
             }
 
             return $failed;

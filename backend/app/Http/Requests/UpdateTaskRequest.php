@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\DTOs\Task\UpdateTaskDTO;
+use App\Http\Requests\Concerns\ResolvesActor;
 use App\Models\Task;
 use App\Rules\ParentTask;
 use App\Rules\ProjectMember;
@@ -14,16 +15,18 @@ use Illuminate\Validation\Validator;
 
 final class UpdateTaskRequest extends FormRequest
 {
+    use ResolvesActor;
+
     /** Changing the assignee also needs the assign permission. */
     public function authorize(): bool
     {
-        $task = $this->route('task');
+        $task = $this->routeModel('task', Task::class);
 
-        if (! $this->user()->can('update', $task)) {
+        if (! $this->actor()->can('update', $task)) {
             return false;
         }
 
-        return ! $this->changesAssignee($task) || $this->user()->can('assign', $task);
+        return ! $this->changesAssignee($task) || $this->actor()->can('assign', $task);
     }
 
     /** @return array<string, mixed> */
@@ -35,8 +38,8 @@ final class UpdateTaskRequest extends FormRequest
             'status' => ['sometimes', Rule::exists('task_statuses', 'key')],
             'priority' => ['sometimes', 'string', Rule::exists('task_priorities', 'key')],
             'due_date' => ['nullable', 'date'],
-            'assigned_to' => ['nullable', 'integer', 'exists:users,id', new ProjectMember($this->route('task')?->project)],
-            'parent_id' => ['nullable', 'integer', new ParentTask($this->user(), $this->route('task'))],
+            'assigned_to' => ['nullable', 'integer', 'exists:users,id', new ProjectMember($this->routeModel('task', Task::class)->project)],
+            'parent_id' => ['nullable', 'integer', new ParentTask($this->actor(), $this->routeModel('task', Task::class))],
             'allow_time_tracking' => ['sometimes', 'boolean'],
             // Planned time in seconds (Bitrix TIME_ESTIMATE).
             'time_estimate' => ['sometimes', 'integer', 'min:0', 'max:3153600000'],
@@ -46,8 +49,8 @@ final class UpdateTaskRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function ($validator): void {
-            $task = $this->route('task');
-            $project = $task?->project;
+            $task = $this->routeModel('task', Task::class);
+            $project = $task->project;
 
             if ($project && $project->due_date && $this->filled('due_date')) {
                 $taskDueDate = \Illuminate\Support\Facades\Date::parse($this->input('due_date'))->startOfDay();

@@ -6,5 +6,5 @@ includes:
 parameters:
     paths:
         - app/
-    # Legacy project: raised per PR, up to 9 (PR10a: 6).
-    level: 6
+    # Legacy project: raised per PR, up to 9 (PR10b: 8).
+    level: 8

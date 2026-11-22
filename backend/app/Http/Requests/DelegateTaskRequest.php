@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\DTOs\Task\DelegateTaskDTO;
+use App\Http\Requests\Concerns\ResolvesActor;
+use App\Models\Task;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -13,9 +15,11 @@ use Illuminate\Validation\Rule;
  */
 final class DelegateTaskRequest extends FormRequest
 {
+    use ResolvesActor;
+
     public function authorize(): bool
     {
-        return $this->user()->can('delegate', $this->route('task'));
+        return $this->actor()->can('delegate', $this->routeModel('task', Task::class));
     }
 
     /** @return array<string, mixed> */
@@ -25,7 +29,7 @@ final class DelegateTaskRequest extends FormRequest
             'user_id' => [
                 'required', 'integer',
                 Rule::exists('users', 'id')->where('is_active', true),
-                Rule::notIn([$this->route('task')->assigned_to]),
+                Rule::notIn([$this->routeModel('task', Task::class)->assigned_to]),
             ],
         ];
     }

@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Step 4.5: a file attached to a task (a Bitrix attachment, or a local file
  * for tasks outside Bitrix).
+ *
+ * @property-read Task $task
  */
 class TaskFile extends Model
 {

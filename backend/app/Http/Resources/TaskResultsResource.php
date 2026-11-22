@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\DTOs\Task\TaskResultsDTO;
+use App\Http\Resources\Concerns\ResolvesViewer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -15,6 +16,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 final class TaskResultsResource extends JsonResource
 {
+    use ResolvesViewer;
+
     public static $wrap;
 
     /** @return array<string, mixed> */
@@ -24,7 +27,7 @@ final class TaskResultsResource extends JsonResource
             'data' => TaskResultResource::collection($this->resource->results),
             'meta' => [
                 'stale' => $this->resource->stale,
-                'can_add' => $request->user()->can('addResult', $this->resource->task),
+                'can_add' => $this->viewer($request)->can('addResult', $this->resource->task),
             ],
         ];
     }

@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\DTOs\Task\UploadTaskFileDTO;
+use App\Http\Requests\Concerns\ResolvesActor;
+use App\Models\Task;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Attaches a file to a task. */
 final class UploadTaskFileRequest extends FormRequest
 {
+    use ResolvesActor;
+
     /**
      * Kilobytes. The file goes to Bitrix base64-encoded in the request
      * body (a third bigger), so larger files make the call too heavy.
@@ -18,7 +22,7 @@ final class UploadTaskFileRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return $this->user()->can('manageFiles', $this->route('task'));
+        return $this->actor()->can('manageFiles', $this->routeModel('task', Task::class));
     }
 
     /** @return array<string, mixed> */

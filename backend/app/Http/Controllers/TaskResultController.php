@@ -27,16 +27,16 @@ final class TaskResultController extends Controller
 
     public function store(StoreTaskResultRequest $request, Task $task): TaskResultsResource
     {
-        return new TaskResultsResource($this->results->add($request->user(), $task, $request->toDto()));
+        return new TaskResultsResource($this->results->add($request->actor(), $task, $request->toDto()));
     }
 
     public function update(UpdateTaskResultRequest $request, TaskResult $result): TaskResultsResource
     {
-        return new TaskResultsResource($this->results->update($request->user(), $result, $request->toDto()));
+        return new TaskResultsResource($this->results->update($request->actor(), $result, $request->toDto()));
     }
 
     public function destroy(DeleteTaskResultRequest $request, TaskResult $result): TaskResultsResource
     {
-        return new TaskResultsResource($this->results->delete($request->user(), $result));
+        return new TaskResultsResource($this->results->delete($request->actor(), $result));
     }
 }

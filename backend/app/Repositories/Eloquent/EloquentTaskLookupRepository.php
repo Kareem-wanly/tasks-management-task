@@ -7,6 +7,7 @@ namespace App\Repositories\Eloquent;
 use App\Models\Task;
 use App\Models\TaskLookup;
 use App\Repositories\Contracts\TaskLookupRepositoryInterface;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 
 final class EloquentTaskLookupRepository implements TaskLookupRepositoryInterface
@@ -19,14 +20,16 @@ final class EloquentTaskLookupRepository implements TaskLookupRepositoryInterfac
 
     public function create(string $model, array $attributes): TaskLookup
     {
-        return $model::create($attributes + ['sort' => $model::max('sort') + 1])->fresh();
+        $lookup = $model::create($attributes + ['sort' => $model::max('sort') + 1]);
+
+        return $lookup->fresh() ?? throw (new ModelNotFoundException)->setModel($model, [$lookup->id]);
     }
 
     public function update(TaskLookup $lookup, array $attributes): TaskLookup
     {
         $lookup->update($attributes);
 
-        return $lookup->fresh();
+        return $lookup->fresh() ?? throw (new ModelNotFoundException)->setModel($lookup::class, [$lookup->id]);
     }
 
     public function delete(TaskLookup $lookup): void
@@ -36,7 +39,7 @@ final class EloquentTaskLookupRepository implements TaskLookupRepositoryInterfac
 
     public function systemBitrixIds(string $model): array
     {
-        return $model::where('is_system', true)->whereNotNull('bitrix_id')->pluck('bitrix_id')->map(fn ($id): int => (int) $id)->all();
+        return array_values($model::where('is_system', true)->whereNotNull('bitrix_id')->pluck('bitrix_id')->map(fn ($id): int => (int) $id)->all());
     }
 
     public function keyForBitrix(string $model, int $bitrixId): ?string

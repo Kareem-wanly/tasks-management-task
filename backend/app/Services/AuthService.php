@@ -55,7 +55,7 @@ final readonly class AuthService implements AuthServiceInterface
     {
         $user = $this->users->findByEmail($credentials->email);
 
-        if (! $user instanceof User || ! Hash::check($credentials->password, $user->password)) {
+        if (! $user instanceof User || $user->password === null || ! Hash::check($credentials->password, $user->password)) {
             throw new InvalidCredentialsException;
         }
 

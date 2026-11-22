@@ -391,12 +391,6 @@ parameters:
 			path: app/Models/RunningTimer.php
 
 		-
-			message: '#^Empty array passed to foreach\.$#'
-			identifier: foreach.emptyArray
-			count: 1
-			path: app/Models/TaskChatMessage.php
-
-		-
 			message: '#^Parameter \#1 \$array \(list\<App\\Models\\TaskChecklistItem\>\) of array_values is already a list, call has no effect\.$#'
 			identifier: arrayValues.list
 			count: 1

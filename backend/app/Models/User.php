@@ -20,6 +20,8 @@ use Laravel\Sanctum\HasApiTokens;
 use function Illuminate\Support\enum_value;
 
 /**
+ * @property int|null $bitrix_user_id
+ * @property CarbonImmutable|null $bitrix_token_expires_at
  * @property CarbonImmutable|null $bitrix_synced_at
  * @property list<int>|null $bitrix_department_ids
  */

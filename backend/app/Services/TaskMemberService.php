@@ -105,9 +105,9 @@ final readonly class TaskMemberService implements TaskMemberServiceInterface
      */
     private function refreshFromBitrix(User $actor, Task $task): void
     {
-        $this->taskSync->refresh($task->bitrix_task_id);
+        $this->taskSync->refresh($task->bitrixId());
         $this->tasks->reload($task);
-        $this->ops->record(BitrixOutboundOp::TASK, $task->bitrix_task_id, 'update', $this->fingerprints->task($task), $actor);
+        $this->ops->record(BitrixOutboundOp::TASK, $task->bitrixId(), 'update', $this->fingerprints->task($task), $actor);
     }
 
     /**
@@ -118,9 +118,9 @@ final readonly class TaskMemberService implements TaskMemberServiceInterface
      */
     private function bitrixIds(array $userIds): array
     {
-        return $this->users->findMany($userIds)
+        return array_values($this->users->findMany($userIds)
             ->map(fn (User $user): int => $user->bitrix_user_id
                 ?? throw BitrixException::cannotSync("{$user->name} is not a Bitrix24 user, so they cannot be added to this task."))
-            ->values()->all();
+            ->all());
     }
 }

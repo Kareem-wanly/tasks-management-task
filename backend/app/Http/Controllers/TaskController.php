@@ -24,7 +24,7 @@ final class TaskController extends Controller
 
     public function index(ListTasksRequest $request): AnonymousResourceCollection
     {
-        return TaskResource::collection($this->tasks->list($request->user(), $request->toDto(), $request->perPage()));
+        return TaskResource::collection($this->tasks->list($request->actor(), $request->toDto(), $request->perPage()));
     }
 
     public function indexByProject(ListProjectTasksRequest $request, Project $project): JsonResponse
@@ -34,33 +34,33 @@ final class TaskController extends Controller
 
     public function show(ShowTaskRequest $request, Task $task): TaskResource
     {
-        return new TaskResource($this->tasks->show($request->user(), $task));
+        return new TaskResource($this->tasks->show($request->actor(), $task));
     }
 
     public function storeByProject(StoreTaskRequest $request, Project $project): TaskResource
     {
-        return new TaskResource($this->tasks->create($request->user(), $project, $request->toDto()));
+        return new TaskResource($this->tasks->create($request->actor(), $project, $request->toDto()));
     }
 
     /** A task without a project: a Bitrix personal task. */
     public function store(StoreTaskRequest $request): TaskResource
     {
-        return new TaskResource($this->tasks->create($request->user(), null, $request->toDto()));
+        return new TaskResource($this->tasks->create($request->actor(), null, $request->toDto()));
     }
 
     public function update(UpdateTaskRequest $request, Task $task): TaskResource
     {
-        return new TaskResource($this->tasks->update($request->user(), $task, $request->toDto()));
+        return new TaskResource($this->tasks->update($request->actor(), $task, $request->toDto()));
     }
 
     public function updateStatus(UpdateTaskStatusRequest $request, Task $task): TaskResource
     {
-        return new TaskResource($this->tasks->changeStatus($request->user(), $task, $request->toDto()));
+        return new TaskResource($this->tasks->changeStatus($request->actor(), $task, $request->toDto()));
     }
 
     public function destroy(DeleteTaskRequest $request, Task $task): JsonResponse
     {
-        $this->tasks->delete($request->user(), $task);
+        $this->tasks->delete($request->actor(), $task);
 
         return response()->json(['message' => 'Task deleted successfully']);
     }

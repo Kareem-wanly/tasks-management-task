@@ -28,21 +28,21 @@ final class TaskChecklistController extends Controller
 
     public function store(StoreChecklistItemRequest $request, Task $task): TaskChecklistResource
     {
-        return new TaskChecklistResource($this->checklists->add($request->user(), $task, $request->toDto()));
+        return new TaskChecklistResource($this->checklists->add($request->actor(), $task, $request->toDto()));
     }
 
     public function update(UpdateChecklistItemRequest $request, TaskChecklistItem $item): TaskChecklistResource
     {
-        return new TaskChecklistResource($this->checklists->update($request->user(), $item, $request->toDto()));
+        return new TaskChecklistResource($this->checklists->update($request->actor(), $item, $request->toDto()));
     }
 
     public function destroy(DeleteChecklistItemRequest $request, TaskChecklistItem $item): TaskChecklistResource
     {
-        return new TaskChecklistResource($this->checklists->delete($request->user(), $item));
+        return new TaskChecklistResource($this->checklists->delete($request->actor(), $item));
     }
 
     public function move(MoveChecklistItemRequest $request, TaskChecklistItem $item): TaskChecklistResource
     {
-        return new TaskChecklistResource($this->checklists->move($request->user(), $item, $request->toDto()));
+        return new TaskChecklistResource($this->checklists->move($request->actor(), $item, $request->toDto()));
     }
 }

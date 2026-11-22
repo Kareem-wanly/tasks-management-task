@@ -50,7 +50,9 @@ final readonly class BitrixAppRepository implements BitrixAppRepositoryInterface
         $departments = $firstPage;
 
         for ($start = self::DEPARTMENTS_PAGE_SIZE; $start < $total; $start += self::DEPARTMENTS_PAGE_SIZE) {
-            $departments = [...$departments, ...($this->bitrix->callAsUser($portal, 'department.get', ['START' => $start])['result'] ?? [])];
+            /** @var list<array<string, mixed>> $page department.get rows */
+            $page = $this->bitrix->callAsUser($portal, 'department.get', ['START' => $start])['result'] ?? [];
+            $departments = [...$departments, ...$page];
         }
 
         return $departments;

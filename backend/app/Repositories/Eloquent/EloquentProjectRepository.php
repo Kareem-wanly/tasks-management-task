@@ -11,6 +11,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Repositories\Contracts\ProjectRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 
 final class EloquentProjectRepository implements ProjectRepositoryInterface
@@ -56,7 +57,7 @@ final class EloquentProjectRepository implements ProjectRepositoryInterface
 
     public function freshWithMembers(Project $project): Project
     {
-        return $project->fresh(self::WITH_MEMBERS);
+        return $project->fresh(self::WITH_MEMBERS) ?? throw (new ModelNotFoundException)->setModel(Project::class, [$project->id]);
     }
 
     /** @return Collection<int, Project> */
@@ -140,7 +141,7 @@ final class EloquentProjectRepository implements ProjectRepositoryInterface
 
     public function allBitrixIds(): array
     {
-        return Project::whereNotNull('bitrix_group_id')->pluck('bitrix_group_id')->map(fn ($id): int => (int) $id)->all();
+        return array_values(Project::whereNotNull('bitrix_group_id')->pluck('bitrix_group_id')->map(fn ($id): int => (int) $id)->all());
     }
 
     public function deleteByBitrixIds(array $bitrixGroupIds): int

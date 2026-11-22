@@ -31,15 +31,15 @@ class ParentTask implements ValidationRule
             return;
         }
 
-        if ($this->task instanceof Task && $this->isOwnSubtree($parent)) {
+        if ($this->task instanceof Task && $this->isOwnSubtree($parent, $this->task)) {
             $fail('A task cannot be a subtask of itself or of its own subtasks.');
         }
     }
 
-    private function isOwnSubtree(Task $parent): bool
+    private function isOwnSubtree(Task $parent, Task $task): bool
     {
         for ($node = $parent, $depth = 0; $node && $depth < self::MAX_DEPTH; $node = $node->parent, $depth++) {
-            if ($node->id === $this->task->id) {
+            if ($node->id === $task->id) {
                 return true;
             }
         }
