@@ -6,12 +6,15 @@ namespace App\Repositories\Eloquent;
 
 use App\Models\Task;
 use App\Models\TaskLookup;
+use App\Repositories\Concerns\ReadsColumns;
 use App\Repositories\Contracts\TaskLookupRepositoryInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 
 final class EloquentTaskLookupRepository implements TaskLookupRepositoryInterface
 {
+    use ReadsColumns;
+
     /** @return Collection<int, TaskLookup> */
     public function ordered(string $model): Collection
     {
@@ -20,7 +23,7 @@ final class EloquentTaskLookupRepository implements TaskLookupRepositoryInterfac
 
     public function create(string $model, array $attributes): TaskLookup
     {
-        $lookup = $model::create($attributes + ['sort' => $model::max('sort') + 1]);
+        $lookup = $model::create($attributes + ['sort' => $this->nextSort($model)]);
 
         return $lookup->fresh() ?? throw (new ModelNotFoundException)->setModel($model, [$lookup->id]);
     }
@@ -39,22 +42,22 @@ final class EloquentTaskLookupRepository implements TaskLookupRepositoryInterfac
 
     public function systemBitrixIds(string $model): array
     {
-        return array_values($model::where('is_system', true)->whereNotNull('bitrix_id')->pluck('bitrix_id')->map(fn ($id): int => (int) $id)->all());
+        return self::toIntList($model::where('is_system', true)->whereNotNull('bitrix_id')->pluck('bitrix_id'));
     }
 
     public function keyForBitrix(string $model, int $bitrixId): ?string
     {
-        return $model::where('bitrix_id', $model::normalizeBitrixId($bitrixId))
+        return self::toStringOrNull($model::where('bitrix_id', $model::normalizeBitrixId($bitrixId))
             ->orderByDesc('is_system')
             ->ordered()
-            ->value('key');
+            ->value('key'));
     }
 
     public function bitrixIdForKey(string $model, ?string $key): ?int
     {
         $bitrixId = $key === null ? null : $model::where('key', $key)->value('bitrix_id');
 
-        return $bitrixId === null ? null : (int) $bitrixId;
+        return self::toIntOrNull($bitrixId);
     }
 
     public function isUsed(TaskLookup $lookup): bool
@@ -69,7 +72,7 @@ final class EloquentTaskLookupRepository implements TaskLookupRepositoryInterfac
 
     public function nextSort(string $model): int
     {
-        return (int) $model::max('sort') + 1;
+        return (self::toIntOrNull($model::max('sort')) ?? 0) + 1;
     }
 
     public function save(TaskLookup $lookup): void

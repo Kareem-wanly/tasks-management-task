@@ -34,9 +34,9 @@ final readonly class SaveTaskLookupDTO
     public static function fromArray(array $data): self
     {
         return new self(
-            key: self::stringOrNull($data['key'] ?? null),
-            name: self::stringOrNull($data['name'] ?? null),
-            color: self::stringOrNull($data['color'] ?? null),
+            key: self::textOrNull($data['key'] ?? null),
+            name: self::textOrNull($data['name'] ?? null),
+            color: self::textOrNull($data['color'] ?? null),
             sort: self::intOrNull($data['sort'] ?? null),
             bitrixId: self::intOrNull($data['bitrix_id'] ?? null),
             isFinal: self::boolOrNull($data['is_final'] ?? null),

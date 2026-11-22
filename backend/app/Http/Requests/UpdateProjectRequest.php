@@ -39,7 +39,7 @@ final class UpdateProjectRequest extends FormRequest
             $project = $this->routeModel('project', Project::class);
 
             if ($this->filled('due_date')) {
-                $newDueDate = \Illuminate\Support\Facades\Date::parse($this->input('due_date'))->startOfDay();
+                $newDueDate = \Illuminate\Support\Facades\Date::parse($this->string('due_date')->toString())->startOfDay();
 
                 $latestUnfinishedTask = $project->tasks()
                     ->unfinished()

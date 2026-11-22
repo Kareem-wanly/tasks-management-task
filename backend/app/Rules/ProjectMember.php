@@ -18,7 +18,7 @@ class ProjectMember implements ValidationRule
             return;
         }
 
-        if (! $this->project->hasMember($value)) {
+        if (! is_numeric($value) || ! $this->project->hasMember((int) $value)) {
             $fail('The assigned user must be a member of the project.');
         }
     }

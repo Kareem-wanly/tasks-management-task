@@ -57,7 +57,7 @@ final class StoreTaskRequest extends FormRequest
             $project = $this->optionalRouteModel('project', Project::class);
 
             if ($project instanceof \Illuminate\Database\Eloquent\Model && $project->due_date && $this->filled('due_date')) {
-                $taskDueDate = \Illuminate\Support\Facades\Date::parse($this->input('due_date'))->startOfDay();
+                $taskDueDate = \Illuminate\Support\Facades\Date::parse($this->string('due_date')->toString())->startOfDay();
                 $projectDueDate = \Illuminate\Support\Facades\Date::parse($project->due_date)->startOfDay();
 
                 if ($taskDueDate->gt($projectDueDate)) {

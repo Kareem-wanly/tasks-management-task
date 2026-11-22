@@ -28,8 +28,8 @@ final readonly class UpdateUserDTO
     public static function fromArray(array $data): self
     {
         return new self(
-            name: self::stringOrNull($data['name'] ?? null),
-            email: self::stringOrNull($data['email'] ?? null),
+            name: self::textOrNull($data['name'] ?? null),
+            email: self::textOrNull($data['email'] ?? null),
             provided: array_keys($data),
         );
     }

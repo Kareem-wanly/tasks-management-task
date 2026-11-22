@@ -12,13 +12,17 @@ use App\Models\Task;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
 use App\Models\User;
+use App\Repositories\Concerns\ReadsColumns;
 use App\Repositories\Contracts\TaskRepositoryInterface;
+use Closure;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 final class EloquentTaskRepository implements TaskRepositoryInterface
 {
+    use ReadsColumns;
+
     private const SORTS = ['created_at', 'due_date', 'priority', 'title', 'status'];
 
     /** @return LengthAwarePaginator<int, Task> */
@@ -99,14 +103,14 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
 
     public function idByBitrixId(int $bitrixTaskId): ?int
     {
-        return Task::where('bitrix_task_id', $bitrixTaskId)->value('id');
+        return self::toIntOrNull(Task::where('bitrix_task_id', $bitrixTaskId)->value('id'));
     }
 
     public function bitrixTaskIdOf(int $taskId): ?int
     {
         $bitrixId = Task::withTrashed()->whereKey($taskId)->value('bitrix_task_id');
 
-        return $bitrixId === null ? null : (int) $bitrixId;
+        return self::toIntOrNull($bitrixId);
     }
 
     public function restore(Task $task): void
@@ -132,7 +136,7 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
         }
 
         foreach ([TaskMemberRole::Accomplice->value => $task->accomplices(), TaskMemberRole::Auditor->value => $task->auditors()] as $role => $relation) {
-            $members[$role] = array_values($relation->whereNotNull('bitrix_user_id')->orderBy('bitrix_user_id')->pluck('bitrix_user_id')->map(fn ($id): int => (int) $id)->all());
+            $members[$role] = self::toIntList($relation->whereNotNull('bitrix_user_id')->orderBy('bitrix_user_id')->pluck('bitrix_user_id'));
         }
 
         return $members;
@@ -140,7 +144,7 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
 
     public function allBitrixIds(): array
     {
-        return array_values(Task::whereNotNull('bitrix_task_id')->pluck('bitrix_task_id')->map(fn ($id): int => (int) $id)->all());
+        return self::toIntList(Task::whereNotNull('bitrix_task_id')->pluck('bitrix_task_id'));
     }
 
     public function deleteByBitrixIds(array $bitrixTaskIds): int
@@ -164,7 +168,7 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
     /**
      * What the task page shows. Subtasks are only those the viewer may see.
      *
-     * @return array<int|string, mixed>
+     * @return array<int|string, string|Closure>
      */
     private function detailRelations(User $viewer): array
     {

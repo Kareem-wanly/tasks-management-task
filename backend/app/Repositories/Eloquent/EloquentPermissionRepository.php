@@ -16,8 +16,10 @@ final class EloquentPermissionRepository implements PermissionRepositoryInterfac
         return Permission::all(['id', 'name', 'display_name', 'description']);
     }
 
+    /** @return Collection<int, int<0, max>> */
     public function idsGrantedByRoles(array $roleIds): Collection
     {
-        return Permission::whereHas('roles', fn ($q) => $q->whereIn('roles.id', $roleIds))->pluck('id');
+        return Permission::whereHas('roles', fn ($q) => $q->whereIn('roles.id', $roleIds))->get(['permissions.id'])
+            ->map(fn (Permission $permission): int => $permission->id);
     }
 }

@@ -9,6 +9,7 @@ use App\Enums\ProjectMemberRole;
 use App\Enums\ProjectStatus;
 use App\Models\Project;
 use App\Models\User;
+use App\Repositories\Concerns\ReadsColumns;
 use App\Repositories\Contracts\ProjectRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -16,6 +17,8 @@ use Illuminate\Support\Collection;
 
 final class EloquentProjectRepository implements ProjectRepositoryInterface
 {
+    use ReadsColumns;
+
     private const SORTS = ['created_at', 'updated_at', 'start_date', 'due_date', 'title'];
 
     private const WITH_MEMBERS = ['owner', 'members'];
@@ -114,14 +117,14 @@ final class EloquentProjectRepository implements ProjectRepositoryInterface
 
     public function idByBitrixGroupId(int $bitrixGroupId): ?int
     {
-        return Project::where('bitrix_group_id', $bitrixGroupId)->value('id');
+        return self::toIntOrNull(Project::where('bitrix_group_id', $bitrixGroupId)->value('id'));
     }
 
     public function bitrixGroupIdOf(int $projectId): ?int
     {
         $groupId = Project::withTrashed()->whereKey($projectId)->value('bitrix_group_id');
 
-        return $groupId === null ? null : (int) $groupId;
+        return self::toIntOrNull($groupId);
     }
 
     public function restore(Project $project): void
@@ -141,7 +144,7 @@ final class EloquentProjectRepository implements ProjectRepositoryInterface
 
     public function allBitrixIds(): array
     {
-        return array_values(Project::whereNotNull('bitrix_group_id')->pluck('bitrix_group_id')->map(fn ($id): int => (int) $id)->all());
+        return self::toIntList(Project::whereNotNull('bitrix_group_id')->pluck('bitrix_group_id'));
     }
 
     public function deleteByBitrixIds(array $bitrixGroupIds): int

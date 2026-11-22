@@ -11,6 +11,7 @@ use App\Http\Requests\ExchangeBitrixLoginCodeRequest;
 use App\Services\Contracts\BitrixAuthServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
 
 /**
@@ -44,7 +45,7 @@ final class BitrixAuthController extends Controller
         // The state lives in the session cookie, so it must be set on the same
         // host Bitrix returns to (the public handler path), not on localhost.
         // Compare hosts only: behind ngrok Laravel sees http while the public URL is https.
-        $public = rtrim((string) config('bitrix.public_url'), '/');
+        $public = rtrim(Config::string('bitrix.public_url'), '/');
         $publicHost = parse_url($public, PHP_URL_HOST);
         $nonce = $request->nonce();
         if ($nonce === null) {
@@ -74,7 +75,7 @@ final class BitrixAuthController extends Controller
             return $this->fail($e->reason);
         }
 
-        return redirect()->away(config('bitrix.frontend_callback_url').'#code='.$code);
+        return redirect()->away(Config::string('bitrix.frontend_callback_url').'#code='.$code);
     }
 
     /** POST /api/auth/bitrix/exchange: the one-time code and this browser's nonce, for an API token. */
@@ -95,14 +96,14 @@ final class BitrixAuthController extends Controller
 
     private function fromOAuth(BitrixSignInRequest $request): string
     {
-        $expected = (string) $request->session()->pull(self::STATE_KEY, '');
+        $expected = $request->session()->pull(self::STATE_KEY);
         $nonce = $request->session()->pull(self::NONCE_KEY);
 
-        if ($expected === '' || ! hash_equals($expected, (string) $request->query('state', '')) || ! $request->isNonce($nonce)) {
+        if (! is_string($expected) || $expected === '' || ! hash_equals($expected, $request->queryText('state')) || ! $request->isNonce($nonce)) {
             throw new BitrixSignInException('invalid_state');
         }
 
-        return $this->auth->signInWithCode((string) $request->query('code', ''), $request->query('domain'), $nonce);
+        return $this->auth->signInWithCode($request->queryText('code'), $request->query('domain'), $nonce);
     }
 
     /**
@@ -119,11 +120,11 @@ final class BitrixAuthController extends Controller
             }
         }
 
-        return redirect()->away(config('bitrix.frontend_app_url').'?'.http_build_query($params));
+        return redirect()->away(Config::string('bitrix.frontend_app_url').'?'.http_build_query($params));
     }
 
     private function fail(string $reason): RedirectResponse
     {
-        return redirect()->away(config('bitrix.frontend_callback_url').'#error='.$reason);
+        return redirect()->away(Config::string('bitrix.frontend_callback_url').'#error='.$reason);
     }
 }

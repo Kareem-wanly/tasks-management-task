@@ -12,7 +12,9 @@ abstract class Controller
     /**
      * The { success, message, data, meta } shape some list endpoints answer with.
      *
-     * @param  LengthAwarePaginator<int, mixed>  $page
+     * @template TItem
+     *
+     * @param  LengthAwarePaginator<int, TItem>  $page
      */
     protected function paginated(LengthAwarePaginator $page, string $message): JsonResponse
     {

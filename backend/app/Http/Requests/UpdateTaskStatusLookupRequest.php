@@ -19,7 +19,7 @@ final class UpdateTaskStatusLookupRequest extends TaskLookupRequest
         return TaskStatus::class;
     }
 
-    /** @return array<string, mixed> */
+    /** @return array<string, list<mixed>> */
     protected function extraRules(): array
     {
         // Bitrix decides which of its statuses close a task.

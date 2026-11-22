@@ -36,11 +36,11 @@ final readonly class CreateTaskDTO
     public static function fromArray(array $data): self
     {
         return new self(
-            title: (string) $data['title'],
-            description: self::stringOrNull($data['description'] ?? null),
-            status: self::stringOrNull($data['status'] ?? null),
-            priority: self::stringOrNull($data['priority'] ?? null),
-            dueDate: self::stringOrNull($data['due_date'] ?? null),
+            title: self::requiredText($data['title']),
+            description: self::textOrNull($data['description'] ?? null),
+            status: self::textOrNull($data['status'] ?? null),
+            priority: self::textOrNull($data['priority'] ?? null),
+            dueDate: self::textOrNull($data['due_date'] ?? null),
             assignedTo: self::intOrNull($data['assigned_to'] ?? null),
             parentId: self::intOrNull($data['parent_id'] ?? null),
             allowTimeTracking: self::boolOrNull($data['allow_time_tracking'] ?? null),

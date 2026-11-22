@@ -17,8 +17,6 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
 use Laravel\Sanctum\HasApiTokens;
 
-use function Illuminate\Support\enum_value;
-
 /**
  * @property int|null $bitrix_user_id
  * @property CarbonImmutable|null $bitrix_token_expires_at
@@ -95,9 +93,7 @@ class User extends Authenticatable implements HasBitrixToken
         return $this->permissionCache ??= $this->roles()
             ->with('permissions:id,name')
             ->get()
-            ->pluck('permissions')
-            ->flatten()
-            ->pluck('name')
+            ->flatMap(fn (Role $role): Collection => $role->permissions->map(fn (Permission $permission): string => $permission->name))
             ->unique()
             ->values();
     }
@@ -124,7 +120,7 @@ class User extends Authenticatable implements HasBitrixToken
 
     public function hasRole(SystemRole|string $name): bool
     {
-        return ($this->roleCache ??= $this->roles()->pluck('name'))->contains(enum_value($name));
+        return ($this->roleCache ??= $this->roles()->get(['roles.name'])->map(fn (Role $role): string => $role->name))->contains($name instanceof SystemRole ? $name->value : $name);
     }
 
     /**
@@ -151,15 +147,14 @@ class User extends Authenticatable implements HasBitrixToken
         return $this->hasMany(Project::class, 'owner_id');
     }
 
-    /** @return Collection<int, int> */
+    /** @return Collection<int, int<0, max>> */
     public function permissionIds(): Collection
     {
         return $this->roles()
             ->with('permissions:id')
             ->get()
-            ->pluck('permissions')
-            ->flatten()
-            ->pluck('id')
+            ->toBase()
+            ->flatMap(fn (Role $role): Collection => $role->permissions->map(fn (Permission $permission): int => $permission->id))
             ->unique()
             ->values();
     }

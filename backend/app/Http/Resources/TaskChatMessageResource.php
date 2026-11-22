@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Http\Resources\Concerns\ResolvesViewer;
+use App\Models\TaskChatMessage;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -23,7 +24,7 @@ final class TaskChatMessageResource extends JsonResource
             'files' => $this->files ?? [],
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
-            'can_edit' => $this->resource->isChangeableBy($this->viewer($request)) && $this->viewer($request)->can('manageChatMessage', [$this->task, $this->resource]),
+            'can_edit' => $this->resource instanceof TaskChatMessage && $this->resource->isChangeableBy($this->viewer($request)) && $this->viewer($request)->can('manageChatMessage', [$this->task, $this->resource]),
         ];
     }
 }
