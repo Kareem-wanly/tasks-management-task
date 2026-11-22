@@ -20,6 +20,8 @@ abstract class BitrixException extends BusinessException
 
     public const CANNOT_SYNC = 'CANNOT_SYNC';
 
+    public const UNEXPECTED_RESPONSE = 'UNEXPECTED_RESPONSE';
+
     final public function __construct(
         public readonly string $errorCode,
         string $message = '',
@@ -34,13 +36,13 @@ abstract class BitrixException extends BusinessException
      * or REST 3.0's {"error": {"code": "...", "message": "..."}}.
      * The body never contains tokens, so it is safe to keep in the message.
      *
-     * @param  array<string, mixed>|null  $body
+     * @param  array<mixed>|null  $body  The decoded JSON body, as Bitrix sent it.
      */
     public static function fromResponse(?array $body, int $status): BitrixRequestFailedException
     {
         $error = $body['error'] ?? '';
-        $code = (string) (is_array($error) ? ($error['code'] ?? '') : $error);
-        $description = (string) (is_array($error) ? ($error['message'] ?? '') : ($body['error_description'] ?? ''));
+        $code = self::scalarText(is_array($error) ? ($error['code'] ?? '') : $error);
+        $description = self::scalarText(is_array($error) ? ($error['message'] ?? '') : ($body['error_description'] ?? ''));
 
         return new BitrixRequestFailedException($code !== '' ? $code : "HTTP_{$status}", $description, $status);
     }
@@ -64,6 +66,12 @@ abstract class BitrixException extends BusinessException
     public static function cannotSync(string $message): BitrixCannotSyncException
     {
         return new BitrixCannotSyncException(self::CANNOT_SYNC, $message);
+    }
+
+    /** Bitrix answered in a shape its API doesn't document; $detail names the field, not its value. */
+    public static function unexpectedResponse(string $source, string $detail): BitrixUnexpectedResponseException
+    {
+        return new BitrixUnexpectedResponseException(self::UNEXPECTED_RESPONSE, "Unexpected Bitrix24 answer from {$source}: {$detail}.");
     }
 
     /** Drop URL query strings and any token-like key=value pair from a message. */
@@ -105,5 +113,11 @@ abstract class BitrixException extends BusinessException
     public function isMissingToken(): bool
     {
         return $this->errorCode === self::NO_TOKEN;
+    }
+
+    /** An error field as text; anything that isn't a plain value counts as missing. */
+    private static function scalarText(mixed $value): string
+    {
+        return is_scalar($value) ? (string) $value : '';
     }
 }

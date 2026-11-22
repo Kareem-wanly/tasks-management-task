@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Integrations\Bitrix24\Repositories;
 
 use App\Exceptions\Bitrix\BitrixException;
+use App\Integrations\Bitrix24\BitrixPayload;
 use App\Integrations\Bitrix24\Contracts\BitrixFileRepositoryInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Models\User;
@@ -22,9 +23,12 @@ final readonly class BitrixFileRepository implements BitrixFileRepositoryInterfa
 
     public function attachedIds(int $bitrixTaskId): array
     {
-        $task = $this->bitrix->callAsService('tasks.task.get', ['taskId' => $bitrixTaskId, 'select' => ['ID', 'UF_TASK_WEBDAV_FILES']])['result']['task'] ?? [];
+        $answer = BitrixPayload::of(
+            $this->bitrix->callAsService('tasks.task.get', ['taskId' => $bitrixTaskId, 'select' => ['ID', 'UF_TASK_WEBDAV_FILES']]),
+            'tasks.task.get',
+        );
 
-        return $this->idsOf($task);
+        return $this->idsOf($answer->payload('result.task'));
     }
 
     public function attachedIdsMany(array $bitrixTaskIds): array
@@ -38,12 +42,12 @@ final readonly class BitrixFileRepository implements BitrixFileRepositoryInterfa
             $commands["t{$taskId}"] = ['tasks.task.get', ['taskId' => $bitrixTaskId, 'select' => ['ID', 'UF_TASK_WEBDAV_FILES']]];
         }
 
-        $batch = $this->bitrix->batchAsService($commands);
+        $batch = BitrixPayload::of($this->bitrix->batchAsService($commands), 'tasks.task.get');
         $attached = [];
         foreach (array_keys($bitrixTaskIds) as $taskId) {
-            $row = $batch['result']["t{$taskId}"]['task'] ?? null;
-            if (is_array($row)) {
-                $attached[$taskId] = $this->idsOf($row);
+            // A task Bitrix refused (e.g. deleted meanwhile) has no answer: leave it out.
+            if ($batch->has("result.t{$taskId}.task")) {
+                $attached[$taskId] = $this->idsOf($batch->payload("result.t{$taskId}.task"));
             }
         }
 
@@ -59,10 +63,10 @@ final readonly class BitrixFileRepository implements BitrixFileRepositoryInterfa
             foreach ($chunk as $id) {
                 $commands["a{$id}"] = ['disk.attachedObject.get', ['id' => $id]];
             }
-            $batch = $this->bitrix->batchAsService($commands);
+            $batch = BitrixPayload::of($this->bitrix->batchAsService($commands), 'disk.attachedObject.get');
             foreach ($chunk as $id) {
-                if (is_array($row = $batch['result']["a{$id}"] ?? null)) {
-                    $attachments[$id] = $row;
+                if ($batch->has("result.a{$id}")) {
+                    $attachments[$id] = $batch->payload("result.a{$id}")->toRow();
                 }
             }
         }
@@ -74,21 +78,23 @@ final readonly class BitrixFileRepository implements BitrixFileRepositoryInterfa
     {
         // Without fileContent Bitrix answers with an upload URL, and the file is
         // then sent there as multipart straight from disk (no base64 copy in memory).
-        $target = $this->bitrix->callAsUser($actor, 'disk.folder.uploadfile', [
+        $target = BitrixPayload::of($this->bitrix->callAsUser($actor, 'disk.folder.uploadfile', [
             'id' => $this->uploadsFolderId($actor),
             'data' => ['NAME' => $name],
             // Same name as a file already there: Bitrix adds " (1)" instead of failing.
             'generateUniqueName' => true,
-        ])['result'] ?? [];
+        ]), 'disk.folder.uploadfile')->payload('result');
 
-        if (empty($target['uploadUrl']) || empty($target['field'])) {
+        $uploadUrl = $target->stringOrNull('uploadUrl');
+        $field = $target->stringOrNull('field');
+        if ($uploadUrl === null || $uploadUrl === '' || $field === null || $field === '') {
             throw BitrixException::cannotSync('Bitrix24 did not give an upload link.');
         }
 
-        $stored = $this->bitrix->uploadFile($target['uploadUrl'], $target['field'], $path, $name, self::UPLOAD_TIMEOUT);
-        $file = $stored['result'] ?? $stored;
+        $stored = BitrixPayload::of($this->bitrix->uploadFile($uploadUrl, $field, $path, $name, self::UPLOAD_TIMEOUT), 'disk upload');
+        $fileId = $stored->intOrNull($stored->has('result') ? 'result.ID' : 'ID');
 
-        return (int) ($file['ID'] ?? 0) ?: throw BitrixException::cannotSync('Bitrix24 did not store the file.');
+        return $fileId ?: throw BitrixException::cannotSync('Bitrix24 did not store the file.');
     }
 
     public function attach(User $actor, int $bitrixTaskId, int $diskFileId): void
@@ -106,37 +112,36 @@ final readonly class BitrixFileRepository implements BitrixFileRepositoryInterfa
 
     public function openAttachment(int $attachedObjectId): StreamInterface
     {
-        $url = $this->bitrix->callAsService('disk.attachedObject.get', ['id' => $attachedObjectId])['result']['DOWNLOAD_URL'] ?? null;
+        $url = BitrixPayload::of($this->bitrix->callAsService('disk.attachedObject.get', ['id' => $attachedObjectId]), 'disk.attachedObject.get')
+            ->stringOrNull('result.DOWNLOAD_URL');
 
-        return $this->bitrix->openDownload(is_string($url) && $url !== '' ? $url : throw BitrixException::cannotSync('Bitrix24 did not return the file.'));
+        return $this->bitrix->openDownload($url !== null && $url !== '' ? $url : throw BitrixException::cannotSync('Bitrix24 did not return the file.'));
     }
 
     /** The employee's "Uploaded files" folder, or their Drive's root when Bitrix hasn't made it yet. */
     private function uploadsFolderId(User $actor): int
     {
-        $storage = $this->bitrix->callAsUser($actor, 'disk.storage.getlist', [
+        $storage = BitrixPayload::of($this->bitrix->callAsUser($actor, 'disk.storage.getlist', [
             'filter' => ['ENTITY_TYPE' => 'user', 'ENTITY_ID' => $actor->bitrix_user_id],
-        ])['result'][0] ?? null;
+        ]), 'disk.storage.getlist')->payload('result.0');
 
-        if (! $storage) {
+        if ($storage->isEmpty()) {
             throw BitrixException::cannotSync('Your Bitrix24 Drive was not found.');
         }
 
-        foreach ($this->bitrix->callAsUser($actor, 'disk.storage.getchildren', ['id' => $storage['ID']])['result'] ?? [] as $child) {
-            if (($child['CODE'] ?? null) === self::UPLOADS_FOLDER_CODE) {
-                return (int) $child['ID'];
+        $children = BitrixPayload::of($this->bitrix->callAsUser($actor, 'disk.storage.getchildren', ['id' => $storage->int('ID')]), 'disk.storage.getchildren');
+        foreach ($children->payloads('result') as $child) {
+            if ($child->stringOrNull('CODE') === self::UPLOADS_FOLDER_CODE) {
+                return $child->int('ID');
             }
         }
 
-        return (int) $storage['ROOT_OBJECT_ID'];
+        return $storage->int('ROOT_OBJECT_ID');
     }
 
-    /**
-     * @param  array<string, mixed>  $task
-     * @return list<int>
-     */
-    private function idsOf(array $task): array
+    /** @return list<int> */
+    private function idsOf(BitrixPayload $task): array
     {
-        return array_values(array_map('intval', (array) ($task['ufTaskWebdavFiles'] ?? [])));
+        return $task->ints('ufTaskWebdavFiles');
     }
 }

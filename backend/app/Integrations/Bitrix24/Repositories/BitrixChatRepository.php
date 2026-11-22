@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Integrations\Bitrix24\Repositories;
 
 use App\Exceptions\Bitrix\BitrixException;
+use App\Integrations\Bitrix24\BitrixPayload;
 use App\Integrations\Bitrix24\Contracts\BitrixChatRepositoryInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Models\User;
@@ -19,10 +20,10 @@ final readonly class BitrixChatRepository implements BitrixChatRepositoryInterfa
 
     public function chatIdOf(int $bitrixTaskId): ?int
     {
-        $chatId = (int) ($this->bitrix->callV3AsService('tasks.task.get', [
+        $chatId = BitrixPayload::of($this->bitrix->callV3AsService('tasks.task.get', [
             'id' => $bitrixTaskId,
             'select' => ['id', 'chatId'],
-        ])['result']['item']['chatId'] ?? 0);
+        ]), 'tasks.task.get')->intOrNull('result.item.chatId') ?? 0;
 
         return $chatId > 0 ? $chatId : null;
     }
@@ -34,16 +35,16 @@ final readonly class BitrixChatRepository implements BitrixChatRepositoryInterfa
         $lastId = null;
 
         do {
-            $page = $this->bitrix->callAsService('im.dialog.messages.get', array_filter([
+            $page = BitrixPayload::of($this->bitrix->callAsService('im.dialog.messages.get', array_filter([
                 'DIALOG_ID' => "chat{$chatId}",
                 'LIMIT' => self::PAGE_SIZE,
                 'LAST_ID' => $lastId,
-            ]))['result'] ?? [];
+            ])), 'im.dialog.messages.get');
 
-            $rows = array_values((array) ($page['messages'] ?? []));
-            $messages = [...$messages, ...$rows];
-            $files = [...$files, ...array_values((array) ($page['files'] ?? []))];
-            $lastId = $rows === [] ? null : min(array_map(fn (array $row): int => (int) $row['id'], $rows));
+            $rows = $page->payloads('result.messages');
+            $messages = [...$messages, ...$page->rows('result.messages')];
+            $files = [...$files, ...$page->rows('result.files')];
+            $lastId = $rows === [] ? null : min(array_map(fn (BitrixPayload $row): int => $row->int('id'), $rows));
         } while ($complete && count($rows) === self::PAGE_SIZE);
 
         return ['messages' => $messages, 'files' => $files];
@@ -51,9 +52,10 @@ final readonly class BitrixChatRepository implements BitrixChatRepositoryInterfa
 
     public function send(User $actor, int $chatId, string $text): int
     {
-        $id = $this->bitrix->callAsUser($actor, 'im.message.add', ['DIALOG_ID' => "chat{$chatId}", 'MESSAGE' => $text])['result'] ?? null;
+        $id = BitrixPayload::of($this->bitrix->callAsUser($actor, 'im.message.add', ['DIALOG_ID' => "chat{$chatId}", 'MESSAGE' => $text]), 'im.message.add')
+            ->intOrNull('result');
 
-        return is_numeric($id) && (int) $id > 0 ? (int) $id : throw BitrixException::cannotSync('Bitrix24 did not accept the message.');
+        return $id !== null && $id > 0 ? $id : throw BitrixException::cannotSync('Bitrix24 did not accept the message.');
     }
 
     public function update(User $actor, int $bitrixMessageId, string $text): void
@@ -68,8 +70,8 @@ final readonly class BitrixChatRepository implements BitrixChatRepositoryInterfa
 
     public function openFile(int $bitrixFileId): StreamInterface
     {
-        $url = $this->bitrix->callAsService('disk.file.get', ['id' => $bitrixFileId])['result']['DOWNLOAD_URL'] ?? null;
+        $url = BitrixPayload::of($this->bitrix->callAsService('disk.file.get', ['id' => $bitrixFileId]), 'disk.file.get')->stringOrNull('result.DOWNLOAD_URL');
 
-        return $this->bitrix->openDownload(is_string($url) && $url !== '' ? $url : throw BitrixException::cannotSync('Bitrix24 did not return the file.'));
+        return $this->bitrix->openDownload($url !== null && $url !== '' ? $url : throw BitrixException::cannotSync('Bitrix24 did not return the file.'));
     }
 }

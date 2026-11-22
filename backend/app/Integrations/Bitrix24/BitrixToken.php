@@ -24,19 +24,20 @@ final readonly class BitrixToken
      * The OAuth "domain" field is oauth.bitrix.info, so the portal domain is
      * taken from client_endpoint (https://<portal>/rest/).
      *
-     * @param  array<string, mixed>  $data
+     * @param  array<mixed>  $data  The decoded OAuth answer.
      */
     public static function fromOAuthResponse(array $data): self
     {
-        $endpoint = $data['client_endpoint'] ?? null;
+        $oauth = BitrixPayload::of($data, 'oauth/token');
+        $endpoint = $oauth->stringOrNull('client_endpoint');
 
         return new self(
-            accessToken: (string) $data['access_token'],
-            refreshToken: (string) $data['refresh_token'],
-            expiresAt: CarbonImmutable::now()->addSeconds((int) ($data['expires_in'] ?? 3600)),
+            accessToken: $oauth->string('access_token'),
+            refreshToken: $oauth->string('refresh_token'),
+            expiresAt: CarbonImmutable::now()->addSeconds($oauth->intOrNull('expires_in') ?? 3600),
             domain: $endpoint ? (parse_url($endpoint, PHP_URL_HOST) ?: null) : null,
-            memberId: $data['member_id'] ?? null,
-            scopes: array_values(array_filter(explode(',', (string) ($data['scope'] ?? '')))),
+            memberId: $oauth->stringOrNull('member_id'),
+            scopes: array_values(array_filter(explode(',', $oauth->stringOrNull('scope') ?? ''))),
         );
     }
 

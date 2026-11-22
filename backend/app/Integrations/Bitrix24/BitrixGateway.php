@@ -8,6 +8,7 @@ use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 use InvalidArgumentException;
@@ -32,7 +33,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
      * permissions and records the change under their name.
      *
      * @param  array<string, mixed>  $params
-     * @return array<string, mixed> The decoded body: result, plus next/total for list methods.
+     * @return array<mixed> The decoded body: result, plus next/total for list methods.
      */
     public function callAsUser(HasBitrixToken $user, string $method, array $params = [], ?int $timeout = null): array
     {
@@ -43,7 +44,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
      * Call a REST 3.0 method (/rest/api/...) as a user, e.g. task results.
      *
      * @param  array<string, mixed>  $params
-     * @return array<string, mixed> The decoded body: result (with item or items).
+     * @return array<mixed> The decoded body: result (with item or items).
      */
     public function callV3AsUser(HasBitrixToken $user, string $method, array $params = []): array
     {
@@ -52,7 +53,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
 
     /**
      * @param  array<string, mixed>  $params
-     * @return array<string, mixed>
+     * @return array<mixed>
      */
     public function callV3AsService(string $method, array $params = []): array
     {
@@ -71,7 +72,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
         }
 
         try {
-            $response = Http::withOptions(['stream' => true])->timeout(config('bitrix.timeout'))->get($url);
+            $response = Http::withOptions(['stream' => true])->timeout(Config::integer('bitrix.timeout'))->get($url);
         } catch (ConnectionException $e) {
             throw BitrixException::unreachable($e->getMessage());
         }
@@ -88,7 +89,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
      * without fileContent), as multipart streamed from disk: the file is
      * never read into memory or base64-encoded.
      *
-     * @return array<string, mixed>
+     * @return array<mixed>
      */
     public function uploadFile(string $uploadUrl, string $field, string $path, string $name, int $timeout): array
     {
@@ -136,7 +137,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
      * Call a method with the service account's token (background sync).
      *
      * @param  array<string, mixed>  $params
-     * @return array<string, mixed>
+     * @return array<mixed>
      */
     public function callAsService(string $method, array $params = []): array
     {
@@ -148,7 +149,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
      * event). The token cannot be refreshed here, so expiry is final.
      *
      * @param  array<string, mixed>  $params
-     * @return array<string, mixed>
+     * @return array<mixed>
      */
     public function callWithToken(string $accessToken, string $method, array $params = []): array
     {
@@ -161,7 +162,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
      * on their own, with the same backoff as single calls.
      *
      * @param  array<string, array{0: string, 1?: array<string, mixed>}>  $commands  key => [method, params]
-     * @return array<string, mixed> result.result, result_error, result_total, result_next, result_time
+     * @return array<mixed> result.result, result_error, result_total, result_next, result_time
      */
     public function batch(HasBitrixToken $holder, array $commands, bool $halt = false): array
     {
@@ -169,13 +170,13 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
         $pending = $commands;
 
         for ($attempt = 0; ; $attempt++) {
-            $batch = $this->callAsUser($holder, 'batch', $this->batchParams($pending, $halt))['result'];
+            $batch = BitrixPayload::of($this->callAsUser($holder, 'batch', $this->batchParams($pending, $halt)), 'batch')->payload('result');
 
             foreach (['result', 'result_total', 'result_next', 'result_time'] as $part) {
-                $merged[$part] = array_replace($merged[$part], (array) ($batch[$part] ?? []));
+                $merged[$part] = array_replace($merged[$part], $batch->payload($part)->toArray());
             }
 
-            $errors = (array) ($batch['result_error'] ?? []);
+            $errors = $batch->payload('result_error')->toArray();
             $limited = array_filter($errors, fn ($error): bool => BitrixException::fromResponse(is_array($error) ? $error : null, 200)->isRetryable());
             $merged['result_error'] = array_replace($merged['result_error'], array_diff_key($errors, $limited));
 
@@ -194,7 +195,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
      * Run a batch with the service account's token (background sync).
      *
      * @param  array<string, array{0: string, 1?: array<string, mixed>}>  $commands
-     * @return array<string, mixed>
+     * @return array<mixed>
      */
     public function batchAsService(array $commands, bool $halt = false): array
     {
@@ -211,9 +212,9 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
      */
     public function eachPageAsService(string $method, array $params, callable $onPage): int
     {
-        $first = $this->callAsService($method, [...$params, 'start' => 0]);
-        $total = (int) ($first['total'] ?? 0);
-        $onPage($first['result'] ?? [], $total);
+        $first = BitrixPayload::of($this->callAsService($method, [...$params, 'start' => 0]), $method);
+        $total = $first->intOrNull('total') ?? 0;
+        $onPage($first->payload('result')->toArray(), $total);
 
         $starts = [];
         for ($start = self::PAGE_SIZE; $start < $total; $start += self::PAGE_SIZE) {
@@ -226,15 +227,12 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
                 $commands["page_{$start}"] = [$method, [...$params, 'start' => $start]];
             }
 
-            $batch = $this->batchAsService($commands);
-
+            $batch = BitrixPayload::of($this->batchAsService($commands), 'batch');
             // A failed page would leave rows missing; fail so the caller can re-run.
-            if (! empty($batch['result_error'])) {
-                throw BitrixException::fromResponse(reset($batch['result_error']), 200);
-            }
+            $batch->failOnBatchError();
 
             foreach ($chunk as $start) {
-                $onPage($batch['result']["page_{$start}"] ?? [], $total);
+                $onPage($batch->payload("result.page_{$start}")->toArray(), $total);
             }
         }
 
@@ -243,7 +241,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
 
     /**
      * @param  array<string, mixed>  $params
-     * @return array<string, mixed>
+     * @return array<mixed>
      */
     private function callWithRefresh(HasBitrixToken $user, string $method, array $params, ?int $timeout, string $path): array
     {
@@ -271,7 +269,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
 
     /**
      * @param  array<string, array{0: string, 1?: array<string, mixed>}>  $commands
-     * @return array<string, mixed>
+     * @return array{halt: int, cmd: array<string, string>}
      */
     private function batchParams(array $commands, bool $halt): array
     {
@@ -290,16 +288,16 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
 
     /**
      * @param  array<string, mixed>  $params
-     * @return array<string, mixed>
+     * @return array<mixed>
      */
     private function send(string $accessToken, string $method, array $params, ?int $timeout = null, string $path = self::REST_PATH): array
     {
-        $url = 'https://'.config('bitrix.portal').$path.($path === self::REST_PATH ? "{$method}.json" : $method);
+        $url = 'https://'.Config::string('bitrix.portal').$path.($path === self::REST_PATH ? "{$method}.json" : $method);
 
         for ($attempt = 0; ; $attempt++) {
             try {
                 $response = Http::acceptJson()
-                    ->timeout($timeout ?? config('bitrix.timeout'))
+                    ->timeout($timeout ?? Config::integer('bitrix.timeout'))
                     ->post($url, [...$params, 'auth' => $accessToken]);
             } catch (ConnectionException $e) {
                 throw BitrixException::unreachable($e->getMessage());

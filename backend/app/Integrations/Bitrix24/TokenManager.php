@@ -10,6 +10,7 @@ use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 
 final class TokenManager
@@ -54,24 +55,28 @@ final class TokenManager
 
     private function refreshUnderLock(HasBitrixToken $holder, BitrixToken $token, bool $force): BitrixToken
     {
-        return Cache::lock($holder->bitrixTokenLockKey(), self::LOCK_SECONDS)
-            ->block(self::LOCK_SECONDS, function () use ($holder, $token, $force): BitrixToken {
-                if ($holder instanceof Model && $holder->exists) {
-                    $holder->refresh();
-                }
+        $lock = Cache::lock($holder->bitrixTokenLockKey(), self::LOCK_SECONDS);
+        $lock->block(self::LOCK_SECONDS);
 
-                $current = $holder->bitrixToken() ?? throw BitrixException::missingToken();
+        try {
+            if ($holder instanceof Model && $holder->exists) {
+                $holder->refresh();
+            }
 
-                $refreshedElsewhere = $current->refreshToken !== $token->refreshToken;
-                if ($refreshedElsewhere || (! $force && ! $current->expiresWithin(self::REFRESH_MARGIN_SECONDS))) {
-                    return $current;
-                }
+            $current = $holder->bitrixToken() ?? throw BitrixException::missingToken();
 
-                $fresh = $this->refresh($current);
-                $holder->storeBitrixToken($fresh);
+            $refreshedElsewhere = $current->refreshToken !== $token->refreshToken;
+            if ($refreshedElsewhere || (! $force && ! $current->expiresWithin(self::REFRESH_MARGIN_SECONDS))) {
+                return $current;
+            }
 
-                return $fresh;
-            });
+            $fresh = $this->refresh($current);
+            $holder->storeBitrixToken($fresh);
+
+            return $fresh;
+        } finally {
+            $lock->release();
+        }
     }
 
     /** @param  array<string, mixed>  $params */
@@ -79,8 +84,8 @@ final class TokenManager
     {
         try {
             $response = Http::acceptJson()
-                ->timeout(config('bitrix.timeout'))
-                ->get(rtrim(config('bitrix.oauth_server'), '/').'/oauth/token/', [
+                ->timeout(Config::integer('bitrix.timeout'))
+                ->get(rtrim(Config::string('bitrix.oauth_server'), '/').'/oauth/token/', [
                     'client_id' => config('bitrix.client_id'),
                     'client_secret' => config('bitrix.client_secret'),
                     ...$params,

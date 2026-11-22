@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Integrations\Bitrix24\Repositories;
 
 use App\Exceptions\Bitrix\BitrixException;
+use App\Integrations\Bitrix24\BitrixPayload;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixUserRepositoryInterface;
 use App\Models\User;
@@ -15,12 +16,12 @@ final readonly class BitrixUserRepository implements BitrixUserRepositoryInterfa
 
     public function invite(User $actor, string $email, string $name, int $departmentId): int
     {
-        $bitrixId = (int) ($this->bitrix->callAsUser($actor, 'user.add', [
+        $bitrixId = BitrixPayload::of($this->bitrix->callAsUser($actor, 'user.add', [
             'EMAIL' => $email,
             ...$this->nameFields($name),
             // Bitrix requires a department for an employee; they can be moved there later.
             'UF_DEPARTMENT' => [$departmentId],
-        ])['result'] ?? 0);
+        ]), 'user.add')->intOrNull('result') ?? 0;
 
         return $bitrixId ?: throw BitrixException::cannotSync('Bitrix24 did not return the invited user.');
     }
@@ -45,8 +46,7 @@ final readonly class BitrixUserRepository implements BitrixUserRepositoryInterfa
         // No ACTIVE filter: ACTIVE=true would drop deactivated users, and we
         // need them to block their access here too.
         return $this->bitrix->eachPageAsService('user.get', ['sort' => 'ID', 'order' => 'ASC'], function (array $rows, int $total) use ($onPage): void {
-            /** @var list<array<string, mixed>> $rows user.get answers a list of users */
-            $onPage($rows, $total);
+            $onPage(BitrixPayload::of($rows, 'user.get')->rows(''), $total);
         });
     }
 

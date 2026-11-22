@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Integrations\Bitrix24\Repositories;
 
 use App\Exceptions\Bitrix\BitrixException;
+use App\Integrations\Bitrix24\BitrixPayload;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixTaskRepositoryInterface;
 use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
@@ -58,10 +59,10 @@ final readonly class BitrixTaskRepository implements BitrixTaskRepositoryInterfa
     {
         $fields = [...$this->fields($values), 'GROUP_ID' => $groupId];
 
-        $created = $this->bitrix->callAsUser($actor, 'tasks.task.add', ['fields' => $fields])['result']['task'] ?? [];
-        $id = (int) ($created['id'] ?? 0) ?: throw BitrixException::cannotSync('Bitrix24 did not return the new task.');
+        $created = BitrixPayload::of($this->bitrix->callAsUser($actor, 'tasks.task.add', ['fields' => $fields]), 'tasks.task.add')->payload('result.task');
+        $id = $created->intOrNull('id') ?: throw BitrixException::cannotSync('Bitrix24 did not return the new task.');
 
-        return ['id' => $id, 'status' => (int) ($created['status'] ?? self::STATUS_PENDING)];
+        return ['id' => $id, 'status' => $created->intOrNull('status') ?? self::STATUS_PENDING];
     }
 
     public function update(User $actor, int $bitrixTaskId, array $values): void
@@ -82,8 +83,8 @@ final readonly class BitrixTaskRepository implements BitrixTaskRepositoryInterfa
     public function changeStatus(User $actor, int $bitrixTaskId, int $current, int $target): int
     {
         for ($step = 0; $step < self::MAX_STATUS_STEPS && ($action = $this->nextAction($current, $target)); $step++) {
-            $result = $this->bitrix->callAsUser($actor, "tasks.task.{$action}", ['taskId' => $bitrixTaskId]);
-            $current = (int) ($result['result']['task']['status'] ?? $current);
+            $result = BitrixPayload::of($this->bitrix->callAsUser($actor, "tasks.task.{$action}", ['taskId' => $bitrixTaskId]), "tasks.task.{$action}");
+            $current = $result->intOrNull('result.task.status') ?? $current;
 
             // Completing landed in the creator's review: never approve it in the same go.
             if ($current === self::AWAITING_CONTROL) {
@@ -119,9 +120,8 @@ final readonly class BitrixTaskRepository implements BitrixTaskRepositoryInterfa
 
     public function history(int $bitrixTaskId): array
     {
-        $rows = $this->bitrix->callAsService('tasks.task.history.list', ['taskId' => $bitrixTaskId])['result']['list'] ?? [];
-
-        return is_array($rows) ? array_values($rows) : [];
+        return BitrixPayload::of($this->bitrix->callAsService('tasks.task.history.list', ['taskId' => $bitrixTaskId]), 'tasks.task.history.list')
+            ->rows('result.list');
     }
 
     public function listFilters(?CarbonImmutable $changedSince): array
@@ -144,9 +144,7 @@ final readonly class BitrixTaskRepository implements BitrixTaskRepositoryInterfa
 
     public function fieldDefinitions(): array
     {
-        $fields = $this->bitrix->callAsService('tasks.task.getFields')['result']['fields'] ?? [];
-
-        return is_array($fields) ? $fields : [];
+        return BitrixPayload::of($this->bitrix->callAsService('tasks.task.getFields'), 'tasks.task.getFields')->payload('result.fields')->toRow();
     }
 
     private function nextAction(int $current, int $target): ?string
@@ -184,7 +182,7 @@ final readonly class BitrixTaskRepository implements BitrixTaskRepositoryInterfa
                 // An empty value clears the deadline.
                 'due_date' => $value instanceof CarbonInterface ? $value->toIso8601String() : '',
                 'allow_time_tracking' => $value ? 'Y' : 'N',
-                'time_estimate' => (int) $value,
+                'time_estimate' => is_numeric($value) ? (int) $value : 0,
                 default => $value,
             };
         }

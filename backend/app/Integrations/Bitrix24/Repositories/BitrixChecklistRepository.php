@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24\Repositories;
 
+use App\Integrations\Bitrix24\BitrixPayload;
 use App\Integrations\Bitrix24\Contracts\BitrixChecklistRepositoryInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Models\User;
@@ -14,12 +15,10 @@ final readonly class BitrixChecklistRepository implements BitrixChecklistReposit
 
     public function list(int $bitrixTaskId): array
     {
-        $rows = $this->bitrix->callAsService('task.checklistitem.getlist', [
+        return BitrixPayload::of($this->bitrix->callAsService('task.checklistitem.getlist', [
             'TASKID' => $bitrixTaskId,
             'ORDER' => ['SORT_INDEX' => 'asc'],
-        ])['result'] ?? [];
-
-        return is_array($rows) ? array_values($rows) : [];
+        ]), 'task.checklistitem.getlist')->rows('result');
     }
 
     public function add(User $actor, int $bitrixTaskId, string $title, ?int $bitrixListId): void
@@ -73,14 +72,11 @@ final readonly class BitrixChecklistRepository implements BitrixChecklistReposit
             $commands["task_{$taskId}"] = ['task.checklistitem.getlist', ['TASKID' => $bitrixTaskId, 'ORDER' => ['SORT_INDEX' => 'asc']]];
         }
 
-        $batch = $this->bitrix->batchAsService($commands);
+        $batch = BitrixPayload::of($this->bitrix->batchAsService($commands), 'task.checklistitem.getlist');
 
         $rows = [];
         foreach (array_keys($bitrixTaskIds) as $taskId) {
-            $key = "task_{$taskId}";
-            $rows[$taskId] = isset($batch['result_error'][$key]) || ! isset($batch['result'][$key])
-                ? null
-                : array_values((array) $batch['result'][$key]);
+            $rows[$taskId] = $batch->batchRows("task_{$taskId}");
         }
 
         return $rows;
