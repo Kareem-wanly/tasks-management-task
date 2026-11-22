@@ -15,11 +15,16 @@ use Illuminate\Support\Collection;
 
 interface ProjectServiceInterface
 {
+    /** @return LengthAwarePaginator<int, Project> */
     public function list(User $user, ProjectFiltersDTO $filters, int $perPage): LengthAwarePaginator;
 
     public function show(Project $project): Project;
 
-    /** Forms offer active projects only; list filters ask for archived ones too. */
+    /**
+     * Forms offer active projects only; list filters ask for archived ones too.
+     *
+     * @return Collection<int, Project>
+     */
     public function options(User $user, bool $includeArchived): Collection;
 
     /**
@@ -35,6 +40,7 @@ interface ProjectServiceInterface
     /** Archives an active project, or reopens an archived one. */
     public function toggleArchive(User $actor, Project $project): Project;
 
+    /** @return Collection<int, User> */
     public function members(Project $project): Collection;
 
     public function addMember(User $actor, Project $project, AddProjectMemberDTO $member): Project;

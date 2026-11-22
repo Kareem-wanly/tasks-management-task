@@ -32,6 +32,7 @@ final readonly class RoleService implements RoleServiceInterface
         private ConnectionInterface $database,
     ) {}
 
+    /** @return Collection<int, Role> */
     public function list(): Collection
     {
         return $this->roles->allWithPermissions();

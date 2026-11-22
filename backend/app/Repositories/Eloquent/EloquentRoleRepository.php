@@ -11,6 +11,7 @@ use Illuminate\Support\Collection;
 
 final class EloquentRoleRepository implements RoleRepositoryInterface
 {
+    /** @return Collection<int, Role> */
     public function allWithPermissions(): Collection
     {
         return Role::with('permissions:id,name,description')

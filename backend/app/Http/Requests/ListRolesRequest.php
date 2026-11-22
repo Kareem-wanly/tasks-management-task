@@ -15,6 +15,7 @@ final class ListRolesRequest extends FormRequest
         return $this->user()->can('viewAny', Role::class);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [];

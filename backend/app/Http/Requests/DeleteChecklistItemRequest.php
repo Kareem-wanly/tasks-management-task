@@ -14,6 +14,7 @@ final class DeleteChecklistItemRequest extends FormRequest
         return $this->user()->can('updateChecklist', $this->route('item')->task);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [];

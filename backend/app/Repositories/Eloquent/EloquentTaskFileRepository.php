@@ -11,6 +11,7 @@ use Illuminate\Support\Collection;
 
 final class EloquentTaskFileRepository implements TaskFileRepositoryInterface
 {
+    /** @return Collection<int, TaskFile> */
     public function forTask(Task $task): Collection
     {
         return $task->files()->with(['uploader', 'task'])->latest()->orderByDesc('id')->get();

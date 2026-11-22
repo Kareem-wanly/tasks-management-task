@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
  */
 class Task extends Model
 {
+    /** @use HasFactory<\Database\Factories\TaskFactory> */
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
@@ -46,31 +47,45 @@ class Task extends Model
         return $this->belongsTo(Project::class);
     }
 
+    /**
+     * @return BelongsTo<Task, $this>
+     */
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_id');
     }
 
+    /**
+     * @return HasMany<Task, $this>
+     */
     public function subtasks(): HasMany
     {
         return $this->hasMany(self::class, 'parent_id');
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /** @return BelongsToMany<User, $this, \Illuminate\Database\Eloquent\Relations\Pivot> */
     public function accomplices(): BelongsToMany
     {
         return $this->members(TaskMemberRole::Accomplice);
     }
 
+    /** @return BelongsToMany<User, $this, \Illuminate\Database\Eloquent\Relations\Pivot> */
     public function auditors(): BelongsToMany
     {
         return $this->members(TaskMemberRole::Auditor);
@@ -87,27 +102,43 @@ class Task extends Model
         return $this->hasMany(TaskChecklistItem::class);
     }
 
+    /**
+     * @return HasMany<TaskResult, $this>
+     */
     public function results(): HasMany
     {
         return $this->hasMany(TaskResult::class);
     }
 
+    /**
+     * @return HasMany<TaskFile, $this>
+     */
     public function files(): HasMany
     {
         return $this->hasMany(TaskFile::class);
     }
 
+    /**
+     * @return HasMany<TaskElapsedItem, $this>
+     */
     public function elapsedItems(): HasMany
     {
         return $this->hasMany(TaskElapsedItem::class);
     }
 
-    /** Step 4.7: the task chat (replaced comments). */
+    /**
+     * Step 4.7: the task chat (replaced comments).
+     *
+     * @return HasMany<TaskChatMessage, $this>
+     */
     public function chatMessages(): HasMany
     {
         return $this->hasMany(TaskChatMessage::class);
     }
 
+    /**
+     * @return HasMany<ActivityLog, $this>
+     */
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);
@@ -161,6 +192,7 @@ class Task extends Model
         ];
     }
 
+    /** @return Attribute<bool, never> */
     protected function isOverdue(): Attribute
     {
         return Attribute::make(
@@ -181,11 +213,19 @@ class Task extends Model
         });
     }
 
+    /**
+     * @param  Builder<Task>  $query
+     * @return Builder<Task>
+     */
     protected function scopeFinished(Builder $query): Builder
     {
         return $query->whereIn('status', TaskStatus::finalKeys());
     }
 
+    /**
+     * @param  Builder<Task>  $query
+     * @return Builder<Task>
+     */
     protected function scopeUnfinished(Builder $query): Builder
     {
         return $query->whereNotIn('status', TaskStatus::finalKeys());
@@ -193,6 +233,9 @@ class Task extends Model
 
     /**
      * Query form of isVisibleTo(), for non-admin task lists.
+     *
+     * @param  Builder<Task>  $query
+     * @return Builder<Task>
      */
     protected function scopeVisibleTo(Builder $query, User $user): Builder
     {
@@ -204,12 +247,20 @@ class Task extends Model
         });
     }
 
+    /**
+     * @param  Builder<Task>  $query
+     * @return Builder<Task>
+     */
     protected function scopeOverdue(Builder $query): Builder
     {
         return $query->where('due_date', '<', now())->unfinished();
     }
 
-    /** People in one task_members role; sync() on it leaves the other role alone. */
+    /**
+     * People in one task_members role; sync() on it leaves the other role alone.
+     *
+     * @return BelongsToMany<User, $this, \Illuminate\Database\Eloquent\Relations\Pivot>
+     */
     private function members(TaskMemberRole $role): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'task_members')

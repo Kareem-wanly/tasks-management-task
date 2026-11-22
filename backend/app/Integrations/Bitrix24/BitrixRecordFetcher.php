@@ -27,7 +27,7 @@ final readonly class BitrixRecordFetcher
      * an empty result, not ACCESS_DENIED. An error (e.g. no access) is thrown
      * as a BitrixException, never read as "deleted".
      *
-     * @return array|null Null when the task no longer exists.
+     * @return array<string, mixed>|null Null when the task no longer exists.
      */
     public function task(int $id): ?array
     {
@@ -36,7 +36,9 @@ final readonly class BitrixRecordFetcher
         return is_array($task) && $task !== [] ? $task : null;
     }
 
-    /** @return array|null Null when the group no longer exists. */
+    /**
+     * @return array<string, mixed>|null Null when the group no longer exists.
+     */
     public function group(int $id): ?array
     {
         return $this->bitrix->callAsService('socialnetwork.api.workgroup.list', [
@@ -46,6 +48,7 @@ final readonly class BitrixRecordFetcher
         ])['result']['workgroups'][0] ?? null;
     }
 
+    /** @return list<array<string, mixed>> */
     public function members(int $groupId): array
     {
         return $this->bitrix->callAsService('sonet_group.user.get', ['ID' => $groupId])['result'] ?? [];

@@ -13,7 +13,11 @@ use Illuminate\Support\Collection;
  */
 interface TaskResultRepositoryInterface
 {
-    /** Newest first, with their authors. */
+    /**
+     * Newest first, with their authors.
+     *
+     * @return Collection<int, TaskResult>
+     */
     public function forTask(Task $task): Collection;
 
     /**

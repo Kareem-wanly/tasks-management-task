@@ -14,6 +14,7 @@ final class WatchTaskRequest extends FormRequest
         return $this->user()->can('view', $this->route('task'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [];

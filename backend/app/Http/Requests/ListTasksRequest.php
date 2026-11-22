@@ -19,6 +19,7 @@ final class ListTasksRequest extends FormRequest
         return $this->user()->can('viewAny', Task::class);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

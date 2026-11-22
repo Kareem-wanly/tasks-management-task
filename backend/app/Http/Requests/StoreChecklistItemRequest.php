@@ -16,6 +16,7 @@ final class StoreChecklistItemRequest extends FormRequest
         return $this->user()->can('updateChecklist', $this->route('task'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

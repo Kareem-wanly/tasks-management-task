@@ -18,6 +18,7 @@ final class DelegateTaskRequest extends FormRequest
         return $this->user()->can('delegate', $this->route('task'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

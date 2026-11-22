@@ -17,6 +17,7 @@ final class TimeLogResource extends JsonResource
 {
     public static $wrap;
 
+    /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
         $log = $this->resource;

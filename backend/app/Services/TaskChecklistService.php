@@ -119,7 +119,7 @@ final readonly class TaskChecklistService implements TaskChecklistServiceInterfa
             $this->moveInBitrix($actor, $task, $item, $after);
         } else {
             $siblings = $this->checklists->siblingsOf($item)->all();
-            $position = $after instanceof TaskChecklistItem ? array_search($after->id, array_map(fn ($s) => $s->id, $siblings), true) + 1 : 0;
+            $position = $after instanceof TaskChecklistItem ? array_search($after->id, array_map(fn (TaskChecklistItem $s) => $s->id, $siblings), true) + 1 : 0;
             array_splice($siblings, $position, 0, [$item]);
             $this->database->transaction(fn () => $this->checklists->reorder($siblings));
         }

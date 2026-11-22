@@ -12,6 +12,7 @@ final readonly class PermissionService implements PermissionServiceInterface
 {
     public function __construct(private PermissionRepositoryInterface $permissions) {}
 
+    /** @return Collection<int, \App\Models\Permission> */
     public function list(): Collection
     {
         return $this->permissions->all();

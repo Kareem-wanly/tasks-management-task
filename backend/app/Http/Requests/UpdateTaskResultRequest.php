@@ -17,6 +17,7 @@ final class UpdateTaskResultRequest extends FormRequest
         return $this->user()->can('manageResult', [$result->task, $result]);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return ['text' => ['required', 'string', 'max:10000']];

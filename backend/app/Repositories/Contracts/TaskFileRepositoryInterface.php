@@ -13,7 +13,11 @@ use Illuminate\Support\Collection;
  */
 interface TaskFileRepositoryInterface
 {
-    /** Newest first, with their uploaders. */
+    /**
+     * Newest first, with their uploaders.
+     *
+     * @return Collection<int, TaskFile>
+     */
     public function forTask(Task $task): Collection;
 
     /**

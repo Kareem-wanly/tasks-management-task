@@ -13,6 +13,7 @@ use Illuminate\Support\Collection;
 
 final class EloquentUserRepository implements UserRepositoryInterface
 {
+    /** @return LengthAwarePaginator<int, User> */
     public function paginate(UserFiltersDTO $filters, int $perPage): LengthAwarePaginator
     {
         $query = User::with('roles:id,name,display_name');
@@ -30,6 +31,7 @@ final class EloquentUserRepository implements UserRepositoryInterface
         return $query->orderBy('id', 'desc')->paginate($perPage);
     }
 
+    /** @return Collection<int, User> */
     public function activeOptions(int $limit): Collection
     {
         return User::where('is_active', true)->orderBy('name')->limit($limit)->get(['id', 'name', 'email']);
@@ -71,6 +73,7 @@ final class EloquentUserRepository implements UserRepositoryInterface
         $user->clearPermissionsCache();
     }
 
+    /** @return Collection<int, Role> */
     public function roles(User $user): Collection
     {
         return $user->roles()->get(['roles.id', 'name', 'display_name', 'description']);
@@ -128,6 +131,7 @@ final class EloquentUserRepository implements UserRepositoryInterface
         return $bitrixId === null ? null : (int) $bitrixId;
     }
 
+    /** @return Collection<int, User> */
     public function findMany(array $userIds): Collection
     {
         return User::whereIn('id', $userIds)->get(['id', 'name', 'bitrix_user_id']);

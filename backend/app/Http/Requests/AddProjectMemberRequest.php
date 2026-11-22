@@ -16,6 +16,7 @@ final class AddProjectMemberRequest extends FormRequest
         return $this->user()->can('manageMembers', $this->route('project'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

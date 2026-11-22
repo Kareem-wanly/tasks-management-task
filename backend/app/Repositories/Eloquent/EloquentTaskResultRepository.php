@@ -11,6 +11,7 @@ use Illuminate\Support\Collection;
 
 final class EloquentTaskResultRepository implements TaskResultRepositoryInterface
 {
+    /** @return Collection<int, TaskResult> */
     public function forTask(Task $task): Collection
     {
         return $task->results()->with(['author', 'task'])->latest()->orderByDesc('id')->get();

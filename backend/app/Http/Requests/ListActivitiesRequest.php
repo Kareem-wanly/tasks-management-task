@@ -18,6 +18,7 @@ final class ListActivitiesRequest extends FormRequest
         return $this->user()->can('viewAny', ActivityLog::class);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return $this->paginationRules();

@@ -8,7 +8,11 @@ use Illuminate\Support\Collection;
 
 interface PermissionRepositoryInterface
 {
-    /** Every permission (id, name, display_name, description). */
+    /**
+     * Every permission (id, name, display_name, description).
+     *
+     * @return Collection<int, \App\Models\Permission>
+     */
     public function all(): Collection;
 
     /**

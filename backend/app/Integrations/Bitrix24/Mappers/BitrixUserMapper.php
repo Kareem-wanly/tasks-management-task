@@ -15,6 +15,7 @@ final class BitrixUserMapper
      * Columns Bitrix owns. Name and email are left out: they need lookups
      * (fallbacks, uniqueness) that BitrixUserSync does.
      *
+     * @param  array<string, mixed>  $row
      * @return array<string, mixed>
      */
     public function attributes(array $row): array
@@ -38,11 +39,13 @@ final class BitrixUserMapper
         return $attributes;
     }
 
+    /** @param  array<string, mixed>  $row */
     public function name(array $row): ?string
     {
         return $this->nullIfBlank(trim(($row['NAME'] ?? '').' '.($row['LAST_NAME'] ?? '')));
     }
 
+    /** @param  array<string, mixed>  $row */
     public function email(array $row): ?string
     {
         return $this->nullIfBlank(Str::lower(trim((string) ($row['EMAIL'] ?? ''))));

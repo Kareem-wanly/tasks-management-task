@@ -8,5 +8,6 @@ use Illuminate\Support\Collection;
 
 interface PermissionServiceInterface
 {
+    /** @return Collection<int, \App\Models\Permission> */
     public function list(): Collection;
 }

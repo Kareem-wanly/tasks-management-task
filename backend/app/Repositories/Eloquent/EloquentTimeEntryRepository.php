@@ -13,6 +13,7 @@ use Illuminate\Support\Collection;
 
 final class EloquentTimeEntryRepository implements TimeEntryRepositoryInterface
 {
+    /** @return Collection<int, TaskElapsedItem> */
     public function forTask(Task $task): Collection
     {
         return $task->elapsedItems()->with(['user', 'task'])->latest('created_date')->orderByDesc('id')->get();

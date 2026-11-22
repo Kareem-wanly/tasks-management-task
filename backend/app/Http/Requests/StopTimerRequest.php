@@ -15,6 +15,7 @@ final class StopTimerRequest extends FormRequest
         return $this->user()->can('view', $this->route('task'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return ['comment' => ['nullable', 'string', 'max:2000']];

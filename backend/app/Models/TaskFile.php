@@ -21,6 +21,9 @@ class TaskFile extends Model
         return $this->belongsTo(Task::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function uploader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploaded_by');

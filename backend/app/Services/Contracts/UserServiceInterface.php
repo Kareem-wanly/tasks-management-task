@@ -14,9 +14,14 @@ use Illuminate\Support\Collection;
 
 interface UserServiceInterface
 {
+    /** @return LengthAwarePaginator<int, User> */
     public function list(UserFiltersDTO $filters, int $perPage): LengthAwarePaginator;
 
-    /** Only active employees can be picked as assignees or members. */
+    /**
+     * Only active employees can be picked as assignees or members.
+     *
+     * @return Collection<int, User>
+     */
     public function options(): Collection;
 
     public function show(User $user): User;

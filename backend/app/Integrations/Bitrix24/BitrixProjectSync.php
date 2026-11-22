@@ -25,8 +25,8 @@ final readonly class BitrixProjectSync
     ) {}
 
     /**
-     * @param  array  $group  A workgroup.list row.
-     * @param  array  $members  The sonet_group.user.get result for it.
+     * @param  array<string, mixed>  $group  A workgroup.list row.
+     * @param  list<array<string, mixed>>  $members  The sonet_group.user.get result for it.
      * @return Project|null Null when the owner isn't one of our users.
      */
     public function upsert(array $group, array $members): ?Project

@@ -14,6 +14,7 @@ final class StartTimerRequest extends FormRequest
         return $this->user()->can('logTime', $this->route('task'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [];

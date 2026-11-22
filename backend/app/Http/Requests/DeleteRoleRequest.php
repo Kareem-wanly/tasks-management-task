@@ -14,6 +14,7 @@ final class DeleteRoleRequest extends FormRequest
         return $this->user()->can('delete', $this->route('role'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [];

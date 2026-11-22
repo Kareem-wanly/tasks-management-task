@@ -166,7 +166,12 @@ final readonly class BitrixInstallService implements BitrixInstallServiceInterfa
         }
     }
 
-    /** Every department, trimmed to the fields we keep. */
+    /**
+     * Every department, trimmed to the fields we keep.
+     *
+     * @param  list<array<string, mixed>>  $firstPage
+     * @return list<array<string, mixed>>
+     */
     private function departments(BitrixPortal $portal, array $firstPage, int $total): array
     {
         $departments = $this->bitrixApp->departments($portal, $firstPage, $total);
@@ -181,7 +186,11 @@ final readonly class BitrixInstallService implements BitrixInstallServiceInterfa
         $this->logBatchErrors($this->bitrixApp->bindEvents($portal, self::EVENTS, $handler), 'event.bind');
     }
 
-    /** ERROR_CORE "Handler already binded" is expected on reinstall/update. */
+    /**
+     * ERROR_CORE "Handler already binded" is expected on reinstall/update.
+     *
+     * @param  array<string, mixed>  $batch
+     */
     private function logBatchErrors(array $batch, string $stage): void
     {
         $errors = array_filter((array) ($batch['result_error'] ?? []), fn (array $error): bool => ($error['error'] ?? '') !== 'ERROR_CORE');

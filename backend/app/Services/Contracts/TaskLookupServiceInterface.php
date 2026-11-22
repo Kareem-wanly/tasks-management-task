@@ -10,7 +10,10 @@ use Illuminate\Support\Collection;
 
 interface TaskLookupServiceInterface
 {
-    /** @param  class-string<TaskLookup>  $model */
+    /**
+     * @param  class-string<TaskLookup>  $model
+     * @return Collection<int, TaskLookup>
+     */
     public function list(string $model): Collection;
 
     /**

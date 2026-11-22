@@ -10,6 +10,7 @@ use Illuminate\Support\Collection;
 
 final class EloquentPermissionRepository implements PermissionRepositoryInterface
 {
+    /** @return Collection<int, Permission> */
     public function all(): Collection
     {
         return Permission::all(['id', 'name', 'display_name', 'description']);

@@ -53,6 +53,7 @@ final readonly class ProjectService implements ProjectServiceInterface
         private ConnectionInterface $database,
     ) {}
 
+    /** @return LengthAwarePaginator<int, Project> */
     public function list(User $user, ProjectFiltersDTO $filters, int $perPage): LengthAwarePaginator
     {
         return $this->projects->paginateAccessible($user, $filters, $perPage);
@@ -63,7 +64,11 @@ final readonly class ProjectService implements ProjectServiceInterface
         return $this->projects->loadForDetail($project);
     }
 
-    /** Forms offer active projects only; list filters ask for archived ones too. */
+    /**
+     * Forms offer active projects only; list filters ask for archived ones too.
+     *
+     * @return Collection<int, Project>
+     */
     public function options(User $user, bool $includeArchived): Collection
     {
         return $this->projects->optionsFor($user, $includeArchived, self::OPTIONS_LIMIT);
@@ -124,6 +129,7 @@ final readonly class ProjectService implements ProjectServiceInterface
         return $this->projects->freshWithMembers($project);
     }
 
+    /** @return Collection<int, User> */
     public function members(Project $project): Collection
     {
         return $this->projects->members($project);

@@ -25,6 +25,7 @@ use function Illuminate\Support\enum_value;
  */
 class User extends Authenticatable implements HasBitrixToken
 {
+    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
     /** Permissions that let an account manage people and their access. */
@@ -47,8 +48,10 @@ class User extends Authenticatable implements HasBitrixToken
         'bitrix_refresh_token',
     ];
 
+    /** @var Collection<int, string>|null */
     protected ?Collection $permissionCache = null;
 
+    /** @var Collection<int, string>|null */
     protected ?Collection $roleCache = null;
 
     public function bitrixToken(): ?BitrixToken
@@ -84,6 +87,7 @@ class User extends Authenticatable implements HasBitrixToken
         return "bitrix-token:user:{$this->id}";
     }
 
+    /** @return Collection<int, string> */
     public function permissionNames(): Collection
     {
         return $this->permissionCache ??= $this->roles()
@@ -96,6 +100,9 @@ class User extends Authenticatable implements HasBitrixToken
             ->values();
     }
 
+    /**
+     * @return BelongsToMany<Role, $this, \Illuminate\Database\Eloquent\Relations\Pivot>
+     */
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class)->withTimestamps();
@@ -118,21 +125,31 @@ class User extends Authenticatable implements HasBitrixToken
         return ($this->roleCache ??= $this->roles()->pluck('name'))->contains(enum_value($name));
     }
 
+    /**
+     * @return BelongsToMany<Project, $this, \Illuminate\Database\Eloquent\Relations\Pivot>
+     */
     public function memberProjects(): BelongsToMany
     {
         return $this->belongsToMany(Project::class, 'project_user');
     }
 
+    /**
+     * @return HasMany<Task, $this>
+     */
     public function assignedTasks(): HasMany
     {
         return $this->hasMany(Task::class, 'assigned_to');
     }
 
+    /**
+     * @return HasMany<Project, $this>
+     */
     public function ownedProjects(): HasMany
     {
         return $this->hasMany(Project::class, 'owner_id');
     }
 
+    /** @return Collection<int, int> */
     public function permissionIds(): Collection
     {
         return $this->roles()

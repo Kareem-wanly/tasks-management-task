@@ -15,6 +15,7 @@ final class StoreTaskResultRequest extends FormRequest
         return $this->user()->can('addResult', $this->route('task'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return ['text' => ['required', 'string', 'max:10000']];

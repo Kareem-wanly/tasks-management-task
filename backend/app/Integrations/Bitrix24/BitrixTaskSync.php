@@ -47,6 +47,7 @@ final readonly class BitrixTaskSync
     }
 
     /**
+     * @param  array<string, mixed>  $row
      * @return Task|null Null when its creator or project isn't imported.
      */
     public function upsert(array $row): ?Task
@@ -84,6 +85,7 @@ final readonly class BitrixTaskSync
      * Our columns for a Bitrix task, people and project resolved to our IDs,
      * without saving anything.
      *
+     * @param  array<string, mixed>  $row
      * @return array<string, mixed>|null Null when its creator or project isn't imported.
      */
     public function resolve(array $row): ?array
@@ -168,6 +170,9 @@ final readonly class BitrixTaskSync
     /**
      * Step 4.2. A parent we don't have yet (imported later in the same run)
      * is left empty; the next sync of this task links it.
+     *
+     * @param  array<string, mixed>  $context
+     * @param  array<string, mixed>  $row
      */
     private function parentId(array $row, array $context): ?int
     {

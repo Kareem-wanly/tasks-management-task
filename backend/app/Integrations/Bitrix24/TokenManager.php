@@ -74,6 +74,7 @@ final class TokenManager
             });
     }
 
+    /** @param  array<string, mixed>  $params */
     private function requestToken(array $params): BitrixToken
     {
         try {

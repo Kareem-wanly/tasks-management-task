@@ -20,6 +20,7 @@ final class BitrixEventRequest extends FormRequest
         return resolve(BitrixEventServiceInterface::class)->isFromOurPortal($this->input('auth.application_token'), $this->input('auth.member_id'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

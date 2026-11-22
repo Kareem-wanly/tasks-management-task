@@ -12,11 +12,13 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 final class EloquentActivityLogRepository implements ActivityLogRepositoryInterface
 {
+    /** @return LengthAwarePaginator<int, ActivityLog> */
     public function paginateForProject(Project $project, int $perPage): LengthAwarePaginator
     {
         return ActivityLog::where('project_id', $project->id)->with('user')->latest()->paginate($perPage);
     }
 
+    /** @return LengthAwarePaginator<int, ActivityLog> */
     public function paginateForUser(User $user, bool $onlyTheirProjects, int $perPage): LengthAwarePaginator
     {
         return ActivityLog::with('user')

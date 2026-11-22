@@ -30,6 +30,7 @@ final readonly class BitrixUserSync
      * administrator runs on purpose) and never when it has administrative
      * rights: anyone can put any email on their Bitrix profile.
      *
+     * @param  array<string, mixed>  $row
      * @return User|null Null when a local account with that email exists but may not be linked.
      */
     public function upsert(array $row, bool $linkByEmail = false): ?User
@@ -81,6 +82,7 @@ final readonly class BitrixUserSync
         });
     }
 
+    /** @param  array<string, mixed>  $attributes */
     private function update(User $user, array $attributes, ?string $name, ?string $email): void
     {
         $user->forceFill($attributes);

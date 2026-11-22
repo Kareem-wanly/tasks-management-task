@@ -15,8 +15,10 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface TaskServiceInterface
 {
+    /** @return LengthAwarePaginator<int, Task> */
     public function list(User $viewer, TaskFiltersDTO $filters, int $perPage): LengthAwarePaginator;
 
+    /** @return LengthAwarePaginator<int, Task> */
     public function listForProject(Project $project, int $perPage): LengthAwarePaginator;
 
     public function show(User $viewer, Task $task): Task;

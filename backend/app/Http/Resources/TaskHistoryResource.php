@@ -17,6 +17,7 @@ final class TaskHistoryResource extends JsonResource
 {
     public static $wrap;
 
+    /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
         return [

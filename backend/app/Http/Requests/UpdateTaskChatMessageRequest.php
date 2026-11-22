@@ -17,6 +17,7 @@ final class UpdateTaskChatMessageRequest extends FormRequest
         return $message->isChangeableBy($this->user()) && $this->user()->can('manageChatMessage', [$message->task, $message]);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return ['text' => ['required', 'string', 'max:5000']];

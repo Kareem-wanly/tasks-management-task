@@ -15,6 +15,7 @@ final class StoreRoleRequest extends FormRequest
         return $this->user()->can('create', Role::class);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

@@ -18,11 +18,13 @@ trait HasPagination
         return min(max((int) $this->query('per_page', $default), 1), self::MAX_PER_PAGE);
     }
 
+    /** @return array<string, mixed> */
     protected function paginationRules(): array
     {
         return ['per_page' => ['sometimes', 'integer', 'min:1', 'max:'.self::MAX_PER_PAGE]];
     }
 
+    /** @return array<string, string> */
     protected function paginationMessages(): array
     {
         return [

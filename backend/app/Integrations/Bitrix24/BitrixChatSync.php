@@ -70,12 +70,17 @@ final readonly class BitrixChatSync
         }
     }
 
+    /** @param  array<string, mixed>  $row */
     private function isDeleted(array $row): bool
     {
         return ($row['params']['IS_DELETED'] ?? 'N') === 'Y';
     }
 
-    /** The text, plus the blocks Bitrix attaches to system lines (e.g. a result's summary). */
+    /**
+     * The text, plus the blocks Bitrix attaches to system lines (e.g. a result's summary).
+     *
+     * @param  array<string, mixed>  $row
+     */
     private function text(array $row): string
     {
         $parts = [(string) ($row['text'] ?? '')];
@@ -93,6 +98,7 @@ final readonly class BitrixChatSync
 
     /**
      * @param  array<int, array<string, mixed>>  $filesById
+     * @param  array<string, mixed>  $row
      * @return list<array{id: int, name: string, size: int, type: string}>|null
      */
     private function files(array $row, array $filesById): ?array

@@ -23,6 +23,8 @@ final readonly class BitrixToken
     /**
      * The OAuth "domain" field is oauth.bitrix.info, so the portal domain is
      * taken from client_endpoint (https://<portal>/rest/).
+     *
+     * @param  array<string, mixed>  $data
      */
     public static function fromOAuthResponse(array $data): self
     {
