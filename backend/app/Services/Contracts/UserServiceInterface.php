@@ -40,4 +40,7 @@ interface UserServiceInterface
      * can't sign in, and their open sessions end.
      */
     public function setActive(User $actor, User $user, SetUserActiveDTO $data): User;
+
+    /** A new API (Sanctum) token for the user; returns its plain text. */
+    public function issueApiToken(User $user, string $name): string;
 }

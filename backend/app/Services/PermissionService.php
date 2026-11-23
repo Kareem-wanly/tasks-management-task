@@ -17,4 +17,13 @@ final readonly class PermissionService implements PermissionServiceInterface
     {
         return $this->permissions->all();
     }
+
+    /**
+     * @param  list<int>  $roleIds
+     * @return Collection<int, int<0, max>>
+     */
+    public function idsGrantedByRoles(array $roleIds): Collection
+    {
+        return $this->permissions->idsGrantedByRoles($roleIds);
+    }
 }

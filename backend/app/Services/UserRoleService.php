@@ -9,10 +9,11 @@ use App\Enums\SystemRole;
 use App\Exceptions\User\AdministratorRoleChangeDeniedException;
 use App\Exceptions\User\LastAdministratorException;
 use App\Exceptions\User\RoleAssignmentDeniedException;
+use App\Models\Role;
 use App\Models\User;
-use App\Repositories\Contracts\PermissionRepositoryInterface;
-use App\Repositories\Contracts\RoleRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Services\Contracts\PermissionServiceInterface;
+use App\Services\Contracts\RoleServiceInterface;
 use App\Services\Contracts\UserRoleServiceInterface;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Collection;
@@ -26,12 +27,12 @@ final readonly class UserRoleService implements UserRoleServiceInterface
 {
     public function __construct(
         private UserRepositoryInterface $users,
-        private RoleRepositoryInterface $roles,
-        private PermissionRepositoryInterface $permissions,
+        private RoleServiceInterface $roles,
+        private PermissionServiceInterface $permissions,
         private ConnectionInterface $database,
     ) {}
 
-    /** @return Collection<int, \App\Models\Role> */
+    /** @return Collection<int, Role> */
     public function list(User $user): Collection
     {
         return $this->users->roles($user);
@@ -48,9 +49,9 @@ final readonly class UserRoleService implements UserRoleServiceInterface
         }
 
         return $this->database->transaction(function () use ($actorIsAdmin, $user, $roleIds): User {
-            $adminRole = $this->roles->findByName(SystemRole::Administrator->value);
+            $adminRole = $this->roles->findSystemRole(SystemRole::Administrator);
 
-            if ($adminRole instanceof \App\Models\Role) {
+            if ($adminRole instanceof Role) {
                 $hasAdmin = $this->users->hasRoleId($user, $adminRole->id);
                 $keepsAdmin = in_array($adminRole->id, $roleIds);
 

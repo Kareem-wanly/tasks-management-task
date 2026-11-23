@@ -11,10 +11,11 @@ use App\DTOs\Auth\UpdateProfileDTO;
 use App\Enums\SystemRole;
 use App\Exceptions\Auth\AccountDeactivatedException;
 use App\Exceptions\Auth\InvalidCredentialsException;
+use App\Models\Role;
 use App\Models\User;
-use App\Repositories\Contracts\RoleRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Contracts\AuthServiceInterface;
+use App\Services\Contracts\RoleServiceInterface;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\Hash;
 
@@ -28,7 +29,7 @@ final readonly class AuthService implements AuthServiceInterface
 
     public function __construct(
         private UserRepositoryInterface $users,
-        private RoleRepositoryInterface $roles,
+        private RoleServiceInterface $roles,
         private ConnectionInterface $database,
     ) {}
 
@@ -40,7 +41,7 @@ final readonly class AuthService implements AuthServiceInterface
         $user = $this->database->transaction(function () use ($data): User {
             $user = $this->users->create(['name' => $data->name, 'email' => $data->email, 'password' => $data->password]);
 
-            if (($member = $this->roles->findByName(SystemRole::Member->value)) instanceof \App\Models\Role) {
+            if (($member = $this->roles->findSystemRole(SystemRole::Member)) instanceof Role) {
                 $this->users->attachRole($user, $member->id);
             }
 
