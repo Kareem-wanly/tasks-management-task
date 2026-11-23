@@ -15,9 +15,9 @@ use App\Models\Task;
 use App\Models\User;
 use App\Repositories\Contracts\BitrixOutboundOpRepositoryInterface;
 use App\Repositories\Contracts\TaskRepositoryInterface;
-use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Contracts\BitrixSyncServiceInterface;
 use App\Services\Contracts\TaskMemberServiceInterface;
+use App\Services\Contracts\UserServiceInterface;
 use Illuminate\Database\ConnectionInterface;
 
 /**
@@ -32,7 +32,7 @@ final readonly class TaskMemberService implements TaskMemberServiceInterface
 {
     public function __construct(
         private TaskRepositoryInterface $tasks,
-        private UserRepositoryInterface $users,
+        private UserServiceInterface $users,
         private ConnectionInterface $database,
         private BitrixTaskRepositoryInterface $bitrixTasks,
         private BitrixSyncServiceInterface $bitrixSync,

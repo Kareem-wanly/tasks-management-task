@@ -93,6 +93,18 @@ final readonly class TaskLookupService implements TaskLookupServiceInterface
         ];
     }
 
+    /** @param  class-string<TaskLookup>  $model */
+    public function keyForBitrix(string $model, int $bitrixId): ?string
+    {
+        return $this->lookups->keyForBitrix($model, $bitrixId);
+    }
+
+    /** @param  class-string<TaskLookup>  $model */
+    public function bitrixIdForKey(string $model, ?string $key): ?int
+    {
+        return $this->lookups->bitrixIdForKey($model, $key);
+    }
+
     /**
      * @param  class-string<TaskLookup>  $model
      * @param  array<int|string, string>  $values  Bitrix ID => name

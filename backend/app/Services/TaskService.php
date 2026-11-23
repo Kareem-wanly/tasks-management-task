@@ -20,10 +20,10 @@ use App\Models\TaskPriority;
 use App\Models\TaskStatus;
 use App\Models\User;
 use App\Repositories\Contracts\BitrixOutboundOpRepositoryInterface;
-use App\Repositories\Contracts\TaskLookupRepositoryInterface;
 use App\Repositories\Contracts\TaskRepositoryInterface;
-use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Services\Contracts\TaskLookupServiceInterface;
 use App\Services\Contracts\TaskServiceInterface;
+use App\Services\Contracts\UserServiceInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use LogicException;
 
@@ -36,8 +36,8 @@ final readonly class TaskService implements TaskServiceInterface
 {
     public function __construct(
         private TaskRepositoryInterface $tasks,
-        private UserRepositoryInterface $users,
-        private TaskLookupRepositoryInterface $lookups,
+        private UserServiceInterface $users,
+        private TaskLookupServiceInterface $lookups,
         private BitrixTaskRepositoryInterface $bitrixTasks,
         private BitrixOutboundOpRepositoryInterface $ops,
         private BitrixFingerprint $fingerprints,

@@ -33,4 +33,9 @@ interface ActivityLogServiceInterface
     public function logProjectUpdated(Project $project, ?User $actor): void;
 
     public function logProjectDeleted(Project $project, ?User $actor): void;
+
+    /** Entries written by ProjectService when $actor changes the project's members. */
+    public function logMemberAdded(User $actor, Project $project, User $member): void;
+
+    public function logMemberRemoved(User $actor, Project $project, User $member): void;
 }
