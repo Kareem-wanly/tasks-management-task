@@ -33,12 +33,12 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
-use App\Repositories\Contracts\ProjectRepositoryInterface;
-use App\Repositories\Contracts\TaskRepositoryInterface;
 use App\Services\Contracts\BitrixImportServiceInterface;
+use App\Services\Contracts\ProjectServiceInterface;
 use App\Services\Contracts\TaskChatServiceInterface;
 use App\Services\Contracts\TaskFileServiceInterface;
 use App\Services\Contracts\TaskResultServiceInterface;
+use App\Services\Contracts\TaskServiceInterface;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Database\ConnectionInterface;
@@ -82,8 +82,8 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
         private BitrixTaskMapperInterface $taskMapper,
         private BitrixRecordFetcherInterface $fetch,
         private BitrixDeletionGuardInterface $deletions,
-        private ProjectRepositoryInterface $projects,
-        private TaskRepositoryInterface $tasks,
+        private ProjectServiceInterface $projects,
+        private TaskServiceInterface $tasks,
         private TaskChatServiceInterface $chat,
         private TaskFileServiceInterface $files,
         private TaskResultServiceInterface $results,
@@ -383,10 +383,10 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
             return 0;
         }
 
-        $missing = array_values(array_diff($this->projects->allBitrixIds(), $seen));
+        $missing = array_values(array_diff($this->projects->allBitrixGroupIds(), $seen));
 
         $gone = $this->deletions->confirmedGone($missing, fn (int $id): bool => $this->fetch->group($id) !== null, 'groups');
-        $deleted = $this->projects->deleteByBitrixIds($gone);
+        $deleted = $this->projects->removeAllGoneFromBitrix($gone);
         $this->deletions->recordDeleted('groups', $gone, 'import');
 
         return $deleted;
@@ -409,7 +409,7 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
         $missing = array_values(array_diff($this->tasks->allBitrixIds(), $seen));
 
         $gone = $this->deletions->confirmedGone($missing, fn (int $id): bool => $this->fetch->task($id) !== null, 'tasks');
-        $deleted = $this->tasks->deleteByBitrixIds($gone);
+        $deleted = $this->tasks->removeAllGoneFromBitrix($gone);
         $this->deletions->recordDeleted('tasks', $gone, 'import');
 
         return $deleted;

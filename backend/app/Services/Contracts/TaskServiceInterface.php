@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 interface TaskServiceInterface
 {
@@ -36,4 +37,36 @@ interface TaskServiceInterface
     public function changeStatus(User $actor, Task $task, ChangeTaskStatusDTO $data): Task;
 
     public function delete(User $actor, Task $task): void;
+
+    // --- For the Bitrix24 import and sync: Bitrix is the source, so nothing here goes back to Bitrix.
+
+    public function findByBitrixId(int $bitrixTaskId): ?Task;
+
+    /**
+     * The Bitrix IDs of all our linked tasks.
+     *
+     * @return list<int>
+     */
+    public function allBitrixIds(): array;
+
+    /** How many of our tasks are in Bitrix. */
+    public function countInBitrix(): int;
+
+    /**
+     * Our tasks that are in Bitrix, a chunk at a time.
+     *
+     * @param  callable(Collection<int, Task>): void  $callback
+     */
+    public function chunkInBitrix(int $size, callable $callback): void;
+
+    /** Deletes our copy of a task deleted in Bitrix, here only. */
+    public function removeGoneFromBitrix(Task $task): void;
+
+    /**
+     * Deletes our copies of tasks deleted in Bitrix, here only.
+     *
+     * @param  list<int>  $bitrixTaskIds
+     * @return int How many were deleted.
+     */
+    public function removeAllGoneFromBitrix(array $bitrixTaskIds): int;
 }

@@ -166,6 +166,33 @@ final readonly class ProjectService implements ProjectServiceInterface
         return $this->projects->freshWithMembers($project);
     }
 
+    public function findByBitrixGroupId(int $bitrixGroupId): ?Project
+    {
+        return $this->projects->findByBitrixGroupId($bitrixGroupId);
+    }
+
+    public function idByBitrixGroupId(int $bitrixGroupId): ?int
+    {
+        return $this->projects->idByBitrixGroupId($bitrixGroupId);
+    }
+
+    /** @return list<int> */
+    public function allBitrixGroupIds(): array
+    {
+        return $this->projects->allBitrixIds();
+    }
+
+    public function removeGoneFromBitrix(Project $project): void
+    {
+        $this->projects->delete($project);
+    }
+
+    /** @param  list<int>  $bitrixGroupIds */
+    public function removeAllGoneFromBitrix(array $bitrixGroupIds): int
+    {
+        return $this->projects->deleteByBitrixIds($bitrixGroupIds);
+    }
+
     /** New projects are Bitrix projects; the creator becomes the group owner. */
     private function createInBitrix(User $actor, Project $project): void
     {
