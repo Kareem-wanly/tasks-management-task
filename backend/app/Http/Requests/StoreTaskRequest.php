@@ -43,7 +43,8 @@ final class StoreTaskRequest extends FormRequest
             'status' => ['sometimes', Rule::exists('task_statuses', 'key')],
             'priority' => ['sometimes', 'string', Rule::exists('task_priorities', 'key')],
             'due_date' => ['nullable', 'date'],
-            'assigned_to' => ['nullable', 'integer', 'exists:users,id', new ProjectMember($this->optionalRouteModel('project', Project::class))],
+            // Active users only: a task without a project has no membership check (SEC-2).
+            'assigned_to' => ['nullable', 'integer', Rule::exists('users', 'id')->where('is_active', true), new ProjectMember($this->optionalRouteModel('project', Project::class))],
             'parent_id' => ['nullable', 'integer', new ParentTask($this->actor())],
             'allow_time_tracking' => ['sometimes', 'boolean'],
             // Planned time in seconds (Bitrix TIME_ESTIMATE).
