@@ -44,7 +44,7 @@ class BitrixSubtasksTest extends TestCase
 
         $this->actor = User::factory()->create(['bitrix_user_id' => 5]);
         $this->actor->roles()->attach(Role::where('name', 'Administrator')->first());
-        $this->actor->storeBitrixToken(new BitrixToken('actor-access', 'actor-refresh', CarbonImmutable::now()->addHour()));
+        $this->giveBitrixToken($this->actor, new BitrixToken('actor-access', 'actor-refresh', CarbonImmutable::now()->addHour()));
         $this->useBitrixServiceAccount($this->actor);
 
         $this->project = Project::forceCreate(['title' => 'P', 'status' => 'active', 'owner_id' => $this->actor->id, 'bitrix_group_id' => 3]);
@@ -99,7 +99,7 @@ class BitrixSubtasksTest extends TestCase
     {
         $member = User::factory()->create(['bitrix_user_id' => 7]);
         $member->roles()->attach(Role::where('name', 'Member')->first());
-        $member->storeBitrixToken(new BitrixToken('member-access', 'member-refresh', CarbonImmutable::now()->addHour()));
+        $this->giveBitrixToken($member, new BitrixToken('member-access', 'member-refresh', CarbonImmutable::now()->addHour()));
         $mine = Task::forceCreate(['title' => 'Mine', 'status' => 'todo', 'priority' => 'medium', 'project_id' => null,
             'created_by' => $member->id, 'assigned_to' => $member->id, 'bitrix_task_id' => 60]);
         Sanctum::actingAs($member);

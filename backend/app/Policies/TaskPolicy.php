@@ -10,9 +10,12 @@ use App\Models\TaskChatMessage;
 use App\Models\TaskElapsedItem;
 use App\Models\TaskResult;
 use App\Models\User;
+use App\Repositories\Contracts\TaskRepositoryInterface;
 
 class TaskPolicy
 {
+    public function __construct(private readonly TaskRepositoryInterface $tasks) {}
+
     public function viewAny(User $user): bool
     {
         return $user->hasPermission('tasks.view');
@@ -143,9 +146,18 @@ class TaskPolicy
             || $user->hasPermission('tasks.assign');
     }
 
+    /**
+     * Project members see a project's tasks. As in Bitrix, the people on a
+     * task always see it, in a project or not: its creator, responsible
+     * person, accomplices and auditors. Administrators pass every policy
+     * before this is asked.
+     */
     private function canSee(User $user, Task $task): bool
     {
-        return $task->isVisibleTo($user);
+        return (int) $task->created_by === $user->id
+            || (int) $task->assigned_to === $user->id
+            || ($task->project_id !== null && $task->project && $task->project->hasMember($user))
+            || $this->tasks->hasMember($task, $user);
     }
 
     private function isAssignee(User $user, Task $task): bool

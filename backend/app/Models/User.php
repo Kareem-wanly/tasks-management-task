@@ -67,15 +67,6 @@ class User extends Authenticatable implements HasBitrixToken
         );
     }
 
-    public function storeBitrixToken(BitrixToken $token): void
-    {
-        $this->forceFill([
-            'bitrix_access_token' => $token->accessToken,
-            'bitrix_refresh_token' => $token->refreshToken,
-            'bitrix_token_expires_at' => $token->expiresAt,
-        ])->save();
-    }
-
     /** Signed in with Bitrix24 at least once, so we can act in Bitrix as them. */
     public function isLinkedToBitrix(): bool
     {

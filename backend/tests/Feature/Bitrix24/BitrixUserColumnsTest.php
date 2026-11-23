@@ -63,7 +63,7 @@ class BitrixUserColumnsTest extends TestCase
         ]);
 
         $user = $this->bitrixEmployee();
-        $user->storeBitrixToken(new BitrixToken('user-access', 'user-refresh', CarbonImmutable::now()->addSeconds(10)));
+        $this->giveBitrixToken($user, new BitrixToken('user-access', 'user-refresh', CarbonImmutable::now()->addSeconds(10)));
 
         $row = DB::table('users')->where('id', $user->id)->first();
         $this->assertNotSame('user-access', $row->bitrix_access_token);

@@ -12,6 +12,7 @@ use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\BitrixAppRepositoryInterface;
 use App\Models\BitrixPortal;
 use App\Repositories\Contracts\BitrixPortalRepositoryInterface;
+use App\Repositories\Contracts\BitrixTokenRepositoryInterface;
 use App\Services\Contracts\BitrixInstallServiceInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
@@ -43,6 +44,7 @@ final readonly class BitrixInstallService implements BitrixInstallServiceInterfa
     public function __construct(
         private BitrixAppRepositoryInterface $bitrixApp,
         private BitrixPortalRepositoryInterface $portals,
+        private BitrixTokenRepositoryInterface $tokens,
     ) {}
 
     public function installFromEvent(BitrixInstallDTO $install): void
@@ -121,7 +123,7 @@ final readonly class BitrixInstallService implements BitrixInstallServiceInterfa
             'installed_at' => now(),
         ]);
 
-        $portal->storeBitrixToken(new BitrixToken(
+        $this->tokens->store($portal, new BitrixToken(
             accessToken: (string) $install->accessToken,
             refreshToken: (string) $install->refreshToken,
             expiresAt: CarbonImmutable::now()->addSeconds($install->expiresIn ?: 3600),

@@ -238,8 +238,6 @@ class TaskLookupsTest extends TestCase
                 return new BitrixToken('access', 'refresh', CarbonImmutable::now()->addHour());
             }
 
-            public function storeBitrixToken(BitrixToken $token): void {}
-
             public function bitrixTokenLockKey(): string
             {
                 return 'bitrix-token:test';

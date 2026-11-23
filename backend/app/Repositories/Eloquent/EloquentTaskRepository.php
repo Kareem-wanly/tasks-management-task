@@ -86,6 +86,11 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
         $task->auditors()->detach($userId);
     }
 
+    public function hasMember(Task $task, User $user): bool
+    {
+        return $task->exists && $task->allMembers()->whereKey($user->id)->exists();
+    }
+
     public function find(int $id): ?Task
     {
         return Task::find($id);

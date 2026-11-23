@@ -14,7 +14,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\DB;
 use LogicException;
 
 /**
@@ -95,9 +94,14 @@ class Task extends Model
         return $this->members(TaskMemberRole::Auditor);
     }
 
-    public function hasMember(User $user): bool
+    /**
+     * Everyone on the task_members table (accomplices and auditors).
+     *
+     * @return BelongsToMany<User, $this, \Illuminate\Database\Eloquent\Relations\Pivot>
+     */
+    public function allMembers(): BelongsToMany
     {
-        return $this->exists && DB::table('task_members')->where('task_id', $this->id)->where('user_id', $user->id)->exists();
+        return $this->belongsToMany(User::class, 'task_members');
     }
 
     /** @return HasMany<TaskChecklistItem, $this> */
@@ -179,20 +183,6 @@ class Task extends Model
         return in_array($this->status, TaskStatus::finalKeys(), true);
     }
 
-    /**
-     * Project members see a project's tasks. As in Bitrix, the people on a
-     * task always see it, in a project or not: its creator, responsible
-     * person, accomplices and auditors. Administrators pass every policy
-     * before this is asked.
-     */
-    public function isVisibleTo(User $user): bool
-    {
-        return (int) $this->created_by === $user->id
-            || (int) $this->assigned_to === $user->id
-            || ($this->project_id !== null && $this->project && $this->project->hasMember($user))
-            || $this->hasMember($user);
-    }
-
     protected function casts(): array
     {
         return [
@@ -246,7 +236,7 @@ class Task extends Model
     }
 
     /**
-     * Query form of isVisibleTo(), for non-admin task lists.
+     * Query form of TaskPolicy::canSee(), for non-admin task lists.
      *
      * @param  Builder<Task>  $query
      * @return Builder<Task>
@@ -257,7 +247,7 @@ class Task extends Model
             $q->whereHas('project', fn (Builder $p) => $p->accessibleBy($user))
                 ->orWhere('created_by', $user->id)
                 ->orWhere('assigned_to', $user->id)
-                ->orWhereIn('id', DB::table('task_members')->select('task_id')->where('user_id', $user->id));
+                ->orWhereHas('allMembers', fn (Builder $member) => $member->whereKey($user->id));
         });
     }
 

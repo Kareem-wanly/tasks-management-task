@@ -11,7 +11,7 @@ final class EloquentBitrixPortalRepository implements BitrixPortalRepositoryInte
 {
     public function current(): ?BitrixPortal
     {
-        return BitrixPortal::current();
+        return BitrixPortal::where('domain', config('bitrix.portal'))->first();
     }
 
     public function findByMemberId(string $memberId): ?BitrixPortal

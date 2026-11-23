@@ -44,7 +44,7 @@ class BitrixTaskHistoryTest extends TestCase
 
         $this->actor = User::factory()->create(['bitrix_user_id' => 5, 'name' => 'Rama']);
         $this->actor->roles()->attach(Role::where('name', 'Administrator')->first());
-        $this->actor->storeBitrixToken(new BitrixToken('actor-access', 'actor-refresh', CarbonImmutable::now()->addHour()));
+        $this->giveBitrixToken($this->actor, new BitrixToken('actor-access', 'actor-refresh', CarbonImmutable::now()->addHour()));
         User::factory()->create(['bitrix_user_id' => 6, 'name' => 'Karim']);
         $this->useBitrixServiceAccount($this->actor);
 

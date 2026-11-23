@@ -41,8 +41,6 @@ class ImportBitrixTasksTest extends TestCase
                 return new BitrixToken('service-access', 'service-refresh', CarbonImmutable::now()->addHour());
             }
 
-            public function storeBitrixToken(BitrixToken $token): void {}
-
             public function bitrixTokenLockKey(): string
             {
                 return 'bitrix-token:test';

@@ -135,6 +135,11 @@ arch('only the Bitrix repositories call the gateway')
     ->expect('App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface')
     ->toOnlyBeUsedIn(['App\Integrations\Bitrix24', 'App\Providers', 'App\DTOs\Task\FileDownloadDTO', 'Tests']);
 
+// ARC-5: models describe data (relations, casts, scopes); queries and writes live in repositories.
+arch('models do not use the DB facade')
+    ->expect('App\Models')
+    ->not->toUse('Illuminate\Support\Facades\DB');
+
 arch('integrations are final')
     ->expect('App\Integrations')
     ->classes()

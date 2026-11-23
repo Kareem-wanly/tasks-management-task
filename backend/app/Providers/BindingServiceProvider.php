@@ -41,6 +41,7 @@ final class BindingServiceProvider extends ServiceProvider
         RepositoryContracts\BitrixOutboundOpRepositoryInterface::class => Eloquent\EloquentBitrixOutboundOpRepository::class,
         RepositoryContracts\BitrixPortalRepositoryInterface::class => Eloquent\EloquentBitrixPortalRepository::class,
         RepositoryContracts\BitrixSyncCursorRepositoryInterface::class => Eloquent\EloquentBitrixSyncCursorRepository::class,
+        RepositoryContracts\BitrixTokenRepositoryInterface::class => Eloquent\EloquentBitrixTokenRepository::class,
         RepositoryContracts\PermissionRepositoryInterface::class => Eloquent\EloquentPermissionRepository::class,
         RepositoryContracts\ProjectRepositoryInterface::class => Eloquent\EloquentProjectRepository::class,
         RepositoryContracts\RoleRepositoryInterface::class => Eloquent\EloquentRoleRepository::class,

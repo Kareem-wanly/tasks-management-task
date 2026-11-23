@@ -36,7 +36,7 @@ class BitrixProjectPushTest extends TestCase
 
         $this->actor = User::factory()->create(['bitrix_user_id' => 5]);
         $this->actor->roles()->attach(Role::where('name', 'Administrator')->first());
-        $this->actor->storeBitrixToken(new BitrixToken('actor-access', 'actor-refresh', CarbonImmutable::now()->addHour()));
+        $this->giveBitrixToken($this->actor, new BitrixToken('actor-access', 'actor-refresh', CarbonImmutable::now()->addHour()));
         $this->colleague = User::factory()->create(['bitrix_user_id' => 6, 'name' => 'Colleague']);
 
         $this->useBitrixServiceAccount(new class implements HasBitrixToken
@@ -45,8 +45,6 @@ class BitrixProjectPushTest extends TestCase
             {
                 return new BitrixToken('service-access', 'service-refresh', CarbonImmutable::now()->addHour());
             }
-
-            public function storeBitrixToken(BitrixToken $token): void {}
 
             public function bitrixTokenLockKey(): string
             {
