@@ -27,9 +27,9 @@ final class TaskController extends Controller
         return TaskResource::collection($this->tasks->list($request->actor(), $request->toDto(), $request->perPage()));
     }
 
-    public function indexByProject(ListProjectTasksRequest $request, Project $project): JsonResponse
+    public function indexByProject(ListProjectTasksRequest $request, Project $project): AnonymousResourceCollection
     {
-        return response()->json($this->tasks->listForProject($project, $request->perPage()));
+        return TaskResource::collection($this->tasks->listForProject($project, $request->perPage()));
     }
 
     public function show(ShowTaskRequest $request, Task $task): TaskResource

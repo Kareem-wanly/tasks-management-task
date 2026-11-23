@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\JsonResource;
 
 abstract class Controller
 {
@@ -15,13 +16,14 @@ abstract class Controller
      * @template TItem
      *
      * @param  LengthAwarePaginator<int, TItem>  $page
+     * @param  class-string<JsonResource>  $resource  Shapes each item.
      */
-    protected function paginated(LengthAwarePaginator $page, string $message): JsonResponse
+    protected function paginated(LengthAwarePaginator $page, string $resource, string $message): JsonResponse
     {
         return response()->json([
             'success' => true,
             'message' => $message,
-            'data' => $page->items(),
+            'data' => $resource::collection($page->items()),
             'meta' => [
                 'current_page' => $page->currentPage(),
                 'last_page' => $page->lastPage(),
