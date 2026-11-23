@@ -13,6 +13,7 @@ use App\Models\Task;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
 use App\Models\User;
+use App\Repositories\Contracts\TaskRepositoryInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -37,7 +38,7 @@ class TaskLookupsTest extends TestCase
             ['todo' => 2, 'in_progress' => 3, 'review' => 4, 'completed' => 5, 'deferred' => 6],
             TaskStatus::ordered()->pluck('bitrix_id', 'key')->all()
         );
-        $this->assertSame(['completed'], TaskStatus::finalKeys());
+        $this->assertSame(['completed'], TaskStatus::where('is_final', true)->pluck('key')->all());
         $this->assertSame(
             ['low' => 0, 'medium' => 1, 'high' => 2, 'urgent' => 2],
             TaskPriority::ordered()->pluck('bitrix_id', 'key')->all()
@@ -223,9 +224,12 @@ class TaskLookupsTest extends TestCase
         $owner = User::factory()->create();
         $attributes['project_id'] ??= Project::forceCreate(['title' => 'P', 'status' => 'active', 'owner_id' => $owner->id])->id;
 
-        return Task::forceCreate($attributes + [
+        $task = (new Task)->forceFill($attributes + [
             'title' => 'T', 'status' => 'todo', 'priority' => 'medium', 'created_by' => $owner->id,
         ]);
+        resolve(TaskRepositoryInterface::class)->save($task);
+
+        return $task;
     }
 
     private function fakeServiceAccount(): void

@@ -6,7 +6,9 @@ namespace Database\Factories;
 
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\TaskStatus;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -20,6 +22,7 @@ class TaskFactory extends Factory
             'title' => ucfirst(fake()->words(fake()->numberBetween(3, 6), true)),
             'description' => fake()->optional(0.8)->paragraph(),
             'status' => fake()->randomElement(['todo', 'in_progress', 'review', 'completed', 'deferred']),
+            'completed_at' => fn (array $task): ?CarbonInterface => TaskStatus::where('key', $task['status'])->where('is_final', true)->exists() ? now() : null,
             'priority' => fake()->randomElement(['low', 'medium', 'medium', 'high', 'urgent']),
             'due_date' => fake()->optional(0.85)->dateTimeBetween('-1 month', '+2 months'),
             'project_id' => Project::factory(),

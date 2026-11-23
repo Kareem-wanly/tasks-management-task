@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Models\Role;
 use App\Models\Task;
 use App\Models\User;
+use App\Repositories\Contracts\ProjectRepositoryInterface;
 use DB;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -48,7 +49,7 @@ class Round3ReviewTest extends TestCase
         Task::forceCreate(['title' => 'T', 'status' => 'todo', 'priority' => 'low', 'project_id' => $p->id, 'created_by' => $owner->id]);
         Sanctum::actingAs($owner);
         $before = ActivityLog::where('action', 'task_deleted')->count();
-        $p->delete();
+        resolve(ProjectRepositoryInterface::class)->delete($p);
         $this->assertGreaterThan($before, ActivityLog::where('action', 'task_deleted')->count());
     }
 
@@ -60,8 +61,8 @@ class Round3ReviewTest extends TestCase
         $keep = Task::forceCreate(['title' => 'keep', 'status' => 'todo', 'priority' => 'low', 'project_id' => $p->id, 'created_by' => $owner->id]);
         $old->delete();                 // deleted on purpose, before the project
         $this->travel(1)->minutes();
-        $p->delete();
-        $p->restore();
+        resolve(ProjectRepositoryInterface::class)->delete($p);
+        resolve(ProjectRepositoryInterface::class)->restore($p);
         $this->assertNull(Task::find($keep->id)?->deleted_at, 'keep should be back');
         $this->assertNotNull(Task::withTrashed()->find($old->id)->deleted_at, 'old task should stay deleted');
     }
