@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixToken;
-use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Jobs\Bitrix\ImportBitrixResultsJob;
 use App\Models\Permission;
 use App\Models\Project;
@@ -51,7 +50,7 @@ class BitrixTaskResultsTest extends TestCase
         $this->seed(RolesAndPermissionsSeeder::class);
 
         $this->actor = $this->user(5, 'actor', Role::where('name', 'Administrator')->first());
-        app()->instance(BitrixGatewayInterface::SERVICE_ACCOUNT, $this->actor);
+        $this->useBitrixServiceAccount($this->actor);
 
         $project = Project::forceCreate(['title' => 'P', 'status' => 'active', 'owner_id' => $this->actor->id, 'bitrix_group_id' => 3]);
         $this->task = Task::forceCreate([

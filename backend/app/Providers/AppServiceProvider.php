@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Enums\SystemRole;
-use App\Exceptions\Bitrix\BitrixException;
-use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskPriority;
@@ -15,7 +13,6 @@ use App\Models\User;
 use App\Observers\ProjectObserver;
 use App\Observers\TaskObserver;
 use App\Policies\TaskLookupPolicy;
-use App\Repositories\Contracts\BitrixPortalRepositoryInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Date;
@@ -25,17 +22,6 @@ use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
-    public function register(): void
-    {
-        $this->app->bind(
-            BitrixGatewayInterface::SERVICE_ACCOUNT,
-            fn ($app) => $app->make(BitrixPortalRepositoryInterface::class)->current() ?? throw BitrixException::missingToken()
-        );
-    }
-
     /**
      * Bootstrap any application services.
      */

@@ -6,7 +6,9 @@ namespace App\Integrations\Bitrix24;
 
 use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
+use App\Integrations\Bitrix24\Contracts\BitrixServiceAccountInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
+use App\Integrations\Bitrix24\Contracts\TokenManagerInterface;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
@@ -26,7 +28,10 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
 
     private const RATE_LIMIT_RETRIES = 3;
 
-    public function __construct(private TokenManager $tokens) {}
+    public function __construct(
+        private TokenManagerInterface $tokens,
+        private BitrixServiceAccountInterface $serviceAccount,
+    ) {}
 
     /**
      * Call a method with the token of a user, so Bitrix applies that user's
@@ -260,11 +265,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
 
     private function serviceAccount(): HasBitrixToken
     {
-        if (! app()->bound(self::SERVICE_ACCOUNT)) {
-            throw BitrixException::missingToken();
-        }
-
-        return resolve(self::SERVICE_ACCOUNT);
+        return $this->serviceAccount->holder();
     }
 
     /**

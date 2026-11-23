@@ -117,9 +117,19 @@ arch('commands are thin')
     ->not->toUse(['App\Repositories', 'App\Integrations', 'App\Jobs', 'Illuminate\Support\Facades\DB']);
 
 // --- Bitrix24 (external API data source, ARC-15) ---
-arch('only integrations talk to external HTTP')
+arch('only the gateways talk to external HTTP')
     ->expect(['Illuminate\Support\Facades\Http', 'Illuminate\Http\Client\Factory'])
-    ->toOnlyBeUsedIn(['App\Integrations', 'Tests']);
+    ->toOnlyBeUsedIn([
+        'App\Integrations\Bitrix24\BitrixGateway',
+        'App\Integrations\Bitrix24\BitrixOAuthGateway',
+        'Tests',
+    ]);
+
+// ARC-4: dependencies come through constructors. failed() on a job is the one
+// place nothing can be injected (the worker passes the exception only).
+arch('the container is reached only by providers')
+    ->expect(['app', 'resolve'])
+    ->toOnlyBeUsedIn(['App\Providers', 'App\Jobs\Bitrix\TracksSyncProgress', 'Tests', 'Database']);
 
 arch('only the Bitrix repositories call the gateway')
     ->expect('App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface')

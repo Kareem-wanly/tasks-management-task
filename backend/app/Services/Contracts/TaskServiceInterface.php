@@ -23,6 +23,9 @@ interface TaskServiceInterface
 
     public function show(User $viewer, Task $task): Task;
 
+    /** A task by its ID, without any visibility check (callers check it). */
+    public function find(int $id): ?Task;
+
     /**
      * A task in a project, or (no project) a Bitrix personal task (GROUP_ID 0).
      */

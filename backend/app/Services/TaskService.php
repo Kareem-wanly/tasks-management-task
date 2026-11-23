@@ -60,6 +60,11 @@ final readonly class TaskService implements TaskServiceInterface
         return $this->tasks->loadForDetail($task, $viewer);
     }
 
+    public function find(int $id): ?Task
+    {
+        return $this->tasks->find($id);
+    }
+
     /**
      * A task in a project, or (no project) a Bitrix personal task (GROUP_ID 0).
      */

@@ -5,34 +5,23 @@ declare(strict_types=1);
 namespace App\Integrations\Bitrix24;
 
 use App\Exceptions\Bitrix\BitrixException;
+use App\Integrations\Bitrix24\Contracts\BitrixOAuthGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
+use App\Integrations\Bitrix24\Contracts\TokenManagerInterface;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Http;
 
-final class TokenManager
+/** When to renew a stored token, and only once at a time; the OAuth gateway renews it. */
+final readonly class TokenManager implements TokenManagerInterface
 {
     private const REFRESH_MARGIN_SECONDS = 60;
 
     private const LOCK_SECONDS = 15;
 
-    public function exchangeCode(string $code): BitrixToken
-    {
-        return $this->requestToken(['grant_type' => 'authorization_code', 'code' => $code]);
-    }
-
-    public function refresh(BitrixToken $token): BitrixToken
-    {
-        return $this->requestToken(['grant_type' => 'refresh_token', 'refresh_token' => $token->refreshToken]);
-    }
+    public function __construct(private BitrixOAuthGatewayInterface $oauth) {}
 
     /**
-     * Return a usable access token, refreshing it a minute before expiry
-     * (or immediately when $force is set after an expired_token reply).
-     *
      * Bitrix revokes a refresh token as soon as it is used, so the refresh
      * runs under a lock and re-reads the stored token first: if another
      * process already refreshed it, that new token is reused.
@@ -70,36 +59,12 @@ final class TokenManager
                 return $current;
             }
 
-            $fresh = $this->refresh($current);
+            $fresh = $this->oauth->refresh($current->refreshToken);
             $holder->storeBitrixToken($fresh);
 
             return $fresh;
         } finally {
             $lock->release();
         }
-    }
-
-    /** @param  array<string, mixed>  $params */
-    private function requestToken(array $params): BitrixToken
-    {
-        try {
-            $response = Http::acceptJson()
-                ->timeout(Config::integer('bitrix.timeout'))
-                ->get(rtrim(Config::string('bitrix.oauth_server'), '/').'/oauth/token/', [
-                    'client_id' => config('bitrix.client_id'),
-                    'client_secret' => config('bitrix.client_secret'),
-                    ...$params,
-                ]);
-        } catch (ConnectionException $e) {
-            throw BitrixException::unreachable($e->getMessage());
-        }
-
-        $body = $response->json();
-
-        if ($response->failed() || ! is_array($body) || isset($body['error']) || ! isset($body['access_token'])) {
-            throw BitrixException::fromResponse(is_array($body) ? $body : null, $response->status());
-        }
-
-        return BitrixToken::fromOAuthResponse($body);
     }
 }

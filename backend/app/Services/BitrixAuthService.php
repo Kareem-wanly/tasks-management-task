@@ -14,7 +14,7 @@ use App\Integrations\Bitrix24\BitrixPayload;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\BitrixUserSync;
 use App\Integrations\Bitrix24\Contracts\BitrixAppRepositoryInterface;
-use App\Integrations\Bitrix24\TokenManager;
+use App\Integrations\Bitrix24\Contracts\BitrixOAuthGatewayInterface;
 use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Contracts\BitrixAuthServiceInterface;
@@ -39,7 +39,7 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
     private const TOKEN_NAME = 'bitrix_auth';
 
     public function __construct(
-        private TokenManager $tokens,
+        private BitrixOAuthGatewayInterface $oauth,
         private BitrixAppRepositoryInterface $bitrixApp,
         private BitrixUserSync $users,
         private UserRepositoryInterface $userRepository,
@@ -63,7 +63,7 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
         }
 
         try {
-            $token = $this->tokens->exchangeCode($code);
+            $token = $this->oauth->exchangeCode($code);
         } catch (BitrixException) {
             throw new BitrixSignInException('exchange_failed');
         }

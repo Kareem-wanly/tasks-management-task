@@ -7,8 +7,9 @@ namespace Tests\Feature\Bitrix24;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
+use App\Integrations\Bitrix24\Contracts\BitrixOAuthGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
-use App\Integrations\Bitrix24\TokenManager;
+use App\Repositories\Contracts\BitrixPortalRepositoryInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
@@ -162,17 +163,18 @@ final class BitrixGatewayTest extends TestCase
     public function test_call_as_service_uses_the_bound_service_account(): void
     {
         Http::fake([self::REST => Http::response(['result' => true])]);
-        app()->instance(BitrixGatewayInterface::SERVICE_ACCOUNT, $this->holder($this->token(access: 'service-access')));
+        $this->useBitrixServiceAccount($this->holder($this->token(access: 'service-access')));
 
         $this->client()->callAsService('event.get');
 
         Http::assertSent(fn (Request $r): bool => str_contains($r->url(), '/rest/event.get.json') && $r['auth'] === 'service-access');
     }
 
-    public function test_call_as_service_is_refused_without_a_bound_account(): void
+    public function test_call_as_service_is_refused_without_an_installed_portal(): void
     {
         Http::fake();
-        unset(app()[BitrixGatewayInterface::SERVICE_ACCOUNT]);
+        // The real service account (PortalServiceAccount), with no portal installed.
+        $this->mock(BitrixPortalRepositoryInterface::class)->shouldReceive('current')->andReturnNull();
 
         try {
             $this->client()->callAsService('event.get');
@@ -218,7 +220,7 @@ final class BitrixGatewayTest extends TestCase
         $calls = [
             fn (): array => $this->client()->callAsUser($this->holder($this->token(access: 'secret-token')), 'user.current'),
             fn () => $this->client()->streamDownload('https://portal.test/download/1?auth=secret-token', fn (): null => null),
-            fn () => resolve(TokenManager::class)->exchangeCode('secret-token'),
+            fn () => resolve(BitrixOAuthGatewayInterface::class)->exchangeCode('secret-token'),
         ];
 
         foreach ($calls as $call) {
@@ -307,7 +309,7 @@ final class BitrixGatewayTest extends TestCase
     {
         Http::fake([self::OAUTH => Http::response($this->oauthResponse())]);
 
-        $token = resolve(TokenManager::class)->exchangeCode('auth-code');
+        $token = resolve(BitrixOAuthGatewayInterface::class)->exchangeCode('auth-code');
 
         $this->assertSame('new-access', $token->accessToken);
         $this->assertSame('member-1', $token->memberId);
@@ -319,7 +321,7 @@ final class BitrixGatewayTest extends TestCase
         Http::fake([self::OAUTH => Http::response(['error' => 'invalid_grant', 'error_description' => 'Invalid grant'], 400)]);
 
         try {
-            resolve(TokenManager::class)->exchangeCode('stale-code');
+            resolve(BitrixOAuthGatewayInterface::class)->exchangeCode('stale-code');
             $this->fail('Expected a BitrixException.');
         } catch (BitrixException $e) {
             $this->assertSame('invalid_grant', $e->errorCode);

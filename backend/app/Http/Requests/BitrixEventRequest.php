@@ -15,9 +15,9 @@ use Illuminate\Http\Exceptions\HttpResponseException;
  */
 final class BitrixEventRequest extends FormRequest
 {
-    public function authorize(): bool
+    public function authorize(BitrixEventServiceInterface $events): bool
     {
-        return resolve(BitrixEventServiceInterface::class)->isFromOurPortal($this->input('auth.application_token'), $this->input('auth.member_id'));
+        return $events->isFromOurPortal($this->input('auth.application_token'), $this->input('auth.member_id'));
     }
 
     /** @return array<string, mixed> */
