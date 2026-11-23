@@ -6,8 +6,8 @@ namespace App\Services;
 
 use App\DTOs\Task\TaskHistoryDTO;
 use App\Exceptions\Bitrix\BitrixException;
+use App\Integrations\Bitrix24\Contracts\BitrixHistoryMapperInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixTaskRepositoryInterface;
-use App\Integrations\Bitrix24\Mappers\BitrixHistoryMapper;
 use App\Models\Task;
 use App\Services\Contracts\TaskHistoryServiceInterface;
 use Illuminate\Support\Facades\Log;
@@ -20,7 +20,7 @@ final readonly class TaskHistoryService implements TaskHistoryServiceInterface
 {
     public function __construct(
         private BitrixTaskRepositoryInterface $bitrixTasks,
-        private BitrixHistoryMapper $mapper,
+        private BitrixHistoryMapperInterface $mapper,
     ) {}
 
     public function forTask(Task $task): TaskHistoryDTO

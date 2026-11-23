@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Integrations\Bitrix24\Mappers;
 
 use App\Integrations\Bitrix24\BitrixPayload;
+use App\Integrations\Bitrix24\Contracts\BitrixHistoryMapperInterface;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
 use App\Models\User;
@@ -17,7 +18,7 @@ use Carbon\CarbonImmutable;
  * can show: Bitrix status/priority numbers become our keys, Bitrix user IDs
  * become names, timestamps become ISO dates. Other values pass through.
  */
-final readonly class BitrixHistoryMapper
+final readonly class BitrixHistoryMapper implements BitrixHistoryMapperInterface
 {
     /** Fields whose values are Bitrix user IDs (one, or several separated by commas). */
     private const PEOPLE_FIELDS = ['RESPONSIBLE_ID', 'CREATED_BY', 'CHANGED_BY', 'ACCOMPLICES', 'AUDITORS'];

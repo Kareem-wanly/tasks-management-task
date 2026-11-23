@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24;
 
+use App\Integrations\Bitrix24\Contracts\BitrixTaskMapperInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixTaskResolverInterface;
-use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
 use App\Repositories\Contracts\ProjectRepositoryInterface;
 use App\Repositories\Contracts\TaskRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Log;
 final readonly class BitrixTaskResolver implements BitrixTaskResolverInterface
 {
     public function __construct(
-        private BitrixTaskMapper $mapper,
+        private BitrixTaskMapperInterface $mapper,
         private TaskRepositoryInterface $tasks,
         private ProjectRepositoryInterface $projects,
         private UserRepositoryInterface $users,

@@ -6,6 +6,7 @@ namespace App\Integrations\Bitrix24;
 
 use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
+use App\Integrations\Bitrix24\Contracts\BitrixRecordFetcherInterface;
 use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;
 use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
 use App\Repositories\Contracts\UserRepositoryInterface;
@@ -14,7 +15,7 @@ use App\Repositories\Contracts\UserRepositoryInterface;
  * Fetches single Bitrix24 records with the service account, in the shapes
  * the import mappers expect. Used when an event names one record.
  */
-final readonly class BitrixRecordFetcher
+final readonly class BitrixRecordFetcher implements BitrixRecordFetcherInterface
 {
     public function __construct(
         private BitrixGatewayInterface $bitrix,

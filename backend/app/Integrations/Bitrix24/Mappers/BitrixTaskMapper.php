@@ -6,6 +6,7 @@ namespace App\Integrations\Bitrix24\Mappers;
 
 use App\Enums\TaskMemberRole;
 use App\Integrations\Bitrix24\BitrixPayload;
+use App\Integrations\Bitrix24\Contracts\BitrixTaskMapperInterface;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
 use App\Repositories\Contracts\TaskLookupRepositoryInterface;
@@ -16,9 +17,9 @@ use Carbon\CarbonImmutable;
  * columns. People and project are returned as Bitrix IDs; BitrixTaskResolver
  * resolves them.
  *
- * @phpstan-type TaskAttributes array{bitrix_task_id: int, title: string, description: string|null, status: string|null, priority: string|null, due_date: CarbonImmutable|null, allow_time_tracking: bool, time_estimate: int, time_spent: int, completed_at: CarbonImmutable|null, created_at?: CarbonImmutable}
+ * @phpstan-import-type TaskAttributes from BitrixTaskMapperInterface
  */
-final readonly class BitrixTaskMapper
+final readonly class BitrixTaskMapper implements BitrixTaskMapperInterface
 {
     /** The fields tasks.task.list must select for this mapper. */
     public const SELECT = ['ID', 'TITLE', 'DESCRIPTION', 'STATUS', 'PRIORITY', 'RESPONSIBLE_ID', 'CREATED_BY', 'GROUP_ID', 'DEADLINE', 'CREATED_DATE', 'CLOSED_DATE', 'ACCOMPLICES', 'AUDITORS', 'PARENT_ID', 'ALLOW_TIME_TRACKING', 'TIME_ESTIMATE', 'TIME_SPENT_IN_LOGS'];

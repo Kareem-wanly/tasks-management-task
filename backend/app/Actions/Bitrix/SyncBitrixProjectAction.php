@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Bitrix;
 
 use App\Enums\ProjectStatus;
-use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;
+use App\Integrations\Bitrix24\Contracts\BitrixProjectMapperInterface;
 use App\Models\Project;
 use App\Repositories\Contracts\ProjectRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Log;
 final readonly class SyncBitrixProjectAction
 {
     public function __construct(
-        private BitrixProjectMapper $mapper,
+        private BitrixProjectMapperInterface $mapper,
         private ProjectRepositoryInterface $projects,
         private UserRepositoryInterface $users,
     ) {}

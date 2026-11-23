@@ -7,6 +7,7 @@ namespace App\Integrations\Bitrix24;
 use App\Enums\OutboundOpStatus;
 use App\Enums\ProjectStatus;
 use App\Enums\TaskMemberRole;
+use App\Integrations\Bitrix24\Contracts\BitrixEchoGuardInterface;
 use App\Models\BitrixOutboundOp;
 use App\Models\Project;
 use App\Models\Task;
@@ -24,7 +25,7 @@ use Illuminate\Support\Facades\Log;
  * the fingerprint we sent. A different record right after our change is a
  * conflict, logged, and Bitrix's version is applied.
  */
-final readonly class BitrixEchoGuard
+final readonly class BitrixEchoGuard implements BitrixEchoGuardInterface
 {
     public function __construct(
         private BitrixOutboundOpRepositoryInterface $ops,

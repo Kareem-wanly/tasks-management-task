@@ -6,13 +6,14 @@ namespace App\Integrations\Bitrix24\Mappers;
 
 use App\Enums\ProjectMemberRole;
 use App\Integrations\Bitrix24\BitrixPayload;
+use App\Integrations\Bitrix24\Contracts\BitrixProjectMapperInterface;
 use Carbon\CarbonImmutable;
 
 /**
  * Turns a Bitrix24 workgroup (socialnetwork.api.workgroup.list, camelCase
  * keys) and its members (sonet_group.user.get) into our projects columns.
  */
-final class BitrixProjectMapper
+final class BitrixProjectMapper implements BitrixProjectMapperInterface
 {
     /** Bitrix member role => project_user.role. Other roles (e.g. pending requests) are not members. */
     public const ROLES = [
