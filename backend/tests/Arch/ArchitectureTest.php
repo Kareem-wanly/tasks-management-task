@@ -116,6 +116,13 @@ arch('commands are thin')
     ->toHaveSuffix('Command')
     ->not->toUse(['App\Repositories', 'App\Integrations', 'App\Jobs', 'Illuminate\Support\Facades\DB']);
 
+// Observers are entry points too (ARC-12): one service call each.
+arch('observers are thin')
+    ->expect('App\Observers')
+    ->toBeFinal()
+    ->toHaveSuffix('Observer')
+    ->not->toUse(['App\Repositories', 'App\Integrations', 'App\Jobs', 'Illuminate\Support\Facades\DB']);
+
 // --- Bitrix24 (external API data source, ARC-15) ---
 arch('only the gateways talk to external HTTP')
     ->expect(['Illuminate\Support\Facades\Http', 'Illuminate\Http\Client\Factory'])

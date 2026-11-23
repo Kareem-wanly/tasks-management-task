@@ -5,42 +5,25 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Models\Project;
-use App\Repositories\Contracts\ActivityLogRepositoryInterface;
+use App\Services\Contracts\ActivityLogServiceInterface;
 use Illuminate\Support\Facades\Auth;
 
-class ProjectObserver
+final readonly class ProjectObserver
 {
-    public function __construct(private readonly ActivityLogRepositoryInterface $activities) {}
+    public function __construct(private ActivityLogServiceInterface $activities) {}
 
     public function created(Project $project): void
     {
-        $this->activities->create([
-            'user_id' => Auth::id() ?? $project->owner_id,
-            'project_id' => $project->id,
-            'action' => 'created',
-            'description' => "Project '{$project->title}' was created.",
-            'metadata' => ['title' => $project->title],
-        ]);
+        $this->activities->logProjectCreated($project, Auth::user());
     }
 
     public function updated(Project $project): void
     {
-        $this->activities->create([
-            'user_id' => Auth::id() ?? $project->owner_id,
-            'project_id' => $project->id,
-            'action' => 'updated',
-            'description' => "Project '{$project->title}' was updated.",
-            'metadata' => $project->getChanges(),
-        ]);
+        $this->activities->logProjectUpdated($project, Auth::user());
     }
 
     public function deleted(Project $project): void
     {
-        $this->activities->create([
-            'user_id' => Auth::id() ?? $project->owner_id,
-            'project_id' => $project->id,
-            'action' => 'deleted',
-            'description' => "Project '{$project->title}' was deleted.",
-        ]);
+        $this->activities->logProjectDeleted($project, Auth::user());
     }
 }

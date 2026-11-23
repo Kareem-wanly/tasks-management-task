@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24;
 
+use App\Enums\ActivityAction;
+use App\Enums\OutboundOpEntity;
 use App\Enums\OutboundOpStatus;
 use App\Enums\ProjectStatus;
 use App\Enums\TaskMemberRole;
@@ -42,7 +44,7 @@ final readonly class BitrixEchoGuard implements BitrixEchoGuardInterface
      */
     public function isTaskEcho(int $bitrixTaskId, ?array $attributes, ?array $members = null): bool
     {
-        $ops = $this->ops->pending(BitrixOutboundOp::TASK, $bitrixTaskId);
+        $ops = $this->ops->pending(OutboundOpEntity::Task, $bitrixTaskId);
         if ($ops->isEmpty()) {
             return false;
         }
@@ -59,7 +61,7 @@ final readonly class BitrixEchoGuard implements BitrixEchoGuardInterface
      */
     public function isProjectEcho(int $bitrixGroupId, ?array $attributes, bool $closed): bool
     {
-        $ops = $this->ops->pending(BitrixOutboundOp::PROJECT, $bitrixGroupId);
+        $ops = $this->ops->pending(OutboundOpEntity::Project, $bitrixGroupId);
         if ($ops->isEmpty()) {
             return false;
         }
@@ -103,7 +105,7 @@ final readonly class BitrixEchoGuard implements BitrixEchoGuardInterface
 
     private function logConflict(BitrixOutboundOp $op, Task|Project|null $record): void
     {
-        $context = ['entity' => $op->entity, 'bitrix_id' => $op->bitrix_id, 'our_action' => $op->action, 'by_user_id' => $op->user_id];
+        $context = ['entity' => $op->entity->value, 'bitrix_id' => $op->bitrix_id, 'our_action' => $op->action->value, 'by_user_id' => $op->user_id];
         Log::warning('Bitrix24 conflict: the record changed in Bitrix right after our change; keeping the Bitrix version.', $context);
 
         if (! $record) {
@@ -115,7 +117,7 @@ final readonly class BitrixEchoGuard implements BitrixEchoGuardInterface
             'user_id' => $op->user_id,
             'project_id' => $isTask ? $record->project_id : $record->id,
             'task_id' => $isTask ? $record->id : null,
-            'action' => 'bitrix_conflict',
+            'action' => ActivityAction::BitrixConflict,
             'description' => ($isTask ? 'Task' : 'Project')." '{$record->title}' was changed in Bitrix24 right after a change here; the Bitrix24 version was kept.",
             'metadata' => $context,
         ]);

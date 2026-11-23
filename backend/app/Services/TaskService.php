@@ -8,11 +8,12 @@ use App\DTOs\Task\ChangeTaskStatusDTO;
 use App\DTOs\Task\CreateTaskDTO;
 use App\DTOs\Task\TaskFiltersDTO;
 use App\DTOs\Task\UpdateTaskDTO;
+use App\Enums\OutboundOpAction;
+use App\Enums\OutboundOpEntity;
 use App\Enums\SystemRole;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixFingerprint;
 use App\Integrations\Bitrix24\Contracts\BitrixTaskRepositoryInterface;
-use App\Models\BitrixOutboundOp;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskPriority;
@@ -132,7 +133,7 @@ final readonly class TaskService implements TaskServiceInterface
 
         $this->applyStatusInBitrix($actor, $task, $created['status']);
         $task->bitrix_synced_at = now();
-        $this->recordOutbound($actor, $task, 'create');
+        $this->recordOutbound($actor, $task, OutboundOpAction::Create);
     }
 
     /** Sends the task's unsaved changes (its dirty attributes). */
@@ -156,7 +157,7 @@ final readonly class TaskService implements TaskServiceInterface
 
         if ($changed !== [] || $task->isDirty('status')) {
             $task->bitrix_synced_at = now();
-            $this->recordOutbound($actor, $task, 'update');
+            $this->recordOutbound($actor, $task, OutboundOpAction::Update);
         }
     }
 
@@ -168,7 +169,7 @@ final readonly class TaskService implements TaskServiceInterface
 
         $this->ensureSignedInWithBitrix($actor);
         $this->bitrixTasks->delete($actor, $task->bitrix_task_id);
-        $this->ops->record(BitrixOutboundOp::TASK, $task->bitrix_task_id, 'delete', null, $actor);
+        $this->ops->record(OutboundOpEntity::Task, $task->bitrix_task_id, OutboundOpAction::Delete, null, $actor);
     }
 
     /**
@@ -254,8 +255,8 @@ final readonly class TaskService implements TaskServiceInterface
     }
 
     /** Remembered so the echo of our change is recognised, not taken for a change made in Bitrix. */
-    private function recordOutbound(User $actor, Task $task, string $action): void
+    private function recordOutbound(User $actor, Task $task, OutboundOpAction $action): void
     {
-        $this->ops->record(BitrixOutboundOp::TASK, (int) $task->bitrix_task_id, $action, $this->fingerprints->task($task), $actor);
+        $this->ops->record(OutboundOpEntity::Task, (int) $task->bitrix_task_id, $action, $this->fingerprints->task($task), $actor);
     }
 }

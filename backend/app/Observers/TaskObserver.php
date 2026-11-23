@@ -5,43 +5,25 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Models\Task;
-use App\Repositories\Contracts\ActivityLogRepositoryInterface;
+use App\Services\Contracts\ActivityLogServiceInterface;
 use Illuminate\Support\Facades\Auth;
 
-class TaskObserver
+final readonly class TaskObserver
 {
-    public function __construct(private readonly ActivityLogRepositoryInterface $activities) {}
+    public function __construct(private ActivityLogServiceInterface $activities) {}
 
     public function created(Task $task): void
     {
-        $this->activities->create([
-            'user_id' => Auth::id() ?? $task->created_by,
-            'project_id' => $task->project_id,
-            'action' => 'task_created',
-            'description' => "Task '{$task->title}' was created.",
-            'metadata' => ['task_id' => $task->id, 'title' => $task->title],
-        ]);
+        $this->activities->logTaskCreated($task, Auth::user());
     }
 
     public function updated(Task $task): void
     {
-        $this->activities->create([
-            'user_id' => Auth::id() ?? $task->created_by,
-            'project_id' => $task->project_id,
-            'action' => 'task_updated',
-            'description' => "Task '{$task->title}' was updated.",
-            'metadata' => $task->getChanges(),
-        ]);
+        $this->activities->logTaskUpdated($task, Auth::user());
     }
 
     public function deleted(Task $task): void
     {
-        $this->activities->create([
-            'user_id' => Auth::id() ?? $task->created_by,
-            'project_id' => $task->project_id,
-            'action' => 'task_deleted',
-            'description' => "Task '{$task->title}' was deleted.",
-            'metadata' => ['task_id' => $task->id, 'title' => $task->title],
-        ]);
+        $this->activities->logTaskDeleted($task, Auth::user());
     }
 }
