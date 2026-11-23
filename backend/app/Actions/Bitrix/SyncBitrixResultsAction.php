@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Integrations\Bitrix24;
+namespace App\Actions\Bitrix;
 
+use App\Integrations\Bitrix24\BitrixPayload;
 use App\Models\Task;
 use App\Models\TaskResult;
 use App\Repositories\Contracts\TaskResultRepositoryInterface;
@@ -14,7 +15,7 @@ use App\Repositories\Contracts\UserRepositoryInterface;
  * (tasks.task.result.list items, REST 3.0). Bitrix sends no events for
  * results, so this runs when the task is opened and every night.
  */
-final readonly class BitrixResultSync
+final readonly class SyncBitrixResultsAction
 {
     public function __construct(
         private TaskResultRepositoryInterface $results,
@@ -24,7 +25,7 @@ final readonly class BitrixResultSync
     /**
      * @param  list<array<string, mixed>>  $items
      */
-    public function sync(Task $task, array $items): void
+    public function handle(Task $task, array $items): void
     {
         $ours = $this->results->bitrixResults($task);
         $items = array_map(fn (array $item): BitrixPayload => BitrixPayload::of($item, 'tasks.task.result.list'), $items);

@@ -2,21 +2,20 @@
 
 declare(strict_types=1);
 
-namespace App\Integrations\Bitrix24;
+namespace App\Actions\Bitrix;
 
 use App\Enums\ProjectStatus;
 use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;
 use App\Models\Project;
 use App\Repositories\Contracts\ProjectRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Creates or updates our copy of a Bitrix24 workgroup and its members.
  * Bitrix wins on conflict. Users must be imported first (step 2.1).
  */
-final readonly class BitrixProjectSync
+final readonly class SyncBitrixProjectAction
 {
     public function __construct(
         private BitrixProjectMapper $mapper,
@@ -29,7 +28,7 @@ final readonly class BitrixProjectSync
      * @param  list<array<string, mixed>>  $members  The sonet_group.user.get result for it.
      * @return Project|null Null when the owner isn't one of our users.
      */
-    public function upsert(array $group, array $members): ?Project
+    public function handle(array $group, array $members): ?Project
     {
         $attributes = $this->mapper->attributes($group);
         $ownerBitrixId = $this->mapper->ownerBitrixId($group);
@@ -44,35 +43,33 @@ final readonly class BitrixProjectSync
             return null;
         }
 
-        return DB::transaction(function () use ($group, $members, $attributes, $ownerId): Project {
-            $project = $this->projects->findByBitrixGroupId($attributes['bitrix_group_id'], withTrashed: true) ?? new Project;
+        $project = $this->projects->findByBitrixGroupId($attributes['bitrix_group_id'], withTrashed: true) ?? new Project;
 
-            if ($project->trashed()) {
-                // Deleting here archives the Bitrix group (ProjectService::delete),
-                // so a closed group is our own delete: leave it deleted. Reopened in
-                // Bitrix means someone wants it back.
-                if ($this->mapper->isClosed($group)) {
-                    return $project;
-                }
-                $this->projects->restore($project);
+        if ($project->trashed()) {
+            // Deleting here archives the Bitrix group (ProjectService::delete),
+            // so a closed group is our own delete: leave it deleted. Reopened in
+            // Bitrix means someone wants it back.
+            if ($this->mapper->isClosed($group)) {
+                return $project;
             }
+            $this->projects->restore($project);
+        }
 
-            $project->forceFill([...$attributes, 'owner_id' => $ownerId]);
-            $project->status = $this->status($project, $this->mapper->isClosed($group));
+        $project->forceFill([...$attributes, 'owner_id' => $ownerId]);
+        $project->status = $this->status($project, $this->mapper->isClosed($group));
 
-            // Save only real changes, so ProjectObserver doesn't log an
-            // "updated" entry on every import.
-            if (! $project->exists || $project->isDirty()) {
-                $this->projects->save($project);
-            }
+        // Save only real changes, so ProjectObserver doesn't log an
+        // "updated" entry on every import.
+        if (! $project->exists || $project->isDirty()) {
+            $this->projects->save($project);
+        }
 
-            // Bookkeeping, not a change: updated_at keeps the last real change.
-            $this->projects->markSynced($project);
+        // Bookkeeping, not a change: updated_at keeps the last real change.
+        $this->projects->markSynced($project);
 
-            $this->syncMembers($project, $this->mapper->members($members));
+        $this->syncMembers($project, $this->mapper->members($members));
 
-            return $project;
-        });
+        return $project;
     }
 
     /**

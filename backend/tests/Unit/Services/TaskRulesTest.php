@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Actions\Bitrix\SyncBitrixChecklistAction;
+use App\Actions\Bitrix\SyncBitrixTimeLogAction;
 use App\DTOs\Task\MoveChecklistItemDTO;
 use App\DTOs\Task\StopTimerDTO;
 use App\Exceptions\Task\ChecklistListNotMovableException;
 use App\Exceptions\Task\TimerRunningOnAnotherTaskException;
 use App\Exceptions\TaskLookup\LookupFromBitrixException;
 use App\Exceptions\TaskLookup\LookupInUseException;
-use App\Integrations\Bitrix24\BitrixChecklistSync;
-use App\Integrations\Bitrix24\BitrixTimeSync;
 use App\Integrations\Bitrix24\Contracts\BitrixChecklistRepositoryInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixTaskRepositoryInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixTimeRepositoryInterface;
@@ -60,7 +60,7 @@ it('never moves a checklist list, only its items', function (): void {
     $checklists = Mockery::mock(TaskChecklistRepositoryInterface::class);
     $bitrixChecklists = Mockery::mock(BitrixChecklistRepositoryInterface::class);
     $bitrixChecklists->shouldNotReceive('move');
-    $service = new TaskChecklistService($checklists, $bitrixChecklists, resolve(BitrixChecklistSync::class), Mockery::mock(ConnectionInterface::class));
+    $service = new TaskChecklistService($checklists, $bitrixChecklists, resolve(SyncBitrixChecklistAction::class), Mockery::mock(ConnectionInterface::class));
 
     expect(fn (): App\DTOs\Task\TaskChecklistDTO => $service->move(userWithRoles(), (new TaskChecklistItem)->forceFill(['parent_id' => null]), new MoveChecklistItemDTO(null)))
         ->toThrow(ChecklistListNotMovableException::class);
@@ -70,7 +70,7 @@ it('stops a timer only on the task it runs on', function (): void {
     $entries = Mockery::mock(TimeEntryRepositoryInterface::class);
     $entries->shouldReceive('runningTimer')->andReturn((new RunningTimer)->forceFill(['task_id' => 99]));
     $entries->shouldNotReceive('create');
-    $service = new TaskTimeService($entries, Mockery::mock(TaskRepositoryInterface::class), Mockery::mock(BitrixTimeRepositoryInterface::class), resolve(BitrixTimeSync::class));
+    $service = new TaskTimeService($entries, Mockery::mock(TaskRepositoryInterface::class), Mockery::mock(BitrixTimeRepositoryInterface::class), resolve(SyncBitrixTimeLogAction::class));
 
     expect(fn (): App\DTOs\Task\TimeLogDTO => $service->stopTimer(userWithRoles(), (new Task)->forceFill(['id' => 1]), new StopTimerDTO))
         ->toThrow(TimerRunningOnAnotherTaskException::class);

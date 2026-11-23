@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Actions\Bitrix\SyncBitrixChecklistAction;
+use App\Actions\Bitrix\SyncBitrixProjectAction;
+use App\Actions\Bitrix\SyncBitrixTaskAction;
+use App\Actions\Bitrix\SyncBitrixTimeLogAction;
+use App\Actions\Bitrix\SyncBitrixUserAction;
 use App\Enums\QueueName;
 use App\Enums\TaskMemberRole;
 use App\Exceptions\Bitrix\BitrixException;
-use App\Integrations\Bitrix24\BitrixChecklistSync;
 use App\Integrations\Bitrix24\BitrixDeletionGuard;
 use App\Integrations\Bitrix24\BitrixPayload;
-use App\Integrations\Bitrix24\BitrixProjectSync;
 use App\Integrations\Bitrix24\BitrixRecordFetcher;
-use App\Integrations\Bitrix24\BitrixTaskSync;
-use App\Integrations\Bitrix24\BitrixTimeSync;
-use App\Integrations\Bitrix24\BitrixUserSync;
 use App\Integrations\Bitrix24\Contracts\BitrixChecklistRepositoryInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixProjectRepositoryInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixTaskRepositoryInterface;
@@ -40,6 +40,7 @@ use App\Services\Contracts\TaskChatServiceInterface;
 use App\Services\Contracts\TaskFileServiceInterface;
 use App\Services\Contracts\TaskResultServiceInterface;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
@@ -71,11 +72,12 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
         private BitrixTaskRepositoryInterface $bitrixTasks,
         private BitrixChecklistRepositoryInterface $bitrixChecklists,
         private BitrixTimeRepositoryInterface $bitrixTime,
-        private BitrixUserSync $userSync,
-        private BitrixProjectSync $projectSync,
-        private BitrixTaskSync $taskSync,
-        private BitrixChecklistSync $checklistSync,
-        private BitrixTimeSync $timeSync,
+        private SyncBitrixUserAction $userSync,
+        private SyncBitrixProjectAction $projectSync,
+        private SyncBitrixTaskAction $taskSync,
+        private SyncBitrixChecklistAction $checklistSync,
+        private SyncBitrixTimeLogAction $timeSync,
+        private ConnectionInterface $database,
         private BitrixTaskMapper $taskMapper,
         private BitrixRecordFetcher $fetch,
         private BitrixDeletionGuard $deletions,
@@ -136,7 +138,7 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
 
         $total = $this->bitrixUsers->eachPage(function (array $rows, int $total) use ($linkByEmail, $cursor, &$notLinked): void {
             foreach ($rows as $row) {
-                if (! $this->userSync->upsert($row, $linkByEmail) instanceof User) {
+                if (! $this->database->transaction(fn (): ?User => $this->userSync->handle($row, $linkByEmail)) instanceof User) {
                     $notLinked++;
                 }
             }
@@ -159,7 +161,7 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
 
                 foreach ($groups as $group) {
                     $seen[] = $groupId = BitrixPayload::of($group, 'socialnetwork.api.workgroup.list')->int('id');
-                    if (! $this->projectSync->upsert($group, $members[$groupId] ?? []) instanceof Project) {
+                    if (! $this->database->transaction(fn (): ?Project => $this->projectSync->handle($group, $members[$groupId] ?? [])) instanceof Project) {
                         $skipped++;
                     }
                 }
@@ -193,7 +195,7 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
 
                 foreach ($rows as $row) {
                     $seen[] = BitrixPayload::of($row, 'tasks.task.list')->int('id');
-                    if (! $this->taskSync->upsert($row) instanceof Task) {
+                    if (! $this->taskSync->handle($row) instanceof Task) {
                         $skipped++;
                     }
                 }
@@ -217,7 +219,7 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
             foreach ($this->bitrixChecklists->listMany($this->bitrixIdsOf($chunk)) as $taskId => $rows) {
                 // One task Bitrix refuses (e.g. deleted meanwhile) must not stop the rest, nor wipe its list.
                 $task = $chunk->firstWhere('id', $taskId);
-                $rows === null || ! $task instanceof Task ? $failed++ : $this->checklistSync->sync($task, $rows);
+                $rows === null || ! $task instanceof Task ? $failed++ : $this->checklistSync->handle($task, $rows);
             }
 
             return $failed;
@@ -231,7 +233,7 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
             foreach ($this->bitrixTime->listMany($this->bitrixIdsOf($chunk)) as $taskId => $rows) {
                 // One task Bitrix refuses must not stop the rest, nor wipe its log.
                 $task = $chunk->firstWhere('id', $taskId);
-                $rows === null || ! $task instanceof Task ? $failed++ : $this->timeSync->sync($task, $rows);
+                $rows === null || ! $task instanceof Task ? $failed++ : $this->timeSync->handle($task, $rows);
             }
 
             return $failed;
@@ -335,7 +337,20 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
             $members = $this->taskMapper->members($row);
             array_push($people, $this->taskMapper->creatorBitrixId($row), $this->taskMapper->responsibleBitrixId($row), ...$members[TaskMemberRole::Accomplice->value] ?? [], ...$members[TaskMemberRole::Auditor->value] ?? []);
         }
-        $this->fetch->importMissingUsers($people);
+        $this->importMissingUsers($people);
+    }
+
+    /**
+     * People a record points at that we haven't imported yet, each saved in
+     * its own transaction.
+     *
+     * @param  list<int>  $bitrixIds
+     */
+    private function importMissingUsers(array $bitrixIds): void
+    {
+        foreach ($this->fetch->missingUsers($bitrixIds) as $row) {
+            $this->database->transaction(fn (): ?User => $this->userSync->handle($row));
+        }
     }
 
     /**

@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Integrations\Bitrix24;
+namespace App\Actions\Bitrix;
 
+use App\Integrations\Bitrix24\BitrixPayload;
 use App\Models\Task;
 use App\Models\TaskElapsedItem;
 use App\Repositories\Contracts\TimeEntryRepositoryInterface;
@@ -14,7 +15,7 @@ use App\Repositories\Contracts\UserRepositoryInterface;
  * (task.elapseditem.getlist rows). Bitrix sends no events for the time
  * log, so this runs when the task is opened and every night.
  */
-final readonly class BitrixTimeSync
+final readonly class SyncBitrixTimeLogAction
 {
     public function __construct(
         private TimeEntryRepositoryInterface $entries,
@@ -24,7 +25,7 @@ final readonly class BitrixTimeSync
     /**
      * @param  list<array<string, mixed>>  $rows
      */
-    public function sync(Task $task, array $rows): void
+    public function handle(Task $task, array $rows): void
     {
         $ours = $this->entries->bitrixEntries($task);
         $rows = array_map(fn (array $row): BitrixPayload => BitrixPayload::of($row, 'task.elapseditem.getlist'), $rows);

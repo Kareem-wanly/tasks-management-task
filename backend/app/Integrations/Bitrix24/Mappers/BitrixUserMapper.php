@@ -15,7 +15,7 @@ final class BitrixUserMapper
 {
     /**
      * Columns Bitrix owns. Name and email are left out: they need lookups
-     * (fallbacks, uniqueness) that BitrixUserSync does.
+     * (fallbacks, uniqueness) that SyncBitrixUserAction does.
      *
      * @param  array<string, mixed>  $row
      * @return array{bitrix_user_id: int, avatar_url: string|null, position: string|null, bitrix_synced_at: CarbonInterface, is_active?: bool, bitrix_department_ids?: list<int>}

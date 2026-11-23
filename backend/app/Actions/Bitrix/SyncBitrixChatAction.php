@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Integrations\Bitrix24;
+namespace App\Actions\Bitrix;
 
+use App\Integrations\Bitrix24\BitrixPayload;
 use App\Models\Task;
 use App\Models\TaskChatMessage;
 use App\Repositories\Contracts\TaskChatMessageRepositoryInterface;
@@ -15,7 +16,7 @@ use App\Repositories\Contracts\UserRepositoryInterface;
  * edits and deletes send no events, so this also runs when the task is
  * opened (newest page) and every night (the whole chat).
  */
-final readonly class BitrixChatSync
+final readonly class SyncBitrixChatAction
 {
     private const SOURCE = 'im.dialog.messages.get';
 
@@ -30,7 +31,7 @@ final readonly class BitrixChatSync
      * @param  bool  $complete  The rows are the whole chat; otherwise only the newest page,
      *                          and only messages from its oldest one on are compared.
      */
-    public function sync(Task $task, array $rows, array $files, bool $complete): void
+    public function handle(Task $task, array $rows, array $files, bool $complete): void
     {
         $rows = array_values(array_filter(
             array_map(fn (array $row): BitrixPayload => BitrixPayload::of($row, self::SOURCE), $rows),

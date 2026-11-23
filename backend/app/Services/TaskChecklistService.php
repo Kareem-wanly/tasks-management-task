@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Actions\Bitrix\SyncBitrixChecklistAction;
 use App\DTOs\Task\AddChecklistItemDTO;
 use App\DTOs\Task\MoveChecklistItemDTO;
 use App\DTOs\Task\TaskChecklistDTO;
 use App\DTOs\Task\UpdateChecklistItemDTO;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Exceptions\Task\ChecklistListNotMovableException;
-use App\Integrations\Bitrix24\BitrixChecklistSync;
 use App\Integrations\Bitrix24\Contracts\BitrixChecklistRepositoryInterface;
 use App\Models\Task;
 use App\Models\TaskChecklistItem;
@@ -34,7 +34,7 @@ final readonly class TaskChecklistService implements TaskChecklistServiceInterfa
     public function __construct(
         private TaskChecklistRepositoryInterface $checklists,
         private BitrixChecklistRepositoryInterface $bitrixChecklists,
-        private BitrixChecklistSync $checklistSync,
+        private SyncBitrixChecklistAction $checklistSync,
         private ConnectionInterface $database,
     ) {}
 
@@ -136,7 +136,7 @@ final readonly class TaskChecklistService implements TaskChecklistServiceInterfa
     /** Brings our copy of the task's checklist up to date. */
     private function refreshFromBitrix(Task $task): void
     {
-        $this->checklistSync->sync($task, $this->bitrixChecklists->list($task->bitrixId()));
+        $this->checklistSync->handle($task, $this->bitrixChecklists->list($task->bitrixId()));
     }
 
     /** One change in Bitrix, then our copy as Bitrix has it. */

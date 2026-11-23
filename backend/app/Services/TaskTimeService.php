@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Actions\Bitrix\SyncBitrixTimeLogAction;
 use App\DTOs\Task\StopTimerDTO;
 use App\DTOs\Task\TimeEntryDTO;
 use App\DTOs\Task\TimeLogDTO;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Exceptions\Task\TimerRunningOnAnotherTaskException;
 use App\Exceptions\Task\TimerStartedElsewhereException;
-use App\Integrations\Bitrix24\BitrixTimeSync;
 use App\Integrations\Bitrix24\Contracts\BitrixTimeRepositoryInterface;
 use App\Models\RunningTimer;
 use App\Models\Task;
@@ -39,7 +39,7 @@ final readonly class TaskTimeService implements TaskTimeServiceInterface
         private TimeEntryRepositoryInterface $entries,
         private TaskRepositoryInterface $tasks,
         private BitrixTimeRepositoryInterface $bitrixTime,
-        private BitrixTimeSync $timeSync,
+        private SyncBitrixTimeLogAction $timeSync,
     ) {}
 
     /** The log, fresh from Bitrix; our last copy when Bitrix can't be reached. */
@@ -202,7 +202,7 @@ final readonly class TaskTimeService implements TaskTimeServiceInterface
     /** Brings our copy of the task's time log up to date. */
     private function refreshFromBitrix(Task $task): void
     {
-        $this->timeSync->sync($task, $this->bitrixTime->list($task->bitrixId()));
+        $this->timeSync->handle($task, $this->bitrixTime->list($task->bitrixId()));
     }
 
     /** Changes go to Bitrix with the employee's own token. */

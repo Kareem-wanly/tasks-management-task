@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Actions\Bitrix\SyncBitrixFilesAction;
 use App\DTOs\Task\FileDownloadDTO;
 use App\DTOs\Task\TaskFilesDTO;
 use App\DTOs\Task\UploadTaskFileDTO;
 use App\Exceptions\Bitrix\BitrixException;
-use App\Integrations\Bitrix24\BitrixFileSync;
 use App\Integrations\Bitrix24\Contracts\BitrixFileRepositoryInterface;
 use App\Models\Task;
 use App\Models\TaskFile;
@@ -40,7 +40,7 @@ final readonly class TaskFileService implements TaskFileServiceInterface
     public function __construct(
         private TaskFileRepositoryInterface $files,
         private BitrixFileRepositoryInterface $bitrixFiles,
-        private BitrixFileSync $fileSync,
+        private SyncBitrixFilesAction $fileSync,
     ) {}
 
     /** The files, fresh from Bitrix; our last copy when Bitrix can't be reached. */
@@ -109,7 +109,7 @@ final readonly class TaskFileService implements TaskFileServiceInterface
     public function refreshFromBitrix(Task $task): void
     {
         $attachedIds = $this->bitrixFiles->attachedIds((int) $task->bitrix_task_id);
-        $this->fileSync->sync($task, array_values($this->bitrixFiles->attachments($attachedIds)));
+        $this->fileSync->handle($task, array_values($this->bitrixFiles->attachments($attachedIds)));
     }
 
     /**
@@ -133,7 +133,7 @@ final readonly class TaskFileService implements TaskFileServiceInterface
         $attachments = $this->bitrixFiles->attachments(array_merge(...array_values($attachedByTask ?: [[]])));
 
         foreach ($attachedByTask as $taskId => $attachedIds) {
-            $this->fileSync->sync($byId[$taskId], array_values(array_intersect_key($attachments, array_flip($attachedIds))));
+            $this->fileSync->handle($byId[$taskId], array_values(array_intersect_key($attachments, array_flip($attachedIds))));
         }
 
         return count($byId) - count($attachedByTask);

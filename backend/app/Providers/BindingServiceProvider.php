@@ -26,6 +26,7 @@ final class BindingServiceProvider extends ServiceProvider
         Bitrix\Contracts\BitrixOAuthGatewayInterface::class => Bitrix\BitrixOAuthGateway::class,
         Bitrix\Contracts\TokenManagerInterface::class => Bitrix\TokenManager::class,
         Bitrix\Contracts\BitrixServiceAccountInterface::class => Bitrix\PortalServiceAccount::class,
+        Bitrix\Contracts\BitrixTaskResolverInterface::class => Bitrix\BitrixTaskResolver::class,
         Bitrix\Contracts\BitrixAppRepositoryInterface::class => Bitrix\Repositories\BitrixAppRepository::class,
         Bitrix\Contracts\BitrixProjectRepositoryInterface::class => Bitrix\Repositories\BitrixProjectRepository::class,
         Bitrix\Contracts\BitrixUserRepositoryInterface::class => Bitrix\Repositories\BitrixUserRepository::class,

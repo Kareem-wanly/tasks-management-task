@@ -8,7 +8,6 @@ use App\DTOs\Task\DelegateTaskDTO;
 use App\DTOs\Task\TaskMembersDTO;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixFingerprint;
-use App\Integrations\Bitrix24\BitrixTaskSync;
 use App\Integrations\Bitrix24\Contracts\BitrixTaskRepositoryInterface;
 use App\Models\BitrixOutboundOp;
 use App\Models\Task;
@@ -16,6 +15,7 @@ use App\Models\User;
 use App\Repositories\Contracts\BitrixOutboundOpRepositoryInterface;
 use App\Repositories\Contracts\TaskRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Services\Contracts\BitrixSyncServiceInterface;
 use App\Services\Contracts\TaskMemberServiceInterface;
 use Illuminate\Database\ConnectionInterface;
 
@@ -34,7 +34,7 @@ final readonly class TaskMemberService implements TaskMemberServiceInterface
         private UserRepositoryInterface $users,
         private ConnectionInterface $database,
         private BitrixTaskRepositoryInterface $bitrixTasks,
-        private BitrixTaskSync $taskSync,
+        private BitrixSyncServiceInterface $bitrixSync,
         private BitrixOutboundOpRepositoryInterface $ops,
         private BitrixFingerprint $fingerprints,
     ) {}
@@ -105,7 +105,7 @@ final readonly class TaskMemberService implements TaskMemberServiceInterface
      */
     private function refreshFromBitrix(User $actor, Task $task): void
     {
-        $this->taskSync->refresh($task->bitrixId());
+        $this->bitrixSync->refreshTask($task->bitrixId());
         $this->tasks->reload($task);
         $this->ops->record(BitrixOutboundOp::TASK, $task->bitrixId(), 'update', $this->fingerprints->task($task), $actor);
     }

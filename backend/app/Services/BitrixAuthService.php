@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Actions\Bitrix\SyncBitrixUserAction;
 use App\DTOs\Bitrix\BitrixFrameAuthDTO;
 use App\DTOs\Bitrix\ExchangeLoginCodeDTO;
 use App\Exceptions\Bitrix\BitrixException;
@@ -12,7 +13,6 @@ use App\Exceptions\Bitrix\BitrixSignInException;
 use App\Integrations\Bitrix24\BitrixLoginCodes;
 use App\Integrations\Bitrix24\BitrixPayload;
 use App\Integrations\Bitrix24\BitrixToken;
-use App\Integrations\Bitrix24\BitrixUserSync;
 use App\Integrations\Bitrix24\Contracts\BitrixAppRepositoryInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixOAuthGatewayInterface;
 use App\Models\User;
@@ -20,6 +20,7 @@ use App\Repositories\Contracts\BitrixTokenRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Contracts\BitrixAuthServiceInterface;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\Config;
 
 /**
@@ -43,7 +44,8 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
         private BitrixOAuthGatewayInterface $oauth,
         private BitrixTokenRepositoryInterface $tokens,
         private BitrixAppRepositoryInterface $bitrixApp,
-        private BitrixUserSync $users,
+        private SyncBitrixUserAction $syncUser,
+        private ConnectionInterface $database,
         private UserRepositoryInterface $userRepository,
         private BitrixLoginCodes $codes,
     ) {}
@@ -137,7 +139,7 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
         }
 
         // Never links by email here: anyone can put any email on their Bitrix profile.
-        $user = $this->users->upsert($profile);
+        $user = $this->database->transaction(fn (): ?User => $this->syncUser->handle($profile));
 
         if (! $user instanceof User) {
             throw new BitrixSignInException('account_not_linked');
