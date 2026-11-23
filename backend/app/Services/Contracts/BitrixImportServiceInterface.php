@@ -6,6 +6,7 @@ namespace App\Services\Contracts;
 
 use App\Models\BitrixSyncCursor;
 use Carbon\CarbonImmutable;
+use Closure;
 use Illuminate\Support\Collection;
 
 /**
@@ -46,8 +47,12 @@ interface BitrixImportServiceInterface
      */
     public function queueImport(array $entities, bool $linkByEmail): void;
 
-    /** Imports one entity now, in this process (its failure is recorded on its cursor row, then thrown). */
-    public function runImport(string $entity, bool $linkByEmail): void;
+    /**
+     * Imports one entity now, in this process (its failure is recorded on its cursor row, then thrown).
+     *
+     * @param  (Closure(int, int): void)|null  $onProgress  Called after every page with processed and total.
+     */
+    public function runImport(string $entity, bool $linkByEmail, ?Closure $onProgress = null): void;
 
     /**
      * Where each entity's last import stands.
@@ -57,11 +62,15 @@ interface BitrixImportServiceInterface
      */
     public function progress(array $entities): Collection;
 
-    /** When the last task import or changes sync started; null when tasks were never imported. */
-    public function lastTaskSync(): ?CarbonImmutable;
-
-    /** The periodic sync: every project (no reliable change filter for groups), and the tasks changed since $since. */
-    public function syncChanges(CarbonImmutable $since): void;
+    /**
+     * The periodic sync: every project (no reliable change filter for groups),
+     * and the tasks changed since the last task import or changes sync. When
+     * tasks were never imported there is nothing to compare with, so it runs
+     * the full import instead.
+     *
+     * @return CarbonImmutable|null When changes were taken from; null after a full import.
+     */
+    public function syncChanges(): ?CarbonImmutable;
 
     /** Every employee; with $linkByEmail an unlinked local account with the same email is linked. */
     public function importUsers(bool $linkByEmail): void;

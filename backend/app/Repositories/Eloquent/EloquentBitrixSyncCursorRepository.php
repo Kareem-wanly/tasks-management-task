@@ -7,6 +7,7 @@ namespace App\Repositories\Eloquent;
 use App\Enums\SyncCursorStatus;
 use App\Models\BitrixSyncCursor;
 use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
+use Closure;
 use Illuminate\Support\Collection;
 
 final class EloquentBitrixSyncCursorRepository implements BitrixSyncCursorRepositoryInterface
@@ -32,6 +33,15 @@ final class EloquentBitrixSyncCursorRepository implements BitrixSyncCursorReposi
     public function advance(BitrixSyncCursor $cursor, int $processed, int $total): void
     {
         $cursor->update(['processed' => $cursor->processed + $processed, 'total' => $total]);
+    }
+
+    public function watch(string $entity, Closure $onProgress): void
+    {
+        BitrixSyncCursor::saved(function (BitrixSyncCursor $cursor) use ($entity, $onProgress): void {
+            if ($cursor->entity === $entity) {
+                $onProgress($cursor->processed, $cursor->total);
+            }
+        });
     }
 
     public function complete(BitrixSyncCursor $cursor): void

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Models\BitrixSyncCursor;
 use App\Services\Contracts\BitrixImportServiceInterface;
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Helper\ProgressBar;
@@ -25,10 +24,6 @@ final class ImportFromBitrixCommand extends Command
         {--status : Show the progress of the last import and exit}';
 
     protected $description = 'Import users, projects, tasks and their checklists, time logs, files, results and chats from Bitrix24';
-
-    private ?ProgressBar $bar = null;
-
-    private ?string $running = null;
 
     public function handle(BitrixImportServiceInterface $import): int
     {
@@ -85,38 +80,37 @@ final class ImportFromBitrixCommand extends Command
      */
     private function runNow(BitrixImportServiceInterface $import, array $entities): int
     {
-        // The import saves its cursor after every page; mirror it on the bar.
-        BitrixSyncCursor::saved(function (BitrixSyncCursor $cursor): void {
-            if ($this->bar instanceof ProgressBar && $cursor->entity === $this->running && $cursor->total > 0) {
-                $this->bar->setMaxSteps($cursor->total);
-                $this->bar->setProgress(min($cursor->processed, $cursor->total));
-            }
-        });
-
         foreach ($entities as $entity) {
             $this->line("Importing {$entity}...");
-            $this->running = $entity;
-            $this->bar = $this->output->createProgressBar();
-            $this->bar->start();
+            $bar = $this->output->createProgressBar();
+            $bar->start();
 
             try {
-                $import->runImport($entity, (bool) $this->option('link-by-email'));
+                $import->runImport($entity, (bool) $this->option('link-by-email'), fn (int $processed, int $total) => $this->advance($bar, $processed, $total));
             } catch (Throwable $e) {
-                $this->bar->clear();
+                $bar->clear();
                 $this->newLine();
                 $this->error("Importing {$entity} failed: {$e->getMessage()}");
 
                 return self::FAILURE;
             }
 
-            $this->bar->finish();
+            $bar->finish();
             $this->newLine();
         }
 
-        $this->bar = null;
         $this->newLine();
 
         return $this->showStatus($import);
+    }
+
+    /** The import reports after every page; mirror it on the bar. */
+    private function advance(ProgressBar $bar, int $processed, int $total): void
+    {
+        if ($total > 0) {
+            $bar->setMaxSteps($total);
+            $bar->setProgress(min($processed, $total));
+        }
     }
 
     private function showStatus(BitrixImportServiceInterface $import): int
