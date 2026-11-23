@@ -59,7 +59,7 @@ export interface RoleRef {
   display_name: string | null;
 }
 
-/** GET /users returns models, not UserResource, so roles are objects here. */
+/** UserListItemResource (the users page): roles are objects here, not names as in UserResource. */
 export interface UserListItem {
   id: number;
   name: string;

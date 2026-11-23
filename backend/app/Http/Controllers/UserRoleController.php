@@ -6,6 +6,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ShowUserRolesRequest;
 use App\Http\Requests\SyncUserRolesRequest;
+use App\Http\Resources\RoleRefResource;
+use App\Http\Resources\UserListItemResource;
 use App\Models\User;
 use App\Services\Contracts\UserRoleServiceInterface;
 use Illuminate\Http\JsonResponse;
@@ -19,7 +21,7 @@ final class UserRoleController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'User roles retrieved successfully',
-            'data' => $this->roles->list($user),
+            'data' => RoleRefResource::collection($this->roles->list($user)),
         ]);
     }
 
@@ -27,7 +29,7 @@ final class UserRoleController extends Controller
     {
         return response()->json([
             'message' => 'User roles updated successfully',
-            'user' => $this->roles->sync($request->actor(), $user, $request->toDto()),
+            'user' => new UserListItemResource($this->roles->sync($request->actor(), $user, $request->toDto())),
         ]);
     }
 }

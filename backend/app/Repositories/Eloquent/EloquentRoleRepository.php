@@ -14,7 +14,7 @@ final class EloquentRoleRepository implements RoleRepositoryInterface
     /** @return Collection<int, Role> */
     public function allWithPermissions(): Collection
     {
-        return Role::with('permissions:id,name,description')
+        return Role::with('permissions:id,name,display_name,description')
             ->withCount(['permissions', 'users'])
             ->get();
     }
@@ -41,7 +41,7 @@ final class EloquentRoleRepository implements RoleRepositoryInterface
 
     public function withPermissions(Role $role): Role
     {
-        return $role->load('permissions:id,name,description');
+        return $role->load('permissions:id,name,display_name,description');
     }
 
     public function findByName(string $name): ?Role
