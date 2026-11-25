@@ -41,11 +41,60 @@
 
 ---
 
+## حالة التنفيذ (2026-11-25)
+
+**كل الخطوات من A.1 إلى F.1 تمت.** نُفّذت في السلسلة PR11، من #79 إلى #94. الـ PRs متراكبة (كل واحد مبني على الذي قبله)، فتُدمج بالترتيب، ولم يُدمج أي منها بعد. كل PR جُرّب على البوابة الحقيقية قبل الكوميت. وفي النهاية: `composer check` أخضر، وLarastan على المستوى 9 بلا baseline، و**551 اختبارًا** (كانت 437).
+
+| PR | الخطوات |
+|---|---|
+| #79 PR11a | A.1 |
+| #80 PR11b | G.1، G.2: قرارات صاحب المشروع، ووثّقناها في CLAUDE.md |
+| #81 PR11c | B.1، C.4، E.2 |
+| #82 PR11d-1، #83 PR11d-2 | B.3 (جزآن) |
+| #84 PR11e-1، #85 PR11e-2 | B.2، C.3، واختبار وحدة لكل Action |
+| #86 PR11f | B.4، D.2 |
+| #87 PR11g | B.5، D.1 |
+| #88 PR11h-1، #89 PR11h-2 | C.1 (جزآن) |
+| #90 PR11i-1، #91 PR11i-2، #92 PR11i-3 | C.2 (ثلاثة أجزاء) |
+| #93 PR11j | B.6، E.1، E.3 |
+| #94 PR11k | F.1 |
+
+### قرارات أثناء التنفيذ تختلف عن نص هذا الملف
+
+كلها بموافقة صاحب المشروع، أو لأن النص المقترح لا يعمل كما هو:
+
+- **D.1: تخطّي الـ job لا إعادته.** إذا وجد الـ job أن `WithoutOverlapping` مقفل، **يُتخطّى** ولا يُعاد (`dontRelease()`)، بدل `releaseAfter`. السبب أن `$tries = 1`، فإعادة الـ job كانت ستنتهي بفشله وبتسجيل خطأ على الـ cursor. والتخطّي آمن، لأن الاستيراد الجاري يعمل نفس العمل، وكل استيراد قابل للتكرار بلا ضرر. والقفل منفصل لكل كيان، ويُفك بعد `$timeout`.
+- **D.2: عدّاد المهام قيد التنفيذ.** يستعمل `TaskStatus::IN_PROGRESS_KEY` بدل الحالات غير النهائية. لو استعملنا الحالات غير النهائية، لدخلت المهام المعلّقة في الرقم الظاهر على بطاقة المشروع.
+- **C.1: حذف الحقول الداخلية من الردود.** هذا بموافقة صاحب المشروع. الغلاف (`success`، `message`، `data`، `meta`) بقي كما هو، ومعه كل حقل تقرؤه الواجهة. أما الحقول الداخلية التي لا تقرؤها الواجهة فلم تعد تخرج من الخادم، ومنها: موعد انتهاء توكن Bitrix، والأقسام، و`email_verified_at`، وصفوف `pivot`، و`deleted_at`. واختبارات الردود تثبت الحالتين: الحقول المقروءة موجودة، والداخلية غائبة. وحُوّل `PUT /me` إلى Resource أيضًا، مع أنه لم يكن في القائمة.
+- **C.2: سجل النشاط يعرض الاسم.** سطر "أُضيف عضو" يكتب اسم العضو بدل `User ID n`، بطلب صاحب المشروع.
+- **B.6: الـ service تقرر نتيجة التثبيت.** `BitrixInstallController` نُفّذ بالحل الكامل، باختيار صاحب المشروع: الـ service ترجع `BitrixInstallResultDTO`، والـ controller يحوّله إلى JSON أو صفحة فقط.
+- **F.1: قاعدة الـ Resources تقرأ الكود.** الصيغة المقترحة `not->toUse('App\Models')` تفشل، لأن الـ controllers تستقبل الـ models في معاملاتها. لذلك صارت القاعدة تقرأ كود الـ controllers، وتمنع record خامًا تحت `data`/`user`/`role`/`project`/`task`، وتمنع `response()->json($قيمة)`. وأضفنا قواعد أخرى: الـ controllers في `Api\V1`، والـ DTOs المبنية من FormRequest فيها `fromArray()`، و`App\Enums` فيه enums فقط.
+
+### انحرافات مقبولة باقية
+
+- **QUE-6:** الكتابة إلى Bitrix24 تبقى داخل طلب الـ HTTP (G.1، وهي في CLAUDE.md).
+- **ARC-1 جزئيًا:** جانب HTTP في OAuth يبقى في `BitrixAuthController`، أي بدء الـ state ومقارنة الـ host والتحويلات (G.2، وهي في CLAUDE.md). أما فحص الـ state فانتقل إلى `BitrixSignInRequest`.
+- **ARC-15 (E.3، منخفض الأولوية):** `BitrixGatewayInterface` يأخذ الـ model `HasBitrixToken` سياقًا للطلب، بدل `BitrixContextDTO`.
+- **ARC-9، اعتماديات مسموحة صراحةً:** قائمة مالكي الـ repositories في `ArchitectureTest` تسمح بثلاث حالات:
+  - `UserService` يستعمل `BitrixPortalRepository`.
+  - خدمات المشاريع والمهام تستعمل `BitrixOutboundOpRepository`، وهو سجل تغييراتها المرسلة إلى Bitrix.
+  - الـ Actions والـ Integrations تستعمل الـ repositories مباشرة، لأن C.2 خاص بالـ services.
+- **C.4:** `TracksSyncProgress::failed()` يستعمل `resolve()`، ومعه تعليق، لأن Laravel لا يحقن في `failed()`.
+
+### ملاحظات للنشر
+
+- **بعد الدمج:** شغّل `php artisan optimize:clear`، لأن الـ controllers انتقلت إلى `Api\V1`، ثم `php artisan queue:restart`.
+- **اختبار متقطع:** في #92 فشل اختبار مرة واحدة ولم يتكرر في 14 تشغيلًا بعدها، ولم نعرف اسمه. ومن بعدها صار الكوميت لا يُنفَّذ إلا بعد نجاح `composer check` نفسه.
+
+**الخطوة التالية بيد صاحب المشروع:** دمج السلسلة، وتحديد ما بعدها. المرحلة الخامسة من Bitrix24 لم تبدأ.
+
+---
+
 # القسم A: الأمان
 
 ### الخطوة A.1: المسؤول عن مهمة بدون مشروع يمكن أن يكون مستخدماً موقوفاً (SEC-2)
 
-- [ ] تمت
+- [x] تمت: #79 (PR11a)
 
 **المشكلة:** في [StoreTaskRequest.php:46](backend/app/Http/Requests/StoreTaskRequest.php#L46) الحقل `assigned_to` يُفحص بـ `exists:users,id` فقط. قاعدة `ProjectMember` ([ProjectMember.php:17](backend/app/Rules/ProjectMember.php#L17)) تنجح دائماً إذا لم يكن هناك مشروع. فالمهمة بدون مشروع (`GROUP_ID = 0`) تقبل أي مستخدم، حتى الموقوف. بقية طلبات المستخدمين (`AddProjectMemberRequest`، `DelegateTaskRequest`، `UpdateTaskMembersRequest`) تفلتر على `is_active` بشكل صحيح.
 
@@ -61,7 +110,7 @@
 
 ### الخطوة B.1: TokenManager يستدعي `Http::` خارج الـ Gateway (ARC-15)
 
-- [ ] تمت
+- [x] تمت: #81 (PR11c)
 
 **المشكلة:** [TokenManager.php:86](backend/app/Integrations/Bitrix24/TokenManager.php#L86) يتصل بـ `oauth.bitrix.info` مباشرة عبر `Http::`. وهو class فعلي بلا interface، يُحقن في `BitrixGateway` وفي `BitrixAuthService:42`.
 
@@ -78,7 +127,7 @@
 
 ### الخطوة B.2: Transactions ومنطق أعمال داخل `Integrations/*Sync` (ARC-6، ARC-5)
 
-- [ ] تمت
+- [x] تمت: #84 (PR11e-1)
 
 **المشكلة:**
 - [BitrixProjectSync.php:47](backend/app/Integrations/Bitrix24/BitrixProjectSync.php#L47) و[BitrixUserSync.php:44](backend/app/Integrations/Bitrix24/BitrixUserSync.php#L44) يفتحان `DB::transaction` بنفسيهما.
@@ -98,7 +147,7 @@
 
 ### الخطوة B.3: Queries وكتابة داخل الـ Models (ARC-5)
 
-- [ ] تمت
+- [x] تمت: #82 (PR11d-1)، #83 (PR11d-2)
 
 **المشكلة:**
 | المكان | ما فيه |
@@ -122,7 +171,7 @@
 
 ### الخطوة B.4: الـ Observers تكتب في الـ repository مباشرة (ARC-12)
 
-- [ ] تمت
+- [x] تمت: #86 (PR11f)
 
 **المشكلة:** [TaskObserver.php:13](backend/app/Observers/TaskObserver.php#L13) و`ProjectObserver.php:13` يحقنان `ActivityLogRepositoryInterface`، يقرآن `Auth::id()`، ويبنيان مصفوفة السجل بأنفسهما. الـ Observer نقطة دخول مثل الـ Job، فيجب أن يستدعي service واحدة فقط.
 
@@ -138,7 +187,7 @@
 
 ### الخطوة B.5: منطق داخل الأوامر (ARC-12)
 
-- [ ] تمت
+- [x] تمت: #87 (PR11g)
 
 **المشكلة:**
 - [ImportFromBitrixCommand.php:89](backend/app/Console/Commands/ImportFromBitrixCommand.php#L89) يسجل `BitrixSyncCursor::saved(...)`، أي يستمع لحدث model مباشرة من داخل الأمر.
@@ -154,7 +203,7 @@
 
 ### الخطوة B.6: منطق OAuth داخل BitrixAuthController وBitrixInstallController (ARC-1)
 
-- [ ] تمت
+- [x] تمت: #93 (PR11j)
 
 **المشكلة:** [BitrixAuthController.php:48-63](backend/app/Http/Controllers/BitrixAuthController.php#L48) و`:97-107` يقارنان الـ hosts، يحفظان `state` في الـ session، ويتحققان منه بـ `hash_equals`. و`BitrixInstallController.php:59-76` يختار بين رد الحدث وصفحة التثبيت. التعليق في السطر 29 يقول إن هذا مقصود ("keeps only the HTTP side").
 
@@ -171,7 +220,7 @@
 
 ### الخطوة C.1: Controllers ترجع models خام بدل Resources (ARC-8)
 
-- [ ] تمت
+- [x] تمت: #88 (PR11h-1)، #89 (PR11h-2)
 
 **المشكلة:** `response()->json([...'data' => $model])` في: `ProjectController` (members، addMember، removeMember، toggleArchive، options، activities)، `TaskController:32`، `UserController`، `RoleController`، `UserRoleController`، `TaskStatusController`، `TaskPriorityController`، `PermissionController`. و`Controller::paginated()` ([Controller.php:19](backend/app/Http/Controllers/Controller.php#L19)) يرسل `$page->items()` خاماً. التوكنات لا تظهر فقط لأنها في `$hidden`.
 
@@ -186,7 +235,7 @@
 
 ### الخطوة C.2: Services تستدعي repositories مجالات أخرى (ARC-9)
 
-- [ ] تمت
+- [x] تمت: #90 (PR11i-1)، #91 (PR11i-2)، #92 (PR11i-3)
 
 **المشكلة:** الـ service تستدعي repository مجالها، ومجالات أخرى عبر **service** ذلك المجال فقط. الحالات الحالية:
 | Service | Repository من مجال آخر | البديل |
@@ -210,7 +259,7 @@
 
 ### الخطوة C.3: Services تعتمد على classes فعلية بدل interfaces (ARC-4)
 
-- [ ] تمت
+- [x] تمت: #85 (PR11e-2)
 
 **المشكلة:** `BitrixImportService:74-81`، `BitrixSyncService:26-31`، `BitrixAuthService:42-46`، و`TaskChatService`، `TaskChecklistService`، `TaskFileService`، `TaskHistoryService`، `TaskMemberService`، `TaskResultService`، `TaskTimeService` تحقن `Bitrix*Sync` و`Bitrix*Mapper` و`BitrixEchoGuard` و`BitrixDeletionGuard` و`BitrixLoginCodes` و`TokenManager` كـ classes فعلية.
 
@@ -225,7 +274,7 @@
 
 ### الخطوة C.4: `app()` و`resolve()` خارج الـ Providers (ARC-4)
 
-- [ ] تمت
+- [x] تمت: #81 (PR11c)
 
 **المشكلة:**
 - [BitrixGateway.php:263-267](backend/app/Integrations/Bitrix24/BitrixGateway.php#L263) يجلب حساب الخدمة بـ `app()->bound()` و`resolve()`.
@@ -247,7 +296,7 @@
 
 ### الخطوة D.1: jobs الاستيراد بدون `$backoff` وبدون منع التداخل (QUE-1، QUE-5)
 
-- [ ] تمت
+- [x] تمت: #87 (PR11g)
 
 **المشكلة:** [TracksSyncProgress.php](backend/app/Jobs/Bitrix/TracksSyncProgress.php) (تستخدمه الـ jobs الثماني `Import*`) فيه `$tries = 1` و`$timeout = 3600`، بدون `$backoff`، وبدون `ShouldBeUnique` أو `WithoutOverlapping`. الجدولة الليلية في [routes/console.php:15](backend/routes/console.php#L15) فيها `->withoutOverlapping()`، لكنها تحمي **الأمر** فقط، والأمر ينتهي بسرعة بعد إرسال الـ jobs إلى الـ queue. فاستيراد يدوي عبر `bitrix:import` قد تعمل jobs منه مع jobs الاستيراد الليلي على نفس الـ cursor في نفس الوقت.
 
@@ -262,7 +311,7 @@
 
 ### الخطوة D.2: نصوص ثابتة بدل enums (CODE-6)
 
-- [ ] تمت
+- [x] تمت: #86 (PR11f)
 
 **المشكلة:**
 - أفعال العمليات الصادرة `'create'`/`'update'`/`'delete'` في `ProjectService.php:183,203,215`، `TaskService.php:130,154,166`، `TaskMemberService.php:110`، وثوابت الكيان في `BitrixOutboundOp` (`BitrixOutboundOp::PROJECT`، `::TASK`).
@@ -283,7 +332,7 @@
 
 ### الخطوة E.1: `signInWithCode` يستقبل إدخالاً خاماً (ARC-3، CODE-4)
 
-- [ ] تمت
+- [x] تمت: #93 (PR11j)
 
 **المشكلة:** [BitrixAuthServiceInterface.php:18](backend/app/Services/Contracts/BitrixAuthServiceInterface.php#L18): `signInWithCode(string $code, mixed $domain, string $nonce)`. الـ `mixed $domain` قيمة query خام من [BitrixAuthController.php:106](backend/app/Http/Controllers/BitrixAuthController.php#L106).
 
@@ -295,7 +344,7 @@
 
 ### الخطوة E.2: ربط خارج `BindingServiceProvider` (CFG-2)
 
-- [ ] تمت
+- [x] تمت: #81 (PR11c)
 
 **المشكلة:** [AppServiceProvider.php:32-35](backend/app/Providers/AppServiceProvider.php#L32) يربط `BitrixGatewayInterface::SERVICE_ACCOUNT`.
 
@@ -307,7 +356,7 @@
 
 ### الخطوة E.3: تفاصيل أصغر
 
-- [ ] تمت
+- [x] تمت: #86 (PR11f)، #93 (PR11j)، #94 (PR11k)
 
 | المكان | القاعدة | التصحيح |
 |---|---|---|
@@ -325,7 +374,7 @@
 
 ### الخطوة F.1: اختبارات معمارية تلتقط ما سبق
 
-- [ ] تمت
+- [x] تمت: #94 (PR11k)، والقواعد مع كل PR أصلح مخالفتها
 
 **المشكلة:** [tests/Arch/ArchitectureTest.php:120-122](backend/tests/Arch/ArchitectureTest.php#L120) يسمح بـ `Http` في كل `App\Integrations`، ولا توجد قواعد للـ Observers ولا الـ Models ولا ARC-9. لهذا مرت كل المخالفات أعلاه وكل الاختبارات خضراء.
 
