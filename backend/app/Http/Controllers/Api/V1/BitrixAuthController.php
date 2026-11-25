@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\V1;
 
 use App\Exceptions\Bitrix\BitrixSignInException;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\BitrixAppSessionRequest;
 use App\Http\Requests\BitrixSignInRequest;
 use App\Http\Requests\ExchangeBitrixLoginCodeRequest;
@@ -26,15 +27,13 @@ use Illuminate\Support\Str;
  *   frontend's app page, which signs in through appSession() with the tokens
  *   Bitrix's JS SDK gives it.
  *
- * This controller keeps only the HTTP side (session state and redirects);
+ * This controller keeps only the HTTP side (starting the session state, the
+ * host check and the redirects: an accepted deviation, see CLAUDE.md). The
+ * callback's state is checked by BitrixSignInRequest::toCallbackDto(), and
  * BitrixAuthServiceInterface signs the user in.
  */
 final class BitrixAuthController extends Controller
 {
-    private const STATE_KEY = 'bitrix_oauth_state';
-
-    private const NONCE_KEY = 'bitrix_login_nonce';
-
     /** What Bitrix's JS SDK reads from the frame's address. */
     private const APP_FRAME_PARAMS = ['DOMAIN', 'PROTOCOL', 'LANG', 'APP_SID'];
 
@@ -57,8 +56,8 @@ final class BitrixAuthController extends Controller
         }
 
         $state = Str::random(40);
-        $request->session()->put(self::STATE_KEY, $state);
-        $request->session()->put(self::NONCE_KEY, $nonce);
+        $request->session()->put(BitrixSignInRequest::STATE_KEY, $state);
+        $request->session()->put(BitrixSignInRequest::NONCE_KEY, $nonce);
 
         return redirect()->away($this->auth->authorizeUrl($state));
     }
@@ -70,7 +69,7 @@ final class BitrixAuthController extends Controller
         }
 
         try {
-            $code = $this->fromOAuth($request);
+            $code = $this->auth->signInWithCode($request->toCallbackDto());
         } catch (BitrixSignInException $e) {
             return $this->fail($e->reason);
         }
@@ -92,18 +91,6 @@ final class BitrixAuthController extends Controller
     {
         // A refusal is a BitrixSignInException, rendered as {message, reason} with 422.
         return response()->json(['token' => $this->auth->signInFromFrame($request->toDto())]);
-    }
-
-    private function fromOAuth(BitrixSignInRequest $request): string
-    {
-        $expected = $request->session()->pull(self::STATE_KEY);
-        $nonce = $request->session()->pull(self::NONCE_KEY);
-
-        if (! is_string($expected) || $expected === '' || ! hash_equals($expected, $request->queryText('state')) || ! $request->isNonce($nonce)) {
-            throw new BitrixSignInException('invalid_state');
-        }
-
-        return $this->auth->signInWithCode($request->queryText('code'), $request->query('domain'), $nonce);
     }
 
     /**

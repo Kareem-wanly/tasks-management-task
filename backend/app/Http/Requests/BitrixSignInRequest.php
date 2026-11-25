@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Bitrix\BitrixCallbackDTO;
+use App\Exceptions\Bitrix\BitrixSignInException;
 use App\Integrations\Bitrix24\BitrixLoginCodes;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -13,6 +15,11 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 final class BitrixSignInRequest extends FormRequest
 {
+    /** Where the sign-in keeps its OAuth state and nonce (set by BitrixAuthController::redirect()). */
+    public const STATE_KEY = 'bitrix_oauth_state';
+
+    public const NONCE_KEY = 'bitrix_login_nonce';
+
     public function authorize(): bool
     {
         return true;
@@ -46,6 +53,27 @@ final class BitrixSignInRequest extends FormRequest
     public function isNonce(mixed $value): bool
     {
         return BitrixLoginCodes::isNonce($value);
+    }
+
+    /**
+     * The OAuth callback, once its state matches the one kept in the session
+     * when the sign-in started. Both kept values are used up either way, so a
+     * callback can't be replayed.
+     *
+     * @throws BitrixSignInException invalid_state, when they don't match.
+     */
+    public function toCallbackDto(): BitrixCallbackDTO
+    {
+        $expected = $this->session()->pull(self::STATE_KEY);
+        $nonce = $this->session()->pull(self::NONCE_KEY);
+
+        if (! is_string($expected) || $expected === '' || ! hash_equals($expected, $this->queryText('state')) || ! $this->isNonce($nonce)) {
+            throw new BitrixSignInException('invalid_state');
+        }
+
+        $domain = $this->queryText('domain');
+
+        return BitrixCallbackDTO::fromArray(['code' => $this->queryText('code'), 'domain' => $domain === '' ? null : $domain, 'nonce' => $nonce]);
     }
 
     /** A query-string value Bitrix24 sends back (state, code); '' when missing or not text. */

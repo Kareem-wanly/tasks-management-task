@@ -5,15 +5,14 @@ declare(strict_types=1);
 namespace App\Services\Contracts;
 
 use App\DTOs\Bitrix\BitrixInstallDTO;
+use App\DTOs\Bitrix\BitrixInstallResultDTO;
 
 interface BitrixInstallServiceInterface
 {
-    /** Bitrix24's ONAPPINSTALL event. */
-    public function installFromEvent(BitrixInstallDTO $install): void;
-
     /**
-     * The page request comes from a browser, so anyone could forge it: the
-     * token is trusted only after Bitrix confirms it is our app's and an admin's.
+     * Installs from the ONAPPINSTALL event or the install page, and says how it
+     * ended. A refused event throws BitrixInstallRefusedException (JSON for
+     * Bitrix's server); a refused page is an outcome, shown to the admin as a page.
      */
-    public function installFromPage(BitrixInstallDTO $install): void;
+    public function install(BitrixInstallDTO $install): BitrixInstallResultDTO;
 }

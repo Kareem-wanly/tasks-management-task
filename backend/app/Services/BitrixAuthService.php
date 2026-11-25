@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Actions\Bitrix\SyncBitrixUserAction;
+use App\DTOs\Bitrix\BitrixCallbackDTO;
 use App\DTOs\Bitrix\BitrixFrameAuthDTO;
 use App\DTOs\Bitrix\ExchangeLoginCodeDTO;
 use App\Exceptions\Bitrix\BitrixException;
@@ -59,15 +60,15 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
         ]);
     }
 
-    /** OAuth: the code Bitrix sent back, for our portal. Returns a one-time sign-in code bound to $nonce. */
-    public function signInWithCode(string $code, mixed $domain, string $nonce): string
+    /** OAuth: the code Bitrix sent back, for our portal. Returns a one-time sign-in code bound to the browser's nonce. */
+    public function signInWithCode(BitrixCallbackDTO $callback): string
     {
-        if (! $this->isOurPortal($domain) || $code === '') {
+        if (! $this->isOurPortal($callback->domain) || $callback->code === '') {
             throw new BitrixSignInException('unknown_portal');
         }
 
         try {
-            $token = $this->oauth->exchangeCode($code);
+            $token = $this->oauth->exchangeCode($callback->code);
         } catch (BitrixException) {
             throw new BitrixSignInException('exchange_failed');
         }
@@ -77,7 +78,7 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
             throw new BitrixSignInException('unknown_portal');
         }
 
-        return $this->codes->issue($this->authenticate($token), $nonce);
+        return $this->codes->issue($this->authenticate($token), $callback->nonce);
     }
 
     /**
