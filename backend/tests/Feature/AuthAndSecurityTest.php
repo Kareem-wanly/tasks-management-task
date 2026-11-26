@@ -33,6 +33,7 @@ class AuthAndSecurityTest extends TestCase
             ->assertJsonStructure(['access_token', 'user']);
 
         $this->assertDatabaseHas('users', ['email' => 'newuser@example.com']);
+        $this->assertTrue(User::where('email', 'newuser@example.com')->sole()->hasRole('Member'));
     }
 
     public function test_user_can_login_with_valid_credentials(): void

@@ -11,16 +11,16 @@ use App\Exceptions\User\LastAdministratorException;
 use App\Integrations\Bitrix24\Contracts\BitrixUserRepositoryInterface;
 use App\Models\Role;
 use App\Repositories\Contracts\BitrixPortalRepositoryInterface;
-use App\Repositories\Contracts\PermissionRepositoryInterface;
-use App\Repositories\Contracts\RoleRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Services\Contracts\PermissionServiceInterface;
+use App\Services\Contracts\RoleServiceInterface;
 use App\Services\UserRoleService;
 use App\Services\UserService;
 use Illuminate\Database\ConnectionInterface;
 
 beforeEach(function (): void {
     $this->users = Mockery::mock(UserRepositoryInterface::class);
-    $this->roles = Mockery::mock(RoleRepositoryInterface::class);
+    $this->roles = Mockery::mock(RoleServiceInterface::class);
     $this->bitrixUsers = Mockery::mock(BitrixUserRepositoryInterface::class);
     $this->database = Mockery::mock(ConnectionInterface::class);
     $this->database->shouldReceive('transaction')->andReturnUsing(fn (Closure $callback): mixed => $callback());
@@ -50,9 +50,9 @@ describe('UserService::setActive', function (): void {
 
 describe('UserRoleService::sync', function (): void {
     beforeEach(function (): void {
-        $this->service = new UserRoleService($this->users, $this->roles, Mockery::mock(PermissionRepositoryInterface::class), $this->database);
+        $this->service = new UserRoleService($this->users, $this->roles, Mockery::mock(PermissionServiceInterface::class), $this->database);
         $this->adminRole = (new Role)->forceFill(['id' => 1, 'name' => SystemRole::Administrator->value]);
-        $this->roles->shouldReceive('findByName')->with(SystemRole::Administrator->value)->andReturn($this->adminRole);
+        $this->roles->shouldReceive('findSystemRole')->with(SystemRole::Administrator)->andReturn($this->adminRole);
     });
 
     it('keeps the last administrator', function (): void {

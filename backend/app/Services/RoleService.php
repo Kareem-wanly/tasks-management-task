@@ -106,6 +106,16 @@ final readonly class RoleService implements RoleServiceInterface
         $this->roles->delete($role);
     }
 
+    public function findSystemRole(SystemRole $role): ?Role
+    {
+        return $this->roles->findByName($role->value);
+    }
+
+    public function memberRole(): Role
+    {
+        return $this->roles->memberRole();
+    }
+
     /** @param  list<int>  $permissionIds */
     private function guardPermissionGrant(User $actor, Role $role, array $permissionIds): void
     {

@@ -54,3 +54,10 @@ it('lets only an administrator change the Administrator role', function (): void
     expect(fn () => $this->service->syncPermissions(userWithRoles('Project Manager'), (new Role)->forceFill(['name' => SystemRole::Administrator->value]), new SyncRolePermissionsDTO([1])))
         ->toThrow(RolePermissionsChangeDeniedException::class);
 });
+
+it('finds a built-in role by its name, for the user services', function (): void {
+    $admin = (new Role)->forceFill(['id' => 1, 'name' => SystemRole::Administrator->value]);
+    $this->roles->shouldReceive('findByName')->once()->with('Administrator')->andReturn($admin);
+
+    expect($this->service->findSystemRole(SystemRole::Administrator))->toBe($admin);
+});

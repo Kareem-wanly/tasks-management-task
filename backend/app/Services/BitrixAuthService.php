@@ -17,8 +17,8 @@ use App\Integrations\Bitrix24\Contracts\BitrixLoginCodesInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixOAuthGatewayInterface;
 use App\Models\User;
 use App\Repositories\Contracts\BitrixTokenRepositoryInterface;
-use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Contracts\BitrixAuthServiceInterface;
+use App\Services\Contracts\UserServiceInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\Config;
@@ -46,7 +46,7 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
         private BitrixAppRepositoryInterface $bitrixApp,
         private SyncBitrixUserAction $syncUser,
         private ConnectionInterface $database,
-        private UserRepositoryInterface $userRepository,
+        private UserServiceInterface $userService,
         private BitrixLoginCodesInterface $codes,
     ) {}
 
@@ -103,7 +103,7 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
             memberId: $auth->memberId,
         ));
 
-        return $this->userRepository->createApiToken($user, self::TOKEN_NAME);
+        return $this->userService->issueApiToken($user, self::TOKEN_NAME);
     }
 
     /**
@@ -119,7 +119,7 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
             throw new BitrixLoginCodeExpiredException;
         }
 
-        return $this->userRepository->createApiToken($user, self::TOKEN_NAME);
+        return $this->userService->issueApiToken($user, self::TOKEN_NAME);
     }
 
     /**

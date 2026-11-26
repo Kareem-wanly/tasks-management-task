@@ -15,8 +15,8 @@ use App\Exceptions\User\CannotDeactivateOwnAccountException;
 use App\Integrations\Bitrix24\Contracts\BitrixUserRepositoryInterface;
 use App\Models\User;
 use App\Repositories\Contracts\BitrixPortalRepositoryInterface;
-use App\Repositories\Contracts\RoleRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Services\Contracts\RoleServiceInterface;
 use App\Services\Contracts\UserServiceInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\ConnectionInterface;
@@ -34,7 +34,7 @@ final readonly class UserService implements UserServiceInterface
 
     public function __construct(
         private UserRepositoryInterface $users,
-        private RoleRepositoryInterface $roles,
+        private RoleServiceInterface $roles,
         private BitrixUserRepositoryInterface $bitrixUsers,
         private BitrixPortalRepositoryInterface $portals,
         private ConnectionInterface $database,
@@ -118,6 +118,11 @@ final readonly class UserService implements UserServiceInterface
      * Invites the (unsaved) user: Bitrix emails them an invitation, and the
      * returned ID links the accounts, so their later Bitrix sign-in finds this user.
      */
+    public function issueApiToken(User $user, string $name): string
+    {
+        return $this->users->createApiToken($user, $name);
+    }
+
     private function inviteInBitrix(User $actor, User $user): void
     {
         $this->ensureSignedInWithBitrix($actor);

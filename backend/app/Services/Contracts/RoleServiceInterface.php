@@ -7,6 +7,7 @@ namespace App\Services\Contracts;
 use App\DTOs\Role\CreateRoleDTO;
 use App\DTOs\Role\SyncRolePermissionsDTO;
 use App\DTOs\Role\UpdateRoleDTO;
+use App\Enums\SystemRole;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -25,4 +26,10 @@ interface RoleServiceInterface
     public function syncPermissions(User $actor, Role $role, SyncRolePermissionsDTO $permissions): Role;
 
     public function delete(Role $role): void;
+
+    /** A built-in role (Administrator, Member...); null if it was never seeded. */
+    public function findSystemRole(SystemRole $role): ?Role;
+
+    /** The role new users get; created on first use. */
+    public function memberRole(): Role;
 }
