@@ -9,12 +9,12 @@ use App\Actions\Bitrix\SyncBitrixTaskAction;
 use App\Actions\Bitrix\SyncBitrixUserAction;
 use App\Enums\TaskMemberRole;
 use App\Exceptions\Bitrix\BitrixException;
-use App\Integrations\Bitrix24\BitrixDeletionGuard;
-use App\Integrations\Bitrix24\BitrixEchoGuard;
-use App\Integrations\Bitrix24\BitrixRecordFetcher;
+use App\Integrations\Bitrix24\Contracts\BitrixDeletionGuardInterface;
+use App\Integrations\Bitrix24\Contracts\BitrixEchoGuardInterface;
+use App\Integrations\Bitrix24\Contracts\BitrixProjectMapperInterface;
+use App\Integrations\Bitrix24\Contracts\BitrixRecordFetcherInterface;
+use App\Integrations\Bitrix24\Contracts\BitrixTaskMapperInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixTaskResolverInterface;
-use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;
-use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -27,16 +27,16 @@ use Illuminate\Database\ConnectionInterface;
 final readonly class BitrixSyncService implements BitrixSyncServiceInterface
 {
     public function __construct(
-        private BitrixRecordFetcher $fetch,
+        private BitrixRecordFetcherInterface $fetch,
         private BitrixTaskResolverInterface $taskResolver,
         private SyncBitrixTaskAction $taskSync,
-        private BitrixTaskMapper $taskMapper,
+        private BitrixTaskMapperInterface $taskMapper,
         private SyncBitrixProjectAction $projectSync,
         private SyncBitrixUserAction $userSync,
         private ConnectionInterface $database,
-        private BitrixProjectMapper $projectMapper,
-        private BitrixEchoGuard $echo,
-        private BitrixDeletionGuard $deletions,
+        private BitrixProjectMapperInterface $projectMapper,
+        private BitrixEchoGuardInterface $echo,
+        private BitrixDeletionGuardInterface $deletions,
         private TaskRepositoryInterface $tasks,
         private ProjectRepositoryInterface $projects,
         private TaskChatServiceInterface $chat,

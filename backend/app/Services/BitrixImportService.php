@@ -12,15 +12,15 @@ use App\Actions\Bitrix\SyncBitrixUserAction;
 use App\Enums\QueueName;
 use App\Enums\TaskMemberRole;
 use App\Exceptions\Bitrix\BitrixException;
-use App\Integrations\Bitrix24\BitrixDeletionGuard;
 use App\Integrations\Bitrix24\BitrixPayload;
-use App\Integrations\Bitrix24\BitrixRecordFetcher;
 use App\Integrations\Bitrix24\Contracts\BitrixChecklistRepositoryInterface;
+use App\Integrations\Bitrix24\Contracts\BitrixDeletionGuardInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixProjectRepositoryInterface;
+use App\Integrations\Bitrix24\Contracts\BitrixRecordFetcherInterface;
+use App\Integrations\Bitrix24\Contracts\BitrixTaskMapperInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixTaskRepositoryInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixTimeRepositoryInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixUserRepositoryInterface;
-use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
 use App\Jobs\Bitrix\ImportBitrixChatJob;
 use App\Jobs\Bitrix\ImportBitrixChecklistsJob;
 use App\Jobs\Bitrix\ImportBitrixFilesJob;
@@ -78,9 +78,9 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
         private SyncBitrixChecklistAction $checklistSync,
         private SyncBitrixTimeLogAction $timeSync,
         private ConnectionInterface $database,
-        private BitrixTaskMapper $taskMapper,
-        private BitrixRecordFetcher $fetch,
-        private BitrixDeletionGuard $deletions,
+        private BitrixTaskMapperInterface $taskMapper,
+        private BitrixRecordFetcherInterface $fetch,
+        private BitrixDeletionGuardInterface $deletions,
         private ProjectRepositoryInterface $projects,
         private TaskRepositoryInterface $tasks,
         private TaskChatServiceInterface $chat,

@@ -10,10 +10,10 @@ use App\DTOs\Bitrix\ExchangeLoginCodeDTO;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Exceptions\Bitrix\BitrixLoginCodeExpiredException;
 use App\Exceptions\Bitrix\BitrixSignInException;
-use App\Integrations\Bitrix24\BitrixLoginCodes;
 use App\Integrations\Bitrix24\BitrixPayload;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\BitrixAppRepositoryInterface;
+use App\Integrations\Bitrix24\Contracts\BitrixLoginCodesInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixOAuthGatewayInterface;
 use App\Models\User;
 use App\Repositories\Contracts\BitrixTokenRepositoryInterface;
@@ -47,7 +47,7 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
         private SyncBitrixUserAction $syncUser,
         private ConnectionInterface $database,
         private UserRepositoryInterface $userRepository,
-        private BitrixLoginCodes $codes,
+        private BitrixLoginCodesInterface $codes,
     ) {}
 
     /** Bitrix's consent page; $state comes back with the code. */

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\Bitrix;
 
 use App\Enums\TaskMemberRole;
+use App\Integrations\Bitrix24\Contracts\BitrixTaskMapperInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixTaskResolverInterface;
-use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
 use App\Models\Task;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
@@ -24,7 +24,7 @@ final readonly class SyncBitrixTaskAction
 {
     public function __construct(
         private BitrixTaskResolverInterface $resolver,
-        private BitrixTaskMapper $mapper,
+        private BitrixTaskMapperInterface $mapper,
         private TaskRepositoryInterface $tasks,
         private UserRepositoryInterface $users,
         private TaskLookupRepositoryInterface $lookups,

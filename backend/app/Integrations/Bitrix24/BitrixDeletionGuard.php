@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Integrations\Bitrix24;
 
 use App\Exceptions\Bitrix\BitrixException;
+use App\Integrations\Bitrix24\Contracts\BitrixDeletionGuardInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use Illuminate\Support\Facades\Log;
 
@@ -21,7 +22,7 @@ use Illuminate\Support\Facades\Log;
  * - a run that would delete more than MAX_PER_RUN records deletes none and
  *   logs a warning, since a mass deletion is far more likely a fault.
  */
-final readonly class BitrixDeletionGuard
+final readonly class BitrixDeletionGuard implements BitrixDeletionGuardInterface
 {
     public const MAX_PER_RUN = 20;
 

@@ -151,6 +151,24 @@ arch('actions')
         'App\Jobs',
     ]);
 
+// ARC-4: services reach the Bitrix layer through its interfaces (Contracts) and the
+// BitrixPayload value reader, never through its classes.
+arch('services depend on Bitrix interfaces, not classes')
+    ->expect('App\Services')
+    ->not->toUse([
+        'App\Integrations\Bitrix24\BitrixGateway',
+        'App\Integrations\Bitrix24\BitrixOAuthGateway',
+        'App\Integrations\Bitrix24\TokenManager',
+        'App\Integrations\Bitrix24\PortalServiceAccount',
+        'App\Integrations\Bitrix24\BitrixTaskResolver',
+        'App\Integrations\Bitrix24\BitrixEchoGuard',
+        'App\Integrations\Bitrix24\BitrixDeletionGuard',
+        'App\Integrations\Bitrix24\BitrixLoginCodes',
+        'App\Integrations\Bitrix24\BitrixRecordFetcher',
+        'App\Integrations\Bitrix24\Mappers',
+        'App\Integrations\Bitrix24\Repositories',
+    ]);
+
 // ARC-6: transactions belong to the services, never to the Bitrix layer.
 arch('integrations do not own transactions')
     ->expect('App\Integrations')

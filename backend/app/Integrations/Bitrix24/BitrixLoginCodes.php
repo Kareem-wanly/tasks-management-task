@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24;
 
+use App\Integrations\Bitrix24\Contracts\BitrixLoginCodesInterface;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -17,7 +18,7 @@ use Illuminate\Support\Str;
  * "Sign in with Bitrix24" (kept in its sessionStorage): a code sent to
  * another browser can't be traded there (login CSRF). Only hashes are stored.
  */
-final class BitrixLoginCodes
+final class BitrixLoginCodes implements BitrixLoginCodesInterface
 {
     public const LENGTH = 64;
 
