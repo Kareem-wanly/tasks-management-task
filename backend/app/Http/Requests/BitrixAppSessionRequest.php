@@ -39,13 +39,13 @@ final class BitrixAppSessionRequest extends FormRequest
     /** The validated tokens, with expires_in as seconds left. */
     public function toDto(): BitrixFrameAuthDTO
     {
-        return new BitrixFrameAuthDTO(
-            accessToken: $this->string('access_token')->toString(),
-            refreshToken: $this->string('refresh_token')->toString(),
-            expiresIn: $this->lifetimeSeconds(),
-            domain: $this->string('domain')->toString(),
-            memberId: $this->filled('member_id') ? $this->string('member_id')->toString() : null,
-        );
+        return BitrixFrameAuthDTO::fromArray([
+            'access_token' => $this->string('access_token')->toString(),
+            'refresh_token' => $this->string('refresh_token')->toString(),
+            'expires_in' => $this->lifetimeSeconds(),
+            'domain' => $this->string('domain')->toString(),
+            'member_id' => $this->filled('member_id') ? $this->string('member_id')->toString() : null,
+        ]);
     }
 
     /**

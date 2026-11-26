@@ -99,6 +99,62 @@ arch('resources')
     ->toBeFinal()->ignoring('App\Http\Resources\Concerns')
     ->toHaveSuffix('Resource')->ignoring('App\Http\Resources\Concerns');
 
+// C.1 (ARC-8): a controller answers with Resources, never a raw model or
+// paginator. Arch rules can't see the values a response carries, so this
+// reads the controllers' source: a record under data/user/role/project/task
+// is always wrapped in a Resource, and response()->json() never takes a bare
+// value (a model or paginator turns straight into JSON).
+it('answers with Resources, never raw models', function (): void {
+    $wrapped = '(?:new \w+Resource\(|\w+Resource::collection\(|\$resource::collection\(|null\b)';
+    $offences = [];
+
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__.'/../../app/Http/Controllers')) as $file) {
+        if ($file->getExtension() !== 'php') {
+            continue;
+        }
+        $source = (string) file_get_contents($file->getPathname());
+        $name = $file->getFilename();
+
+        if (preg_match_all('/response\(\)->json\(\s*\$/', $source) > 0) {
+            $offences[] = "{$name}: response()->json() with a bare value";
+        }
+        // Possessive \s*+: the lookahead must see the value, not a backtracked space.
+        if (preg_match_all("/'(?:data|user|role|project|task)'\\s*+=>\\s*+(?!{$wrapped})/", $source) > 0) {
+            $offences[] = "{$name}: a record not wrapped in a Resource";
+        }
+    }
+
+    expect($offences)->toBe([]);
+});
+
+// E.3: the API controllers live under Api\V1; only the abstract base stays at the root.
+it('keeps the controllers under Api\V1', function (): void {
+    $atRoot = array_map(basename(...), glob(__DIR__.'/../../app/Http/Controllers/*.php') ?: []);
+
+    expect($atRoot)->toBe(['Controller.php'])
+        ->and(glob(__DIR__.'/../../app/Http/Controllers/Api/V1/*Controller.php'))->not->toBeEmpty();
+});
+
+// CODE-3: every DTO a FormRequest builds has a fromArray() factory.
+it('gives every input DTO a fromArray() factory', function (): void {
+    $missing = [];
+
+    foreach (glob(__DIR__.'/../../app/Http/Requests/*.php') ?: [] as $request) {
+        preg_match_all('/^use (App\\\\DTOs\\\\[\w\\\\]+);$/m', (string) file_get_contents($request), $matches);
+        foreach ($matches[1] as $dto) {
+            if (! method_exists($dto, 'fromArray')) {
+                $missing[] = $dto;
+            }
+        }
+    }
+
+    expect(array_values(array_unique($missing)))->toBe([]);
+});
+
+arch('enums')
+    ->expect('App\Enums')
+    ->toBeEnums();
+
 // --- Jobs and commands ---
 arch('jobs are thin and queued')
     ->expect('App\Jobs')
