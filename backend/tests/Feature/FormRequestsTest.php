@@ -159,6 +159,27 @@ class FormRequestsTest extends TestCase
         $this->getJson('/api/tasks?per_page=100')->assertOk()->assertJsonPath('meta.per_page', 100);
     }
 
+    public function test_task_list_filters_are_validated(): void
+    {
+        Sanctum::actingAs($this->admin());
+
+        $this->getJson('/api/tasks?assigned_to=abc&project_id=x')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['assigned_to', 'project_id']);
+        $this->getJson('/api/tasks?status[]=pending')->assertUnprocessable()->assertJsonValidationErrors(['status']);
+    }
+
+    public function test_empty_task_list_filters_filter_nothing(): void
+    {
+        $admin = $this->admin();
+        $this->task($this->project($admin));
+        Sanctum::actingAs($admin);
+
+        $this->getJson('/api/tasks?assigned_to=&project_id=&status=&search=')
+            ->assertOk()
+            ->assertJsonPath('meta.total', Task::count());
+    }
+
     private function admin(): User
     {
         return User::where('email', 'admin@example.com')->first();

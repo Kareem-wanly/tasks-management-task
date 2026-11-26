@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories\Contracts;
 
+use App\DTOs\Task\TaskFiltersDTO;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -16,9 +17,8 @@ interface TaskRepositoryInterface
      * The task list with its filters and sort.
      *
      * @param  User|null  $visibleTo  Only tasks this user may see; null for everything (administrators).
-     * @param  array<string, mixed>  $filters  See ListTasksRequest::filters().
      */
-    public function paginate(?User $visibleTo, array $filters, int $perPage): LengthAwarePaginator;
+    public function paginate(?User $visibleTo, TaskFiltersDTO $filters, int $perPage): LengthAwarePaginator;
 
     /** A project's tasks, newest first, with their assignees. */
     public function paginateForProject(Project $project, int $perPage): LengthAwarePaginator;

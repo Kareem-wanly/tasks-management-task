@@ -20,14 +20,14 @@ class AuthController extends Controller
 
     public function register(RegisterRequest $request): JsonResponse
     {
-        [$user, $token] = $this->auth->register($request->validated());
+        [$user, $token] = $this->auth->register($request->toDto());
 
         return $this->signedIn('User registered successfully', $user, $token, 201);
     }
 
     public function login(LoginRequest $request): JsonResponse
     {
-        [$user, $token] = $this->auth->login($request->validated('email'), $request->validated('password'));
+        [$user, $token] = $this->auth->login($request->toDto());
 
         return $this->signedIn('Logged in successfully', $user, $token);
     }
@@ -49,13 +49,13 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Profile updated successfully',
-            'data' => $this->auth->updateProfile($request->user(), $request->validated()),
+            'data' => $this->auth->updateProfile($request->user(), $request->toDto()),
         ]);
     }
 
     public function updatePassword(UpdatePasswordRequest $request): JsonResponse
     {
-        $this->auth->updatePassword($request->user(), $request->validated('password'));
+        $this->auth->updatePassword($request->user(), $request->toDto());
 
         return response()->json(['success' => true, 'message' => 'Password updated successfully']);
     }

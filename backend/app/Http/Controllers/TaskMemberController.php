@@ -20,12 +20,7 @@ class TaskMemberController extends Controller
 
     public function update(UpdateTaskMembersRequest $request, Task $task): TaskResource
     {
-        return new TaskResource($this->members->setMembers(
-            $request->user(),
-            $task,
-            array_map('intval', $request->validated('accomplice_ids')),
-            array_map('intval', $request->validated('auditor_ids')),
-        ));
+        return new TaskResource($this->members->setMembers($request->user(), $task, $request->toDto()));
     }
 
     public function watch(WatchTaskRequest $request, Task $task): TaskResource
@@ -40,6 +35,6 @@ class TaskMemberController extends Controller
 
     public function delegate(DelegateTaskRequest $request, Task $task): TaskResource
     {
-        return new TaskResource($this->members->delegate($request->user(), $task, (int) $request->validated('user_id')));
+        return new TaskResource($this->members->delegate($request->user(), $task, $request->toDto()));
     }
 }

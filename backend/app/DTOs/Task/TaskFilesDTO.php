@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Data;
+namespace App\DTOs\Task;
 
 use App\Models\Task;
 use App\Models\TaskFile;
@@ -11,7 +11,7 @@ use Illuminate\Support\Collection;
 /**
  * A task's files as the service hands them to the controller.
  */
-final readonly class TaskFiles
+final readonly class TaskFilesDTO
 {
     /**
      * @param  Collection<int, TaskFile>  $files  Newest first.

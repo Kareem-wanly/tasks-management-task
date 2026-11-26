@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Task\TaskFiltersDTO;
 use App\Http\Requests\Concerns\HasPagination;
 use App\Models\Task;
 use Illuminate\Foundation\Http\FormRequest;
@@ -22,8 +23,15 @@ class ListTasksRequest extends FormRequest
     {
         return [
             'search' => ['nullable', 'string', 'max:255'],
+            'status' => ['nullable', 'string', 'max:50'],
+            'priority' => ['nullable', 'string', 'max:50'],
+            'assigned_to' => ['nullable', 'integer'],
+            'project_id' => ['nullable', 'integer'],
             'due_date_from' => ['nullable', 'date'],
             'due_date_to' => ['nullable', 'date'],
+            // Unknown sort columns are ignored by the repository.
+            'sort_by' => ['nullable', 'string', 'max:50'],
+            'sort_order' => ['nullable', 'string', 'max:4'],
             ...$this->paginationRules(),
         ];
     }
@@ -33,22 +41,13 @@ class ListTasksRequest extends FormRequest
         return $this->paginationMessages();
     }
 
-    /** @return array<string, mixed> */
-    public function filters(): array
+    public function toDto(): TaskFiltersDTO
     {
-        return [
-            'search' => $this->query('search'),
-            'status' => $this->query('status'),
+        return TaskFiltersDTO::fromArray([
+            ...$this->safe()->only(['search', 'status', 'priority', 'assigned_to', 'project_id', 'due_date_from', 'due_date_to', 'sort_by', 'sort_order']),
             // finished=true: any closing status; finished=false: any open one.
             'finished' => $this->filled('finished') ? $this->boolean('finished') : null,
-            'priority' => $this->query('priority'),
-            'assigned_to' => $this->query('assigned_to'),
-            'project_id' => $this->query('project_id'),
-            'due_date_from' => $this->query('due_date_from'),
-            'due_date_to' => $this->query('due_date_to'),
             'overdue' => $this->boolean('overdue'),
-            'sort_by' => $this->query('sort_by'),
-            'sort_order' => $this->query('sort_order'),
-        ];
+        ]);
     }
 }

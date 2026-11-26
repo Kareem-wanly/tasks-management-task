@@ -27,7 +27,7 @@ class RoleController extends Controller
     {
         return response()->json([
             'message' => 'Role created successfully',
-            'data' => $this->roles->create($request->user(), $request->validated()),
+            'data' => $this->roles->create($request->user(), $request->toDto()),
         ], 201);
     }
 
@@ -40,7 +40,7 @@ class RoleController extends Controller
     {
         return response()->json([
             'message' => 'Role updated successfully',
-            'data' => $this->roles->update($request->user(), $role, $request->validated()),
+            'data' => $this->roles->update($request->user(), $role, $request->toDto()),
         ]);
     }
 
@@ -55,7 +55,7 @@ class RoleController extends Controller
     {
         return response()->json([
             'message' => 'Role permissions synchronized successfully',
-            'data' => $this->roles->syncPermissions($request->user(), $role, $request->validated('permissions')),
+            'data' => $this->roles->syncPermissions($request->user(), $role, $request->toDto()),
         ]);
     }
 }

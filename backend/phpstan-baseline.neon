@@ -745,12 +745,6 @@ parameters:
 			path: app/Services/TaskFileService.php
 
 		-
-			message: '#^Parameter \#3 \$send of class App\\Data\\FileDownload constructor expects Closure\(\)\: void, Closure\(\)\: int given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/TaskFileService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\TaskLookup\:\:\$is_system\.$#'
 			identifier: property.notFound
 			count: 2

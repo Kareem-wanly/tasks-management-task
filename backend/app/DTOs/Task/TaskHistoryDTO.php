@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Data;
+namespace App\DTOs\Task;
 
 /**
  * A task's change history as the service hands it to the controller.
  */
-final readonly class TaskHistory
+final readonly class TaskHistoryDTO
 {
     /** The task isn't in Bitrix24, so it has no history there. */
     public const NOT_IN_BITRIX = 'not_in_bitrix';

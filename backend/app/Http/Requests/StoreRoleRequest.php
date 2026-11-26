@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Role\CreateRoleDTO;
 use App\Models\Role;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -23,5 +24,13 @@ class StoreRoleRequest extends FormRequest
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['integer', 'exists:permissions,id'],
         ];
+    }
+
+    public function toDto(): CreateRoleDTO
+    {
+        /** @var array{name: string, display_name?: ?string, description?: ?string, permissions?: list<int|string>|null} $validated */
+        $validated = $this->validated();
+
+        return CreateRoleDTO::fromArray($validated);
     }
 }

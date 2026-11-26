@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Project\ProjectFiltersDTO;
 use App\Http\Requests\Concerns\HasPagination;
 use App\Models\Project;
 use Illuminate\Foundation\Http\FormRequest;
@@ -36,17 +37,8 @@ class ListProjectsRequest extends FormRequest
         return $this->paginationMessages();
     }
 
-    /** @return array{search: ?string, status: ?string, member_id: ?int, sort: ?string, direction: ?string} */
-    public function filters(): array
+    public function toDto(): ProjectFiltersDTO
     {
-        $filters = $this->safe()->only(['search', 'status', 'member_id', 'sort', 'direction']);
-
-        return [
-            'search' => $filters['search'] ?? null,
-            'status' => $filters['status'] ?? null,
-            'member_id' => isset($filters['member_id']) ? (int) $filters['member_id'] : null,
-            'sort' => $filters['sort'] ?? null,
-            'direction' => $filters['direction'] ?? null,
-        ];
+        return ProjectFiltersDTO::fromArray($this->safe()->only(['search', 'status', 'member_id', 'sort', 'direction']));
     }
 }

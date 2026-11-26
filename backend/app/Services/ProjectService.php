@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Project\AddProjectMemberDTO;
+use App\DTOs\Project\CreateProjectDTO;
+use App\DTOs\Project\ProjectFiltersDTO;
+use App\DTOs\Project\UpdateProjectDTO;
 use App\Exceptions\BusinessRuleException;
 use App\Integrations\Bitrix24\BitrixProjectPusher;
 use App\Models\Project;
@@ -32,8 +36,7 @@ class ProjectService
         private readonly BitrixProjectPusher $bitrix,
     ) {}
 
-    /** @param  array<string, mixed>  $filters */
-    public function list(User $user, array $filters, int $perPage): LengthAwarePaginator
+    public function list(User $user, ProjectFiltersDTO $filters, int $perPage): LengthAwarePaginator
     {
         return $this->projects->paginateAccessible($user, $filters, $perPage);
     }
@@ -51,18 +54,16 @@ class ProjectService
 
     /**
      * A new project is a Bitrix project; its creator owns it.
-     *
-     * @param  array<string, mixed>  $data
      */
-    public function create(User $actor, array $data): Project
+    public function create(User $actor, CreateProjectDTO $data): Project
     {
         $project = new Project([
-            'title' => $data['title'] ?? null,
-            'description' => $data['description'] ?? null,
-            'start_date' => $data['start_date'] ?? null,
-            'due_date' => $data['due_date'] ?? null,
+            'title' => $data->title,
+            'description' => $data->description,
+            'start_date' => $data->startDate,
+            'due_date' => $data->dueDate,
             'owner_id' => $actor->id,
-            'status' => $data['status'] ?? 'active',
+            'status' => $data->status,
         ]);
 
         $this->bitrix->create($actor, $project);
@@ -76,16 +77,15 @@ class ProjectService
         return $this->projects->freshWithMembers($project);
     }
 
-    /** @param  array<string, mixed>  $data */
-    public function update(User $actor, Project $project, array $data): Project
+    public function update(User $actor, Project $project, UpdateProjectDTO $data): Project
     {
-        if (($data['status'] ?? null) === 'completed' && $this->projects->hasUnfinishedTasks($project)) {
+        if ($data->status === 'completed' && $this->projects->hasUnfinishedTasks($project)) {
             throw new BusinessRuleException('Cannot complete project with unfinished tasks.', 422, [
                 'status' => ['Project has pending or in-progress tasks that must be completed first.'],
             ]);
         }
 
-        $project->fill($data);
+        $project->fill($data->toArray());
         $this->bitrix->update($actor, $project);
         $this->projects->save($project);
 
@@ -114,8 +114,11 @@ class ProjectService
         return $this->projects->members($project);
     }
 
-    public function addMember(User $actor, Project $project, int $userId, string $role): Project
+    public function addMember(User $actor, Project $project, AddProjectMemberDTO $member): Project
     {
+        $userId = $member->userId;
+        $role = $member->role;
+
         if ($this->projects->hasMember($project, $userId)) {
             throw new BusinessRuleException('User is already a member of this project.', 422,
                 ['user_id' => ['The specified user is already attached to this project.']], ['success' => false]);

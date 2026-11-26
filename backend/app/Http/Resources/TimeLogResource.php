@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
-use App\Data\TimeLog;
+use App\DTOs\Task\TimeLogDTO;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Step 4.4: { data: entries, meta: { totals, can_log, timer, stopped_task, stale } }.
  *
- * @property TimeLog $resource
+ * @property TimeLogDTO $resource
  */
 class TimeLogResource extends JsonResource
 {

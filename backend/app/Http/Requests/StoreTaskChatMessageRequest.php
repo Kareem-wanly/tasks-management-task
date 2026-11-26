@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Task\TaskChatMessageDTO;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Step 4.7: a new message in the task chat. */
@@ -19,8 +20,11 @@ class StoreTaskChatMessageRequest extends FormRequest
         return ['text' => ['required', 'string', 'max:5000']];
     }
 
-    public function text(): string
+    public function toDto(): TaskChatMessageDTO
     {
-        return trim((string) $this->validated('text'));
+        /** @var array{text: string} $validated */
+        $validated = $this->validated();
+
+        return TaskChatMessageDTO::fromArray($validated);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Task\UpdateChecklistItemDTO;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -24,17 +25,11 @@ class UpdateChecklistItemRequest extends FormRequest
         ];
     }
 
-    /** @return array{title?: string, is_complete?: bool} */
-    public function changes(): array
+    public function toDto(): UpdateChecklistItemDTO
     {
-        $changes = [];
-        if ($this->has('title')) {
-            $changes['title'] = trim($this->validated('title'));
-        }
-        if ($this->has('is_complete')) {
-            $changes['is_complete'] = $this->boolean('is_complete');
-        }
+        /** @var array{title?: string, is_complete?: bool|int|string} $validated */
+        $validated = $this->validated();
 
-        return $changes;
+        return UpdateChecklistItemDTO::fromArray($validated);
     }
 }

@@ -23,12 +23,12 @@ class TaskStatusController extends Controller
 
     public function store(StoreTaskStatusLookupRequest $request): JsonResponse
     {
-        return response()->json(['data' => $this->lookups->create(TaskStatus::class, $request->validated())], 201);
+        return response()->json(['data' => $this->lookups->create(TaskStatus::class, $request->toDto())], 201);
     }
 
     public function update(UpdateTaskStatusLookupRequest $request, TaskStatus $taskStatus): JsonResponse
     {
-        return response()->json(['data' => $this->lookups->update($taskStatus, $request->validated())]);
+        return response()->json(['data' => $this->lookups->update($taskStatus, $request->toDto())]);
     }
 
     public function destroy(DeleteTaskLookupRequest $request, TaskStatus $taskStatus): JsonResponse

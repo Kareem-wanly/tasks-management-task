@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Project\UpdateProjectDTO;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -51,5 +52,10 @@ class UpdateProjectRequest extends FormRequest
                 }
             }
         });
+    }
+
+    public function toDto(): UpdateProjectDTO
+    {
+        return UpdateProjectDTO::fromArray($this->validated());
     }
 }

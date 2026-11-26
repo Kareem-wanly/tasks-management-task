@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Task\MoveChecklistItemDTO;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -22,5 +23,13 @@ class MoveChecklistItemRequest extends FormRequest
         return [
             'after_id' => ['present', 'nullable', 'integer', Rule::exists('task_checklist_items', 'id')->where('parent_id', $item->parent_id), Rule::notIn([$item->id])],
         ];
+    }
+
+    public function toDto(): MoveChecklistItemDTO
+    {
+        /** @var array{after_id: int|string|null} $validated */
+        $validated = $this->validated();
+
+        return MoveChecklistItemDTO::fromArray($validated);
     }
 }

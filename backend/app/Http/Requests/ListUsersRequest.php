@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\User\UserFiltersDTO;
 use App\Http\Requests\Concerns\HasPagination;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
@@ -33,9 +34,8 @@ class ListUsersRequest extends FormRequest
         return $this->paginationMessages();
     }
 
-    /** @return array{search: ?string, role: ?string} */
-    public function filters(): array
+    public function toDto(): UserFiltersDTO
     {
-        return ['search' => $this->validated('search'), 'role' => $this->validated('role')];
+        return UserFiltersDTO::fromArray($this->safe()->only(['search', 'role']));
     }
 }

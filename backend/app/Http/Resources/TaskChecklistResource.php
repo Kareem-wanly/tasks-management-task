@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
-use App\Data\TaskChecklist;
+use App\DTOs\Task\TaskChecklistDTO;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Step 4.3: { data: items, meta: { stale, can_edit } }.
  *
- * @property TaskChecklist $resource
+ * @property TaskChecklistDTO $resource
  */
 class TaskChecklistResource extends JsonResource
 {
