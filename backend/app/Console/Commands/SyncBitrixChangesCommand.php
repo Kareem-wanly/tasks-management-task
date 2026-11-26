@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Services\Contracts\BitrixImportServiceInterface;
+use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 
 /**
@@ -20,15 +21,11 @@ final class SyncBitrixChangesCommand extends Command
 
     public function handle(BitrixImportServiceInterface $import): int
     {
-        $since = $import->lastTaskSync();
+        $since = $import->syncChanges();
 
-        // Never synced: nothing to measure changes against, so import everything.
-        if (! $since instanceof \Carbon\CarbonImmutable) {
-            return $this->call('bitrix:import', ['--sync' => true]);
-        }
-
-        $import->syncChanges($since);
-        $this->info("Bitrix24 changes synced since {$since->toDateTimeString()}.");
+        $this->info($since instanceof CarbonImmutable
+            ? "Bitrix24 changes synced since {$since->toDateTimeString()}."
+            : 'Bitrix24 was never synced: everything was imported.');
 
         return self::SUCCESS;
     }

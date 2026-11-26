@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories\Contracts;
 
 use App\Models\BitrixSyncCursor;
+use Closure;
 use Illuminate\Support\Collection;
 
 /**
@@ -25,6 +26,14 @@ interface BitrixSyncCursorRepositoryInterface
     public function start(string $entity): BitrixSyncCursor;
 
     public function advance(BitrixSyncCursor $cursor, int $processed, int $total): void;
+
+    /**
+     * Calls $onProgress every time the entity's cursor is saved (after every
+     * page), for the rest of this process. Used to draw a progress bar.
+     *
+     * @param  Closure(int, int): void  $onProgress  Receives processed and total.
+     */
+    public function watch(string $entity, Closure $onProgress): void;
 
     /**
      * Synced as of when the run started: a change made in Bitrix while it

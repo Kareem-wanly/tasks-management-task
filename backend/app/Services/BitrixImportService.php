@@ -40,6 +40,7 @@ use App\Services\Contracts\TaskChatServiceInterface;
 use App\Services\Contracts\TaskFileServiceInterface;
 use App\Services\Contracts\TaskResultServiceInterface;
 use Carbon\CarbonImmutable;
+use Closure;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
@@ -95,8 +96,12 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
             ->dispatch();
     }
 
-    public function runImport(string $entity, bool $linkByEmail): void
+    public function runImport(string $entity, bool $linkByEmail, ?Closure $onProgress = null): void
     {
+        if ($onProgress instanceof Closure) {
+            $this->cursors->watch($entity, $onProgress);
+        }
+
         // Through the job, so a failure is recorded on the cursor row (its failed()) as when queued.
         dispatch_sync($this->job($entity, $linkByEmail));
     }
@@ -111,24 +116,21 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
         return $this->cursors->forEntities($entities);
     }
 
-    public function lastTaskSync(): ?CarbonImmutable
+    public function syncChanges(): ?CarbonImmutable
     {
-        // The full import and the changes sync each keep their own row: changes are
-        // asked for since whichever of them last finished.
-        $finished = [];
-        foreach ([self::TASKS, self::TASKS_CHANGES] as $entity) {
-            if (($at = $this->cursors->forEntity($entity)->last_synced_at) instanceof CarbonImmutable) {
-                $finished[] = $at;
+        $since = $this->lastTaskSync();
+        if (! $since instanceof CarbonImmutable) {
+            foreach (self::ORDER as $entity) {
+                $this->runImport($entity, linkByEmail: false);
             }
+
+            return null;
         }
 
-        return $finished === [] ? null : max($finished);
-    }
-
-    public function syncChanges(CarbonImmutable $since): void
-    {
         dispatch_sync(new ImportBitrixProjectsJob);
         dispatch_sync(new ImportBitrixTasksJob($since->subSeconds(self::OVERLAP_SECONDS)));
+
+        return $since;
     }
 
     public function importUsers(bool $linkByEmail): void
@@ -263,6 +265,20 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
     public function importChat(): void
     {
         $this->eachTask(self::CHAT, 'Bitrix24 task chats imported.', fn (Task $task) => $this->chat->refreshFromBitrix($task, complete: true));
+    }
+
+    private function lastTaskSync(): ?CarbonImmutable
+    {
+        // The full import and the changes sync each keep their own row: changes are
+        // asked for since whichever of them last finished.
+        $finished = [];
+        foreach ([self::TASKS, self::TASKS_CHANGES] as $entity) {
+            if (($at = $this->cursors->forEntity($entity)->last_synced_at) instanceof CarbonImmutable) {
+                $finished[] = $at;
+            }
+        }
+
+        return $finished === [] ? null : max($finished);
     }
 
     private function job(string $entity, bool $linkByEmail): object
