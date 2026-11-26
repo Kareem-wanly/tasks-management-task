@@ -28,7 +28,7 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
     /** @return LengthAwarePaginator<int, Task> */
     public function paginate(?User $visibleTo, TaskFiltersDTO $filters, int $perPage): LengthAwarePaginator
     {
-        $query = Task::with(['project', 'assignee']);
+        $query = Task::with(['project', 'assignee', 'statusDefinition']);
 
         if ($visibleTo instanceof User) {
             $query->visibleTo($visibleTo);
@@ -43,7 +43,7 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
     /** @return LengthAwarePaginator<int, Task> */
     public function paginateForProject(Project $project, int $perPage): LengthAwarePaginator
     {
-        return $project->tasks()->with('assignee')->latest()->paginate($perPage);
+        return $project->tasks()->with(['assignee', 'statusDefinition'])->latest()->paginate($perPage);
     }
 
     public function loadForDetail(Task $task, User $viewer): Task
@@ -56,8 +56,18 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
         return $task->fresh($this->detailRelations($viewer)) ?? throw (new ModelNotFoundException)->setModel(Task::class, [$task->id]);
     }
 
+    /**
+     * completed_at follows the status on every save, whoever saves (our edits,
+     * Bitrix sync, import): set when the task reaches a closing status, kept
+     * while it stays closed, cleared when it reopens.
+     */
     public function save(Task $task): void
     {
+        if ($task->isDirty('status') || ! $task->exists) {
+            $closing = TaskStatus::where('key', $task->status)->where('is_final', true)->exists();
+            $task->completed_at = $closing ? ($task->completed_at ?? now()) : null;
+        }
+
         $task->save();
     }
 
@@ -178,8 +188,8 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
     private function detailRelations(User $viewer): array
     {
         return [
-            'project', 'assignee', 'accomplices', 'auditors', 'parent',
-            'subtasks' => fn ($query) => $query->with('assignee')
+            'project', 'assignee', 'accomplices', 'auditors', 'parent', 'statusDefinition',
+            'subtasks' => fn ($query) => $query->with(['assignee', 'statusDefinition'])
                 ->when(! $viewer->hasRole(SystemRole::Administrator), fn ($q) => $q->visibleTo($viewer))
                 ->orderBy('id'),
         ];

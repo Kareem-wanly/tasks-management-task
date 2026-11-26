@@ -6,7 +6,6 @@ namespace App\Models;
 
 use App\Enums\ProjectStatus;
 use App\Enums\SystemRole;
-use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -79,28 +78,6 @@ class Project extends Model
 
         return (int) $this->owner_id === $userId
             || $this->members()->where('users.id', $userId)->exists();
-    }
-
-    protected static function booted(): void
-    {
-        static::deleting(function (Project $project): void {
-            // Delete one by one so TaskObserver logs each deletion.
-            $method = $project->isForceDeleting() ? 'forceDelete' : 'delete';
-            $project->tasks()->get()->each(fn ($task) => $task->{$method}());
-        });
-
-        static::restoring(function (Project $project): void {
-            // Only bring back tasks that were deleted together with the project.
-            // deleted_at is still set while "restoring" runs; the small tolerance
-            // covers tasks being deleted a moment before the project row is stamped.
-            if (! $project->deleted_at instanceof CarbonInterface) {
-                return;
-            }
-
-            $project->tasks()->onlyTrashed()
-                ->where('deleted_at', '>=', $project->deleted_at->copy()->subSeconds(5))
-                ->restore();
-        });
     }
 
     /**

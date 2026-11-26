@@ -177,10 +177,20 @@ class Task extends Model
         return $this->bitrix_task_id ?? throw new LogicException("Task {$this->id} is not in Bitrix24.");
     }
 
+    /**
+     * The row of the task's status (status is its key).
+     *
+     * @return BelongsTo<TaskStatus, $this>
+     */
+    public function statusDefinition(): BelongsTo
+    {
+        return $this->belongsTo(TaskStatus::class, 'status', 'key');
+    }
+
     /** Whether the task is in a closing status (is_final), not just "completed". */
     public function isFinished(): bool
     {
-        return in_array($this->status, TaskStatus::finalKeys(), true);
+        return (bool) $this->statusDefinition?->is_final;
     }
 
     protected function casts(): array
@@ -206,24 +216,13 @@ class Task extends Model
         );
     }
 
-    protected static function booted(): void
-    {
-        static::saving(function (Task $task): void {
-            if ($task->isDirty('status') || ! $task->exists) {
-                $task->completed_at = $task->isFinished()
-                    ? ($task->completed_at ?? now())
-                    : null;
-            }
-        });
-    }
-
     /**
      * @param  Builder<Task>  $query
      * @return Builder<Task>
      */
     protected function scopeFinished(Builder $query): Builder
     {
-        return $query->whereIn('status', TaskStatus::finalKeys());
+        return $query->whereIn('status', TaskStatus::query()->where('is_final', true)->select('key'));
     }
 
     /**
@@ -232,7 +231,7 @@ class Task extends Model
      */
     protected function scopeUnfinished(Builder $query): Builder
     {
-        return $query->whereNotIn('status', TaskStatus::finalKeys());
+        return $query->whereNotIn('status', TaskStatus::query()->where('is_final', true)->select('key'));
     }
 
     /**

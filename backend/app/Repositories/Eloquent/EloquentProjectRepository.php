@@ -8,9 +8,11 @@ use App\DTOs\Project\ProjectFiltersDTO;
 use App\Enums\ProjectMemberRole;
 use App\Enums\ProjectStatus;
 use App\Models\Project;
+use App\Models\Task;
 use App\Models\User;
 use App\Repositories\Concerns\ReadsColumns;
 use App\Repositories\Contracts\ProjectRepositoryInterface;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
@@ -79,8 +81,10 @@ final class EloquentProjectRepository implements ProjectRepositoryInterface
         $project->save();
     }
 
+    /** With its tasks, one by one so TaskObserver logs each deletion. */
     public function delete(Project $project): void
     {
+        $project->tasks()->get()->each(fn (Task $task): ?bool => $task->delete());
         $project->delete();
     }
 
@@ -127,9 +131,18 @@ final class EloquentProjectRepository implements ProjectRepositoryInterface
         return self::toIntOrNull($groupId);
     }
 
+    /**
+     * Brings back only the tasks deleted together with the project; the small
+     * tolerance covers tasks deleted a moment before the project row was stamped.
+     */
     public function restore(Project $project): void
     {
+        $deletedAt = $project->deleted_at;
         $project->restore();
+
+        if ($deletedAt instanceof CarbonInterface) {
+            $project->tasks()->onlyTrashed()->where('deleted_at', '>=', $deletedAt->copy()->subSeconds(5))->restore();
+        }
     }
 
     public function markSynced(Project $project): void
@@ -150,7 +163,7 @@ final class EloquentProjectRepository implements ProjectRepositoryInterface
     public function deleteByBitrixIds(array $bitrixGroupIds): int
     {
         $gone = Project::whereIn('bitrix_group_id', $bitrixGroupIds)->get();
-        $gone->each->delete();
+        $gone->each(fn (Project $project) => $this->delete($project));
 
         return $gone->count();
     }

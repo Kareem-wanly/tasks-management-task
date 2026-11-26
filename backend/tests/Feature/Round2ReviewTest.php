@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\Role;
 use App\Models\Task;
 use App\Models\User;
+use App\Repositories\Contracts\ProjectRepositoryInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -92,7 +93,7 @@ class Round2ReviewTest extends TestCase
         $task = $this->task($project);
         Sanctum::actingAs($owner);
 
-        $project->delete();
+        resolve(ProjectRepositoryInterface::class)->delete($project);
 
         $this->assertSoftDeleted('tasks', ['id' => $task->id]);
         $this->assertNotEquals(500, $this->getJson("/api/v1/tasks/{$task->id}")->status());
