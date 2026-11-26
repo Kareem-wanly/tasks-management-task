@@ -9,7 +9,6 @@ use App\Services\Contracts\BitrixImportServiceInterface;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
@@ -42,9 +41,15 @@ final class SyncBitrixChangesJob implements ShouldBeUnique, ShouldQueue
         $import->syncChanges();
     }
 
-    /** The import job that failed has already written its error on its cursor row. */
+    /**
+     * The pass that failed inside has already recorded it (cursor and dead
+     * letter); this job's own failed_jobs row joins that dead letter, so a
+     * retry or dismiss clears it too. A run killed before any pass recorded
+     * anything is recorded here.
+     */
     public function failed(?Throwable $exception): void
     {
-        Log::warning('Bitrix24 changes sync failed.', ['error' => $exception?->getMessage()]);
+        // The worker calls failed() with the exception only, so the service is resolved here (C.4: documented).
+        resolve(BitrixImportServiceInterface::class)->markChangesSyncFailed($exception, $this->job?->uuid());
     }
 }

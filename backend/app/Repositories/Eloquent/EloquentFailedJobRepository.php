@@ -12,8 +12,8 @@ final readonly class EloquentFailedJobRepository implements FailedJobRepositoryI
 {
     public function __construct(private ConnectionInterface $database) {}
 
-    public function countOnQueue(string $queue): int
+    public function forget(string $uuid): void
     {
-        return $this->database->table('failed_jobs')->where('queue', $queue)->count();
+        $this->database->table('failed_jobs')->where('uuid', $uuid)->delete();
     }
 }

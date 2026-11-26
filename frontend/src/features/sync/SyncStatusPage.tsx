@@ -10,18 +10,21 @@ import useApiMutation from '@/hooks/useApiMutation';
 import type { BitrixSyncMode } from '@/types/api';
 import SyncCounters from './SyncCounters';
 import SyncEntitiesTable from './SyncEntitiesTable';
+import SyncFailuresPanel from './SyncFailuresPanel';
+import { hasRetryWaiting, useSyncFailures } from './useSyncFailures';
 import { useSyncStatus } from './useSyncStatus';
 
 /** Bitrix24 step 5.1: is the sync healthy, and a way to run it now. */
 export default function SyncStatusPage() {
-  const status = useSyncStatus();
+  const failures = useSyncFailures();
+  const status = useSyncStatus(failures.data ? hasRetryWaiting(failures.data) : false);
   const [confirmFull, setConfirmFull] = useState<boolean>(false);
 
   const start = useApiMutation({
     mutationFn: (mode: BitrixSyncMode) => bitrixSyncApi.start(mode),
     successMessage: (_data, mode) => (mode === 'full' ? 'Full import queued.' : 'Sync queued.'),
     errorMessage: 'Could not start the sync.',
-    invalidate: [queryKeys.bitrixSync.status],
+    invalidate: [queryKeys.bitrixSync.all],
     onSuccess: () => setConfirmFull(false),
   });
 
@@ -56,6 +59,8 @@ export default function SyncStatusPage() {
           <SyncEntitiesTable entities={status.data?.entities ?? []} isLoading={status.isPending} />
         </>
       )}
+
+      <SyncFailuresPanel failures={failures} total={status.data?.failures} />
 
       <ConfirmModal
         isOpen={confirmFull}

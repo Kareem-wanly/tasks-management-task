@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Actions\Bitrix\SyncBitrixProjectAction;
 use App\Actions\Bitrix\SyncBitrixTaskAction;
 use App\Actions\Bitrix\SyncBitrixUserAction;
+use App\Enums\BitrixSyncOperation;
 use App\Enums\TaskMemberRole;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\Contracts\BitrixDeletionGuardInterface;
@@ -18,6 +19,7 @@ use App\Integrations\Bitrix24\Contracts\BitrixTaskResolverInterface;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\Contracts\BitrixSyncFailureServiceInterface;
 use App\Services\Contracts\BitrixSyncServiceInterface;
 use App\Services\Contracts\ProjectServiceInterface;
 use App\Services\Contracts\TaskChatServiceInterface;
@@ -40,9 +42,41 @@ final readonly class BitrixSyncService implements BitrixSyncServiceInterface
         private TaskServiceInterface $tasks,
         private ProjectServiceInterface $projects,
         private TaskChatServiceInterface $chat,
+        private BitrixSyncFailureServiceInterface $failures,
     ) {}
 
     public function syncTask(int $bitrixTaskId): void
+    {
+        $this->pullTask($bitrixTaskId);
+        // Done: a dead letter of this sync, if one is open, is closed (step 5.2).
+        $this->failures->resolve(BitrixSyncOperation::Task, (string) $bitrixTaskId);
+    }
+
+    public function syncProject(int $bitrixGroupId): void
+    {
+        $this->pullProject($bitrixGroupId);
+        // Done: a dead letter of this sync, if one is open, is closed (step 5.2).
+        $this->failures->resolve(BitrixSyncOperation::Project, (string) $bitrixGroupId);
+    }
+
+    public function syncTaskChat(int $bitrixTaskId): void
+    {
+        $this->pullTaskChat($bitrixTaskId);
+        // Done: a dead letter of this sync, if one is open, is closed (step 5.2).
+        $this->failures->resolve(BitrixSyncOperation::TaskChat, (string) $bitrixTaskId);
+    }
+
+    public function refreshTask(int $bitrixTaskId): void
+    {
+        $row = $this->fetch->task($bitrixTaskId)
+            ?? throw BitrixException::cannotSync('The task is no longer in Bitrix24.');
+
+        $members = $this->taskMapper->members($row);
+        $this->importMissingUsers([...$members[TaskMemberRole::Accomplice->value] ?? [], ...$members[TaskMemberRole::Auditor->value] ?? []]);
+        $this->taskSync->handle($row);
+    }
+
+    private function pullTask(int $bitrixTaskId): void
     {
         $row = $this->fetch->task($bitrixTaskId);
 
@@ -73,17 +107,7 @@ final readonly class BitrixSyncService implements BitrixSyncServiceInterface
         $this->taskSync->handle($row);
     }
 
-    public function refreshTask(int $bitrixTaskId): void
-    {
-        $row = $this->fetch->task($bitrixTaskId)
-            ?? throw BitrixException::cannotSync('The task is no longer in Bitrix24.');
-
-        $members = $this->taskMapper->members($row);
-        $this->importMissingUsers([...$members[TaskMemberRole::Accomplice->value] ?? [], ...$members[TaskMemberRole::Auditor->value] ?? []]);
-        $this->taskSync->handle($row);
-    }
-
-    public function syncProject(int $bitrixGroupId): void
+    private function pullProject(int $bitrixGroupId): void
     {
         $group = $this->fetch->group($bitrixGroupId);
 
@@ -104,7 +128,7 @@ final readonly class BitrixSyncService implements BitrixSyncServiceInterface
         $this->database->transaction(fn (): ?Project => $this->projectSync->handle($group, $members));
     }
 
-    public function syncTaskChat(int $bitrixTaskId): void
+    private function pullTaskChat(int $bitrixTaskId): void
     {
         $task = $this->tasks->findByBitrixId($bitrixTaskId);
 

@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Jobs\Bitrix;
 
+use App\Enums\BitrixSyncOperation;
 use App\Enums\QueueName;
 use App\Services\Contracts\BitrixSyncServiceInterface;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Log;
-use Throwable;
 
 /**
  * Step 4.7: brings one task's chat up to date after OnTaskCommentAdd (a new
@@ -20,7 +19,7 @@ use Throwable;
  */
 final class SyncBitrixTaskChatJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
-    use Queueable;
+    use Queueable, RecordsSyncFailure;
 
     public int $tries = 3;
 
@@ -52,9 +51,14 @@ final class SyncBitrixTaskChatJob implements ShouldBeUniqueUntilProcessing, Shou
         $sync->syncTaskChat($this->bitrixTaskId);
     }
 
-    /** The chat is fetched again when the task is opened, and by the nightly import. */
-    public function failed(?Throwable $exception): void
+    /** Failed after all its tries: a dead letter on the sync status page (step 5.2). */
+    protected function failureOperation(): BitrixSyncOperation
     {
-        Log::warning('Bitrix24 task chat sync failed.', ['bitrix_task_id' => $this->bitrixTaskId, 'error' => $exception?->getMessage()]);
+        return BitrixSyncOperation::TaskChat;
+    }
+
+    protected function failureSubject(): string
+    {
+        return (string) $this->bitrixTaskId;
     }
 }

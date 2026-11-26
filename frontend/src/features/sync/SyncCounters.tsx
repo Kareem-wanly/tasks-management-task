@@ -14,7 +14,7 @@ interface Counter {
 /** Step 5.1: the numbers that should stay at zero. */
 export default function SyncCounters({ status }: SyncCountersProps) {
   const counters: Counter[] = [
-    { label: 'Failed jobs', value: status.failed_jobs, hint: 'Background Bitrix24 jobs that failed.' },
+    { label: 'Failed operations', value: status.failures, hint: 'Background work that failed after all its tries. Listed below.' },
     { label: 'Conflicts (24 h)', value: status.conflicts, hint: 'Our changes Bitrix24 answered with a different value.' },
     { label: 'Unconfirmed (24 h)', value: status.unconfirmed, hint: 'Our changes Bitrix24 never echoed back.' },
   ];

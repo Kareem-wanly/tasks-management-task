@@ -221,10 +221,30 @@ export interface BitrixSyncEntity {
 export interface BitrixSyncStatus {
   is_running: boolean;
   entities: BitrixSyncEntity[];
-  /** Failed jobs of the bitrix queue. */
-  failed_jobs: number;
+  /** Open dead letters: background work that failed after all its tries (step 5.2). */
+  failures: number;
   /** Our changes Bitrix answered with something else, last 24 hours. */
   conflicts: number;
   /** Our changes Bitrix never echoed back, last 24 hours. */
   unconfirmed: number;
+}
+
+/** Bitrix24 step 5.2: which background work failed. */
+export type BitrixSyncOperation = 'task' | 'project' | 'task_chat' | 'import';
+
+/** Only open failures are listed: `retrying` = queued again, closes when the work next succeeds. */
+export type BitrixSyncFailureStatus = 'pending' | 'retrying';
+
+export interface BitrixSyncFailure {
+  id: number;
+  operation: BitrixSyncOperation;
+  /** The Bitrix ID of the task or group, or the import entity (users, tasks, tasks-changes, ...). */
+  subject: string;
+  error: string;
+  attempts: number;
+  status: BitrixSyncFailureStatus;
+  last_failed_at: string;
+  retried_at: string | null;
+  /** False only while a retry waits for the worker; true again once it goes stale. */
+  can_retry: boolean;
 }

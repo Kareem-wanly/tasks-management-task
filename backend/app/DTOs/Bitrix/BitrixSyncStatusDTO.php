@@ -11,13 +11,13 @@ final readonly class BitrixSyncStatusDTO
 {
     /**
      * @param  list<BitrixSyncEntityDTO>  $entities  In import order; the changes sync last.
-     * @param  int  $failedJobs  Jobs of the bitrix queue that failed and wait in failed_jobs.
+     * @param  int  $failures  Open dead letters: background work that failed after all its tries (step 5.2).
      * @param  int  $conflicts  Our changes Bitrix answered with something else, in the last day.
      * @param  int  $unconfirmed  Our changes Bitrix never echoed back, in the last day.
      */
     public function __construct(
         public array $entities,
-        public int $failedJobs,
+        public int $failures,
         public int $conflicts,
         public int $unconfirmed,
     ) {}

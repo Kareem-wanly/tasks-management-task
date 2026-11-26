@@ -9,6 +9,7 @@ use App\Actions\Bitrix\SyncBitrixProjectAction;
 use App\Actions\Bitrix\SyncBitrixTaskAction;
 use App\Actions\Bitrix\SyncBitrixTimeLogAction;
 use App\Actions\Bitrix\SyncBitrixUserAction;
+use App\Enums\BitrixSyncOperation;
 use App\Enums\QueueName;
 use App\Enums\TaskMemberRole;
 use App\Exceptions\Bitrix\BitrixException;
@@ -30,11 +31,13 @@ use App\Jobs\Bitrix\ImportBitrixTasksJob;
 use App\Jobs\Bitrix\ImportBitrixTimeJob;
 use App\Jobs\Bitrix\ImportBitrixUsersJob;
 use App\Jobs\Bitrix\SyncBitrixChangesJob;
+use App\Models\BitrixSyncCursor;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
 use App\Services\Contracts\BitrixImportServiceInterface;
+use App\Services\Contracts\BitrixSyncFailureServiceInterface;
 use App\Services\Contracts\ProjectServiceInterface;
 use App\Services\Contracts\TaskChatServiceInterface;
 use App\Services\Contracts\TaskFileServiceInterface;
@@ -46,6 +49,7 @@ use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 final readonly class BitrixImportService implements BitrixImportServiceInterface
 {
@@ -88,6 +92,7 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
         private TaskChatServiceInterface $chat,
         private TaskFileServiceInterface $files,
         private TaskResultServiceInterface $results,
+        private BitrixSyncFailureServiceInterface $failures,
     ) {}
 
     public function queueImport(array $entities, bool $linkByEmail): void
@@ -112,9 +117,16 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
         dispatch_sync($this->job($entity, $linkByEmail));
     }
 
-    public function markFailed(string $entity, string $error): void
+    public function markFailed(string $entity, ?Throwable $exception, ?string $failedJobUuid = null, ?string $deadLetterSubject = null): void
     {
-        $this->cursors->fail($entity, $error);
+        // The cursor error shows on the status page too: the same safe text (SEC-5).
+        $this->cursors->fail($entity, $this->failures->describe($exception));
+        $this->failures->record(BitrixSyncOperation::Import, $deadLetterSubject ?? $entity, $exception, $failedJobUuid);
+    }
+
+    public function markChangesSyncFailed(?Throwable $exception, ?string $failedJobUuid): void
+    {
+        $this->failures->attachFailedJob(BitrixSyncOperation::Import, self::TASKS_CHANGES, $exception, $failedJobUuid);
     }
 
     public function progress(array $entities): Collection
@@ -133,7 +145,7 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
             return null;
         }
 
-        dispatch_sync(new ImportBitrixProjectsJob);
+        dispatch_sync(new ImportBitrixProjectsJob(partOfChangesSync: true));
         dispatch_sync(new ImportBitrixTasksJob($since->subSeconds(self::OVERLAP_SECONDS)));
 
         return $since;
@@ -153,7 +165,7 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
             $this->cursors->advance($cursor, count($rows), $total);
         });
 
-        $this->cursors->complete($cursor);
+        $this->complete($cursor);
         Log::info('Bitrix24 users imported.', ['imported' => $cursor->processed, 'not_linked' => $notLinked, 'portal_total' => $total]);
     }
 
@@ -180,7 +192,7 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
 
         $deleted = $this->deleteMissingProjects($seen);
 
-        $this->cursors->complete($cursor);
+        $this->complete($cursor);
         Log::info('Bitrix24 projects imported.', ['processed' => $cursor->processed, 'skipped' => $skipped, 'deleted' => $deleted, 'portal_total' => $total]);
     }
 
@@ -214,7 +226,7 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
 
         $deleted = $delta ? 0 : $this->deleteMissingTasks($seen);
 
-        $this->cursors->complete($cursor);
+        $this->complete($cursor);
         Log::info($delta ? 'Bitrix24 task changes synced.' : 'Bitrix24 tasks imported.', [
             'processed' => $cursor->processed, 'skipped' => $skipped, 'deleted' => $deleted, 'portal_total' => $earlierTotal,
         ]);
@@ -259,7 +271,7 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
             $this->cursors->advance($cursor, $chunk->count(), $total);
         });
 
-        $this->cursors->complete($cursor);
+        $this->complete($cursor);
         Log::info('Bitrix24 task files imported.', ['tasks' => $cursor->processed, 'skipped' => $skipped]);
     }
 
@@ -271,6 +283,13 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
     public function importChat(): void
     {
         $this->eachTask(self::CHAT, 'Bitrix24 task chats imported.', fn (Task $task) => $this->chat->refreshFromBitrix($task, complete: true));
+    }
+
+    /** The pass finished: its cursor moves on, and an open failure of it is closed (step 5.2). */
+    private function complete(BitrixSyncCursor $cursor): void
+    {
+        $this->cursors->complete($cursor);
+        $this->failures->resolve(BitrixSyncOperation::Import, $cursor->entity);
     }
 
     private function lastTaskSync(): ?CarbonImmutable
@@ -334,7 +353,7 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
             $this->cursors->advance($cursor, $chunk->count(), $total);
         });
 
-        $this->cursors->complete($cursor);
+        $this->complete($cursor);
         Log::info($done, ['tasks' => $cursor->processed, 'failed' => $failed]);
     }
 

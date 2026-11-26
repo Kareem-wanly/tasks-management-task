@@ -1,4 +1,4 @@
-import type { BitrixSyncState } from '@/types/api';
+import type { BitrixSyncFailure, BitrixSyncState } from '@/types/api';
 
 type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 
@@ -29,3 +29,17 @@ export const SYNC_STATE_TONES: Record<BitrixSyncState, BadgeVariant> = {
   failed: 'danger',
   stalled: 'warning',
 };
+
+/** What failed, in words: "Task 123 (event)", "Import: Tasks". Bitrix IDs, as the subject holds them. */
+export function failureLabel(failure: BitrixSyncFailure): string {
+  switch (failure.operation) {
+    case 'task':
+      return `Task ${failure.subject} (Bitrix ID)`;
+    case 'project':
+      return `Project group ${failure.subject} (Bitrix ID)`;
+    case 'task_chat':
+      return `Chat of task ${failure.subject} (Bitrix ID)`;
+    case 'import':
+      return `Import: ${SYNC_ENTITY_LABELS[failure.subject] ?? failure.subject}`;
+  }
+}

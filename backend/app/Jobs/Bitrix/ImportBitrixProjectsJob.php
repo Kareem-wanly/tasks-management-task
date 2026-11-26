@@ -20,7 +20,11 @@ final class ImportBitrixProjectsJob implements ShouldQueue
 
     public const ENTITY = BitrixImportServiceInterface::PROJECTS;
 
-    public function __construct()
+    /**
+     * @param  bool  $partOfChangesSync  Run by the 5-minute changes sync: a failure is that sync's, and
+     *                                   retrying it runs the changes sync again, not a full import.
+     */
+    public function __construct(public readonly bool $partOfChangesSync = false)
     {
         $this->onQueue(QueueName::Bitrix);
     }
@@ -28,5 +32,10 @@ final class ImportBitrixProjectsJob implements ShouldQueue
     public function handle(BitrixImportServiceInterface $import): void
     {
         $import->importProjects();
+    }
+
+    protected function deadLetterSubject(): string
+    {
+        return $this->partOfChangesSync ? BitrixImportServiceInterface::TASKS_CHANGES : self::ENTITY;
     }
 }

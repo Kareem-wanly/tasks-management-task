@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\BitrixSyncFailureStatus;
+use App\Enums\BitrixSyncOperation;
 use App\Enums\OutboundOpAction;
 use App\Enums\OutboundOpEntity;
 use App\Enums\OutboundOpStatus;
@@ -17,12 +19,11 @@ use App\Jobs\Bitrix\ImportBitrixUsersJob;
 use App\Jobs\Bitrix\SyncBitrixChangesJob;
 use App\Models\BitrixOutboundOp;
 use App\Models\BitrixSyncCursor;
+use App\Models\BitrixSyncFailure;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 
 beforeEach(function (): void {
@@ -62,14 +63,6 @@ function outboundOp(OutboundOpStatus $status, int $minutesAgo, int $seconds = 0)
     $op->forceFill(['created_at' => now()->subMinutes($minutesAgo)->subSeconds($seconds)])->save();
 }
 
-function failedJob(string $queue): void
-{
-    DB::table('failed_jobs')->insert([
-        'uuid' => (string) Str::uuid(), 'connection' => 'database', 'queue' => $queue,
-        'payload' => '{}', 'exception' => 'Boom', 'failed_at' => now(),
-    ]);
-}
-
 it('is closed to users without the permission', function (): void {
     Sanctum::actingAs(teamMember());
 
@@ -96,11 +89,11 @@ it('shows every entity in import order, then the changes sync', function (): voi
         ->assertJsonPath('data.entities.4.started_at', null);
 });
 
-it('counts failed bitrix jobs, recent conflicts and changes Bitrix never echoed', function (): void {
+it('counts open failures, recent conflicts and changes Bitrix never echoed', function (): void {
     Sanctum::actingAs(syncManager());
-    failedJob('bitrix');
-    failedJob('bitrix');
-    failedJob('default');
+    foreach ([BitrixSyncFailureStatus::Pending, BitrixSyncFailureStatus::Retrying, BitrixSyncFailureStatus::Resolved, BitrixSyncFailureStatus::Dismissed] as $i => $status) {
+        BitrixSyncFailure::create(['operation' => BitrixSyncOperation::Task, 'subject' => (string) $i, 'error' => 'x', 'status' => $status, 'last_failed_at' => now()]);
+    }
     outboundOp(OutboundOpStatus::Conflict, minutesAgo: 30);
     outboundOp(OutboundOpStatus::Conflict, minutesAgo: 60 * 25);
     outboundOp(OutboundOpStatus::Sent, minutesAgo: 10);
@@ -109,7 +102,7 @@ it('counts failed bitrix jobs, recent conflicts and changes Bitrix never echoed'
 
     $this->getJson('/api/v1/bitrix/sync')->assertOk()
         ->assertJsonPath('data.is_running', false)
-        ->assertJsonPath('data.failed_jobs', 2)
+        ->assertJsonPath('data.failures', 2)
         ->assertJsonPath('data.conflicts', 1)
         ->assertJsonPath('data.unconfirmed', 1);
 });
