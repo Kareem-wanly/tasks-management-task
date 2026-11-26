@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Requests\Auth;
 
 use App\DTOs\Auth\UpdatePasswordDTO;
+use App\Http\Requests\Concerns\ResolvesActor;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** The signed-in user changes their password; the current one is required. */
 final class UpdatePasswordRequest extends FormRequest
 {
+    use ResolvesActor;
+
     public function authorize(): bool
     {
         return $this->user() !== null;

@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Step 4.6: an official result of a task.
+ *
+ * @property-read Task $task
  */
 class TaskResult extends Model
 {

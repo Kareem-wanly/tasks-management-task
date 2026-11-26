@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Step 4.3: one checklist (no parent) or one item of it.
+ *
+ * @property-read Task $task
  */
 class TaskChecklistItem extends Model
 {

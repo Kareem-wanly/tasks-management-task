@@ -5,15 +5,19 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\DTOs\Task\UpdateChecklistItemDTO;
+use App\Http\Requests\Concerns\ResolvesActor;
+use App\Models\TaskChecklistItem;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /** Renames a checklist item, or ticks/unticks it. */
 final class UpdateChecklistItemRequest extends FormRequest
 {
+    use ResolvesActor;
+
     public function authorize(): bool
     {
-        return $this->user()->can('updateChecklist', $this->route('item')->task);
+        return $this->actor()->can('updateChecklist', $this->routeModel('item', TaskChecklistItem::class)->task);
     }
 
     /** @return array<string, mixed> */
@@ -22,7 +26,7 @@ final class UpdateChecklistItemRequest extends FormRequest
         return [
             'title' => ['sometimes', 'required', 'string', 'max:2000'],
             // A list is done when its items are; only items are ticked.
-            'is_complete' => [Rule::prohibitedIf($this->route('item')->isList()), 'sometimes', 'boolean'],
+            'is_complete' => [Rule::prohibitedIf($this->routeModel('item', TaskChecklistItem::class)->isList()), 'sometimes', 'boolean'],
         ];
     }
 

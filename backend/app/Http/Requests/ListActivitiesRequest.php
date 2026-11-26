@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\HasPagination;
+use App\Http\Requests\Concerns\ResolvesActor;
 use App\Models\ActivityLog;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -12,10 +13,11 @@ use Illuminate\Foundation\Http\FormRequest;
 final class ListActivitiesRequest extends FormRequest
 {
     use HasPagination;
+    use ResolvesActor;
 
     public function authorize(): bool
     {
-        return $this->user()->can('viewAny', ActivityLog::class);
+        return $this->actor()->can('viewAny', ActivityLog::class);
     }
 
     /** @return array<string, mixed> */

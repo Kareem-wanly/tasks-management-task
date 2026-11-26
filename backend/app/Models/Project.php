@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\ProjectStatus;
 use App\Enums\SystemRole;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,6 +15,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property int|null $bitrix_group_id
+ */
 class Project extends Model
 {
     /** @use HasFactory<\Database\Factories\ProjectFactory> */
@@ -89,6 +93,10 @@ class Project extends Model
             // Only bring back tasks that were deleted together with the project.
             // deleted_at is still set while "restoring" runs; the small tolerance
             // covers tasks being deleted a moment before the project row is stamped.
+            if (! $project->deleted_at instanceof CarbonInterface) {
+                return;
+            }
+
             $project->tasks()->onlyTrashed()
                 ->where('deleted_at', '>=', $project->deleted_at->copy()->subSeconds(5))
                 ->restore();

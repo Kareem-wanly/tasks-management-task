@@ -6,15 +6,18 @@ namespace App\Http\Requests;
 
 use App\DTOs\Project\CreateProjectDTO;
 use App\Enums\ProjectStatus;
+use App\Http\Requests\Concerns\ResolvesActor;
 use App\Models\Project;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 final class StoreProjectRequest extends FormRequest
 {
+    use ResolvesActor;
+
     public function authorize(): bool
     {
-        return $this->user()->can('create', Project::class);
+        return $this->actor()->can('create', Project::class);
     }
 
     /** @return array<string, mixed> */

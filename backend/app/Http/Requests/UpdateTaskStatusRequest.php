@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\DTOs\Task\ChangeTaskStatusDTO;
+use App\Http\Requests\Concerns\ResolvesActor;
+use App\Models\Task;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 final class UpdateTaskStatusRequest extends FormRequest
 {
+    use ResolvesActor;
+
     public function authorize(): bool
     {
-        return $this->user()->can('updateStatus', $this->route('task'));
+        return $this->actor()->can('updateStatus', $this->routeModel('task', Task::class));
     }
 
     /** @return array<string, mixed> */

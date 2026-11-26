@@ -44,7 +44,10 @@ final readonly class BitrixUserRepository implements BitrixUserRepositoryInterfa
     {
         // No ACTIVE filter: ACTIVE=true would drop deactivated users, and we
         // need them to block their access here too.
-        return $this->bitrix->eachPageAsService('user.get', ['sort' => 'ID', 'order' => 'ASC'], $onPage);
+        return $this->bitrix->eachPageAsService('user.get', ['sort' => 'ID', 'order' => 'ASC'], function (array $rows, int $total) use ($onPage): void {
+            /** @var list<array<string, mixed>> $rows user.get answers a list of users */
+            $onPage($rows, $total);
+        });
     }
 
     /**

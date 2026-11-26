@@ -6,14 +6,18 @@ namespace App\Http\Requests;
 
 use App\DTOs\Project\AddProjectMemberDTO;
 use App\Enums\ProjectMemberRole;
+use App\Http\Requests\Concerns\ResolvesActor;
+use App\Models\Project;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 final class AddProjectMemberRequest extends FormRequest
 {
+    use ResolvesActor;
+
     public function authorize(): bool
     {
-        return $this->user()->can('manageMembers', $this->route('project'));
+        return $this->actor()->can('manageMembers', $this->routeModel('project', Project::class));
     }
 
     /** @return array<string, mixed> */

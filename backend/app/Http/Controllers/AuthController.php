@@ -34,12 +34,12 @@ final class AuthController extends Controller
 
     public function me(AuthenticatedRequest $request): JsonResponse
     {
-        return response()->json(['user' => new UserResource($this->auth->profile($request->user()))]);
+        return response()->json(['user' => new UserResource($this->auth->profile($request->actor()))]);
     }
 
     public function logout(AuthenticatedRequest $request): JsonResponse
     {
-        $this->auth->logout($request->user());
+        $this->auth->logout($request->actor());
 
         return response()->json(['message' => 'Logged out successfully']);
     }
@@ -49,13 +49,13 @@ final class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Profile updated successfully',
-            'data' => $this->auth->updateProfile($request->user(), $request->toDto()),
+            'data' => $this->auth->updateProfile($request->actor(), $request->toDto()),
         ]);
     }
 
     public function updatePassword(UpdatePasswordRequest $request): JsonResponse
     {
-        $this->auth->updatePassword($request->user(), $request->toDto());
+        $this->auth->updatePassword($request->actor(), $request->toDto());
 
         return response()->json(['success' => true, 'message' => 'Password updated successfully']);
     }

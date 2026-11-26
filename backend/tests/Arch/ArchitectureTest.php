@@ -95,8 +95,9 @@ arch('controllers are final')
 
 arch('resources')
     ->expect('App\Http\Resources')
-    ->toBeFinal()
-    ->toHaveSuffix('Resource');
+    ->classes()
+    ->toBeFinal()->ignoring('App\Http\Resources\Concerns')
+    ->toHaveSuffix('Resource')->ignoring('App\Http\Resources\Concerns');
 
 // --- Jobs and commands ---
 arch('jobs are thin and queued')

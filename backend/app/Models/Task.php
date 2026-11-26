@@ -15,8 +15,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
+use LogicException;
 
 /**
+ * @property int|null $bitrix_task_id
+ * @property CarbonImmutable|null $completed_at
  * @property CarbonImmutable|null $bitrix_synced_at
  */
 class Task extends Model
@@ -153,10 +156,20 @@ class Task extends Model
         return $this->project_id === null || $this->project?->bitrix_group_id !== null;
     }
 
-    /** Already created in Bitrix24, and still synced with it. */
+    /**
+     * Already created in Bitrix24, and still synced with it.
+     *
+     * @phpstan-assert-if-true !null $this->bitrix_task_id
+     */
     public function isInBitrix(): bool
     {
         return $this->bitrix_task_id !== null && $this->syncsWithBitrix();
+    }
+
+    /** The Bitrix24 task ID; only for a task already in Bitrix24 (see isInBitrix()). */
+    public function bitrixId(): int
+    {
+        return $this->bitrix_task_id ?? throw new LogicException("Task {$this->id} is not in Bitrix24.");
     }
 
     /** Whether the task is in a closing status (is_final), not just "completed". */

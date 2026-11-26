@@ -5,14 +5,17 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\DTOs\Role\CreateRoleDTO;
+use App\Http\Requests\Concerns\ResolvesActor;
 use App\Models\Role;
 use Illuminate\Foundation\Http\FormRequest;
 
 final class StoreRoleRequest extends FormRequest
 {
+    use ResolvesActor;
+
     public function authorize(): bool
     {
-        return $this->user()->can('create', Role::class);
+        return $this->actor()->can('create', Role::class);
     }
 
     /** @return array<string, mixed> */

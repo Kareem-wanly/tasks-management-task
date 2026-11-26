@@ -29,17 +29,17 @@ final class TaskChatController extends Controller
 
     public function store(StoreTaskChatMessageRequest $request, Task $task): TaskChatResource
     {
-        return new TaskChatResource($this->chat->send($request->user(), $task, $request->toDto()));
+        return new TaskChatResource($this->chat->send($request->actor(), $task, $request->toDto()));
     }
 
     public function update(UpdateTaskChatMessageRequest $request, TaskChatMessage $message): TaskChatResource
     {
-        return new TaskChatResource($this->chat->update($request->user(), $message, $request->toDto()));
+        return new TaskChatResource($this->chat->update($request->actor(), $message, $request->toDto()));
     }
 
     public function destroy(DeleteTaskChatMessageRequest $request, TaskChatMessage $message): TaskChatResource
     {
-        return new TaskChatResource($this->chat->delete($request->user(), $message));
+        return new TaskChatResource($this->chat->delete($request->actor(), $message));
     }
 
     public function download(DownloadTaskChatFileRequest $request, TaskChatMessage $message): StreamedResponse

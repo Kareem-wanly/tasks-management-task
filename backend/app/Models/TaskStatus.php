@@ -34,7 +34,7 @@ class TaskStatus extends TaskLookup
      */
     public static function finalKeys(): array
     {
-        return self::$finalKeys ??= static::where('is_final', true)->pluck('key')->all();
+        return self::$finalKeys ??= array_values(static::where('is_final', true)->get(['key'])->map(fn (self $status): string => $status->key)->all());
     }
 
     protected function casts(): array

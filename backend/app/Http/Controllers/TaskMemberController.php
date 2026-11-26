@@ -20,21 +20,21 @@ final class TaskMemberController extends Controller
 
     public function update(UpdateTaskMembersRequest $request, Task $task): TaskResource
     {
-        return new TaskResource($this->members->setMembers($request->user(), $task, $request->toDto()));
+        return new TaskResource($this->members->setMembers($request->actor(), $task, $request->toDto()));
     }
 
     public function watch(WatchTaskRequest $request, Task $task): TaskResource
     {
-        return new TaskResource($this->members->watch($request->user(), $task, true));
+        return new TaskResource($this->members->watch($request->actor(), $task, true));
     }
 
     public function unwatch(WatchTaskRequest $request, Task $task): TaskResource
     {
-        return new TaskResource($this->members->watch($request->user(), $task, false));
+        return new TaskResource($this->members->watch($request->actor(), $task, false));
     }
 
     public function delegate(DelegateTaskRequest $request, Task $task): TaskResource
     {
-        return new TaskResource($this->members->delegate($request->user(), $task, $request->toDto()));
+        return new TaskResource($this->members->delegate($request->actor(), $task, $request->toDto()));
     }
 }

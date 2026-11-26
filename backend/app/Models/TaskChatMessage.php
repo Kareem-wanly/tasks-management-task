@@ -9,6 +9,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Step 4.7: a message in a task's chat (replaces comments).
+ *
+ * @property-read Task $task
+ * @property list<array{id: int, name: string, size: int, type: string}>|null $files
  */
 class TaskChatMessage extends Model
 {
@@ -41,7 +44,7 @@ class TaskChatMessage extends Model
     public function file(int $bitrixFileId): ?array
     {
         foreach ($this->files ?? [] as $file) {
-            if ((int) ($file['id'] ?? 0) === $bitrixFileId) {
+            if ($file['id'] === $bitrixFileId) {
                 return $file;
             }
         }

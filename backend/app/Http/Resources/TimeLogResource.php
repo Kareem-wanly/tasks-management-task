@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\DTOs\Task\TimeLogDTO;
+use App\Http\Resources\Concerns\ResolvesViewer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -15,6 +16,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 final class TimeLogResource extends JsonResource
 {
+    use ResolvesViewer;
+
     public static $wrap;
 
     /** @return array<string, mixed> */
@@ -30,7 +33,7 @@ final class TimeLogResource extends JsonResource
                 'allow_time_tracking' => (bool) $task->allow_time_tracking,
                 'time_estimate' => (int) $task->time_estimate,
                 'time_spent' => (int) $task->time_spent,
-                'can_log' => $request->user()->can('logTime', $task),
+                'can_log' => $this->viewer($request)->can('logTime', $task),
                 // The caller's timer, on this task or another.
                 'timer' => $log->timer ? [
                     'task_id' => $log->timer->task_id,

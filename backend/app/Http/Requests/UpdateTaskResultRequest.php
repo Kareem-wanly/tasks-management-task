@@ -5,16 +5,20 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\DTOs\Task\TaskResultDTO;
+use App\Http\Requests\Concerns\ResolvesActor;
+use App\Models\TaskResult;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Rewords one's own result. */
 final class UpdateTaskResultRequest extends FormRequest
 {
+    use ResolvesActor;
+
     public function authorize(): bool
     {
-        $result = $this->route('result');
+        $result = $this->routeModel('result', TaskResult::class);
 
-        return $this->user()->can('manageResult', [$result->task, $result]);
+        return $this->actor()->can('manageResult', [$result->task, $result]);
     }
 
     /** @return array<string, mixed> */

@@ -6,6 +6,7 @@ namespace App\Http\Requests;
 
 use App\DTOs\User\UserFiltersDTO;
 use App\Http\Requests\Concerns\HasPagination;
+use App\Http\Requests\Concerns\ResolvesActor;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -13,10 +14,11 @@ use Illuminate\Foundation\Http\FormRequest;
 final class ListUsersRequest extends FormRequest
 {
     use HasPagination;
+    use ResolvesActor;
 
     public function authorize(): bool
     {
-        return $this->user()->can('viewAny', User::class);
+        return $this->actor()->can('viewAny', User::class);
     }
 
     /** @return array<string, mixed> */

@@ -60,7 +60,7 @@ interface BitrixProjectRepositoryInterface
      * lose them here.
      *
      * @param  list<array<string, mixed>>  $groups
-     * @return array<int, array<int, mixed>> sonet_group.user.get result by group ID.
+     * @return array<int, list<array<string, mixed>>> sonet_group.user.get result by group ID.
      */
     public function membersOf(array $groups): array;
 }

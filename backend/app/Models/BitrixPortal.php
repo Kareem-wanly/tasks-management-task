@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * The installed Bitrix24 portal. Its token belongs to the user who installed
  * the app and serves as the service account for background sync.
+ *
+ * @property list<string>|null $scopes
  */
 class BitrixPortal extends Model implements HasBitrixToken
 {

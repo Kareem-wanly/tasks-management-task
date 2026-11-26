@@ -47,7 +47,7 @@ final class BitrixLoginCodes
             return null;
         }
 
-        return User::find($issued['user_id'] ?? 0);
+        return User::query()->find((int) ($issued['user_id'] ?? 0));
     }
 
     public static function isNonce(mixed $value): bool

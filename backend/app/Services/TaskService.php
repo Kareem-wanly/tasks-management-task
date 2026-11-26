@@ -24,6 +24,7 @@ use App\Repositories\Contracts\TaskRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Contracts\TaskServiceInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use LogicException;
 
 /**
  * Tasks. Bitrix-synced writes go to Bitrix first (with the employee's
@@ -115,8 +116,10 @@ final readonly class TaskService implements TaskServiceInterface
         // A Bitrix task always has a responsible person: default to the creator.
         $task->assigned_to ??= $actor->id;
         // Values the request left out get Bitrix's defaults (Pending, Normal).
-        $task->status ??= $this->lookups->keyForBitrix(TaskStatus::class, BitrixTaskRepositoryInterface::STATUS_PENDING);
-        $task->priority ??= $this->lookups->keyForBitrix(TaskPriority::class, BitrixTaskRepositoryInterface::DEFAULT_PRIORITY);
+        $task->status ??= $this->lookups->keyForBitrix(TaskStatus::class, BitrixTaskRepositoryInterface::STATUS_PENDING)
+            ?? throw new LogicException('No task status is linked to the Bitrix24 "pending" status.');
+        $task->priority ??= $this->lookups->keyForBitrix(TaskPriority::class, BitrixTaskRepositoryInterface::DEFAULT_PRIORITY)
+            ?? throw new LogicException('No task priority is linked to the Bitrix24 default priority.');
 
         $values = $this->bitrixValues($task, $this->bitrixTasks->columns());
         $created = $this->bitrixTasks->create($actor, $values, $task->project->bitrix_group_id ?? 0);
@@ -169,7 +172,7 @@ final readonly class TaskService implements TaskServiceInterface
     private function applyStatusInBitrix(User $actor, Task $task, int $current): void
     {
         $target = $this->bitrixStatus($task->status);
-        $final = $this->bitrixTasks->changeStatus($actor, $task->bitrix_task_id, $current, $target);
+        $final = $this->bitrixTasks->changeStatus($actor, $task->bitrixId(), $current, $target);
 
         if ($this->bitrixTasks->normalizeStatus($final) !== $target) {
             $task->status = $this->lookups->keyForBitrix(TaskStatus::class, $final) ?? $task->status;

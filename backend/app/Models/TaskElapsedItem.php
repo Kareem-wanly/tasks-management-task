@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Step 4.4: one entry of a task's time log (Bitrix elapsed item).
+ *
+ * @property-read Task $task
  */
 class TaskElapsedItem extends Model
 {

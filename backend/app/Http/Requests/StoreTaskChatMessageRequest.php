@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\DTOs\Task\TaskChatMessageDTO;
+use App\Http\Requests\Concerns\ResolvesActor;
+use App\Models\Task;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Step 4.7: a new message in the task chat. */
 final class StoreTaskChatMessageRequest extends FormRequest
 {
+    use ResolvesActor;
+
     public function authorize(): bool
     {
-        return $this->user()->can('postInChat', $this->route('task'));
+        return $this->actor()->can('postInChat', $this->routeModel('task', Task::class));
     }
 
     /** @return array<string, mixed> */

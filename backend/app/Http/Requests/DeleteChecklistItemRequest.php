@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ResolvesActor;
+use App\Models\TaskChecklistItem;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Deletes a checklist item. */
 final class DeleteChecklistItemRequest extends FormRequest
 {
+    use ResolvesActor;
+
     public function authorize(): bool
     {
-        return $this->user()->can('updateChecklist', $this->route('item')->task);
+        return $this->actor()->can('updateChecklist', $this->routeModel('item', TaskChecklistItem::class)->task);
     }
 
     /** @return array<string, mixed> */

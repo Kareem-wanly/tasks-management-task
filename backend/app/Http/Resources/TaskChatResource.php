@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\DTOs\Task\TaskChatDTO;
+use App\Http\Resources\Concerns\ResolvesViewer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -15,6 +16,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 final class TaskChatResource extends JsonResource
 {
+    use ResolvesViewer;
+
     public static $wrap;
 
     /** @return array<string, mixed> */
@@ -24,7 +27,7 @@ final class TaskChatResource extends JsonResource
             'data' => TaskChatMessageResource::collection($this->resource->messages),
             'meta' => [
                 'stale' => $this->resource->stale,
-                'can_post' => $request->user()->can('postInChat', $this->resource->task),
+                'can_post' => $this->viewer($request)->can('postInChat', $this->resource->task),
             ],
         ];
     }

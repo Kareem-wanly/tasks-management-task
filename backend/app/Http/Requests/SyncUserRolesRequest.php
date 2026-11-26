@@ -6,20 +6,24 @@ namespace App\Http\Requests;
 
 use App\DTOs\User\SyncUserRolesDTO;
 use App\Enums\SystemRole;
+use App\Http\Requests\Concerns\ResolvesActor;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 
 final class SyncUserRolesRequest extends FormRequest
 {
+    use ResolvesActor;
+
     public function authorize(): bool
     {
-        $target = $this->route('user');
+        $target = $this->routeModel('user', User::class);
 
-        if (! $this->user()->can('manageRoles', $target)) {
+        if (! $this->actor()->can('manageRoles', $target)) {
             return false;
         }
 
         abort_if(
-            $target->is($this->user()) && ! $this->user()->hasRole(SystemRole::Administrator),
+            $target->is($this->actor()) && ! $this->actor()->hasRole(SystemRole::Administrator),
             403,
             'You cannot modify your own roles.'
         );

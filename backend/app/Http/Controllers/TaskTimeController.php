@@ -25,31 +25,31 @@ final class TaskTimeController extends Controller
 
     public function index(ShowTaskRequest $request, Task $task): TimeLogResource
     {
-        return new TimeLogResource($this->time->open($request->user(), $task));
+        return new TimeLogResource($this->time->open($request->actor(), $task));
     }
 
     public function store(LogTimeRequest $request, Task $task): TimeLogResource
     {
-        return new TimeLogResource($this->time->add($request->user(), $task, $request->toDto()));
+        return new TimeLogResource($this->time->add($request->actor(), $task, $request->toDto()));
     }
 
     public function update(UpdateTimeEntryRequest $request, TaskElapsedItem $entry): TimeLogResource
     {
-        return new TimeLogResource($this->time->update($request->user(), $entry, $request->toDto()));
+        return new TimeLogResource($this->time->update($request->actor(), $entry, $request->toDto()));
     }
 
     public function destroy(DeleteTimeEntryRequest $request, TaskElapsedItem $entry): TimeLogResource
     {
-        return new TimeLogResource($this->time->delete($request->user(), $entry));
+        return new TimeLogResource($this->time->delete($request->actor(), $entry));
     }
 
     public function start(StartTimerRequest $request, Task $task): TimeLogResource
     {
-        return new TimeLogResource($this->time->startTimer($request->user(), $task));
+        return new TimeLogResource($this->time->startTimer($request->actor(), $task));
     }
 
     public function stop(StopTimerRequest $request, Task $task): TimeLogResource
     {
-        return new TimeLogResource($this->time->stopTimer($request->user(), $task, $request->toDto()));
+        return new TimeLogResource($this->time->stopTimer($request->actor(), $task, $request->toDto()));
     }
 }

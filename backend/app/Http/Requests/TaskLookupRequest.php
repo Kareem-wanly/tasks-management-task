@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\DTOs\TaskLookup\SaveTaskLookupDTO;
+use App\Http\Requests\Concerns\ResolvesActor;
 use App\Models\TaskLookup;
 use App\Services\Contracts\TaskLookupServiceInterface;
 use Illuminate\Foundation\Http\FormRequest;
@@ -16,6 +17,8 @@ use Illuminate\Validation\Rule;
  */
 abstract class TaskLookupRequest extends FormRequest
 {
+    use ResolvesActor;
+
     /** The value being changed; null when creating one. */
     abstract public function lookup(): ?TaskLookup;
 
@@ -23,7 +26,7 @@ abstract class TaskLookupRequest extends FormRequest
     {
         $lookup = $this->lookup();
 
-        return $lookup instanceof TaskLookup ? $this->user()->can('update', $lookup) : $this->user()->can('create', $this->model());
+        return $lookup instanceof TaskLookup ? $this->actor()->can('update', $lookup) : $this->actor()->can('create', $this->model());
     }
 
     /** @return array<string, mixed> */

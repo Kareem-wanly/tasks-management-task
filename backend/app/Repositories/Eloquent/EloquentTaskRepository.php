@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Repositories\Contracts\TaskRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 final class EloquentTaskRepository implements TaskRepositoryInterface
 {
@@ -48,7 +49,7 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
 
     public function freshForDetail(Task $task, User $viewer): Task
     {
-        return $task->fresh($this->detailRelations($viewer));
+        return $task->fresh($this->detailRelations($viewer)) ?? throw (new ModelNotFoundException)->setModel(Task::class, [$task->id]);
     }
 
     public function save(Task $task): void
@@ -131,7 +132,7 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
         }
 
         foreach ([TaskMemberRole::Accomplice->value => $task->accomplices(), TaskMemberRole::Auditor->value => $task->auditors()] as $role => $relation) {
-            $members[$role] = $relation->whereNotNull('bitrix_user_id')->orderBy('bitrix_user_id')->pluck('bitrix_user_id')->map(fn ($id): int => (int) $id)->all();
+            $members[$role] = array_values($relation->whereNotNull('bitrix_user_id')->orderBy('bitrix_user_id')->pluck('bitrix_user_id')->map(fn ($id): int => (int) $id)->all());
         }
 
         return $members;
@@ -139,7 +140,7 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
 
     public function allBitrixIds(): array
     {
-        return Task::whereNotNull('bitrix_task_id')->pluck('bitrix_task_id')->map(fn ($id): int => (int) $id)->all();
+        return array_values(Task::whereNotNull('bitrix_task_id')->pluck('bitrix_task_id')->map(fn ($id): int => (int) $id)->all());
     }
 
     public function deleteByBitrixIds(array $bitrixTaskIds): int
@@ -210,7 +211,7 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
     private function applySort(Builder $query, ?string $sortBy, ?string $sortOrder): void
     {
         $sortBy = in_array($sortBy, self::SORTS, true) ? $sortBy : 'created_at';
-        $sortOrder = in_array(strtolower((string) $sortOrder), ['asc', 'desc'], true) ? strtolower($sortOrder) : 'desc';
+        $sortOrder = in_array(strtolower((string) $sortOrder), ['asc', 'desc'], true) ? strtolower((string) $sortOrder) : 'desc';
 
         // status/priority are keys: order them by their lookup's `sort`, not alphabetically.
         match ($sortBy) {

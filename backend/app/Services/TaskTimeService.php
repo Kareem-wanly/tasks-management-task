@@ -202,7 +202,7 @@ final readonly class TaskTimeService implements TaskTimeServiceInterface
     /** Brings our copy of the task's time log up to date. */
     private function refreshFromBitrix(Task $task): void
     {
-        $this->timeSync->sync($task, $this->bitrixTime->list($task->bitrix_task_id));
+        $this->timeSync->sync($task, $this->bitrixTime->list($task->bitrixId()));
     }
 
     /** Changes go to Bitrix with the employee's own token. */

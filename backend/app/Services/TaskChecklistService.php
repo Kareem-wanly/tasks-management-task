@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Repositories\Contracts\TaskChecklistRepositoryInterface;
 use App\Services\Contracts\TaskChecklistServiceInterface;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -85,7 +86,7 @@ final readonly class TaskChecklistService implements TaskChecklistServiceInterfa
         if ($changes->isComplete !== null) {
             $task->isInBitrix()
                 // The item as the rename above left it.
-                ? $this->changeInBitrix($actor, $task, fn () => $this->bitrixChecklists->setComplete($actor, $task->bitrix_task_id, (int) $this->checklists->find($item->id)->bitrix_item_id, $changes->isComplete))
+                ? $this->changeInBitrix($actor, $task, fn () => $this->bitrixChecklists->setComplete($actor, $task->bitrix_task_id, (int) ($this->checklists->find($item->id) ?? throw (new ModelNotFoundException)->setModel(TaskChecklistItem::class, [$item->id]))->bitrix_item_id, $changes->isComplete))
                 : $this->checklists->update($item, ['is_complete' => $changes->isComplete]);
         }
 
@@ -135,7 +136,7 @@ final readonly class TaskChecklistService implements TaskChecklistServiceInterfa
     /** Brings our copy of the task's checklist up to date. */
     private function refreshFromBitrix(Task $task): void
     {
-        $this->checklistSync->sync($task, $this->bitrixChecklists->list($task->bitrix_task_id));
+        $this->checklistSync->sync($task, $this->bitrixChecklists->list($task->bitrixId()));
     }
 
     /** One change in Bitrix, then our copy as Bitrix has it. */
@@ -149,12 +150,12 @@ final readonly class TaskChecklistService implements TaskChecklistServiceInterfa
     /** After $after, or first (when it isn't already). Nothing to send leaves Bitrix alone. */
     private function moveInBitrix(User $actor, Task $task, TaskChecklistItem $item, ?TaskChecklistItem $after): void
     {
-        $first = $this->checklists->firstItemOf($item->parent);
+        $first = $this->checklists->firstItemOf($item->parent ?? throw new ChecklistListNotMovableException);
         $firstId = $first instanceof TaskChecklistItem && $first->id !== $item->id ? $first->bitrix_item_id : null;
 
         if ($after instanceof TaskChecklistItem || $firstId !== null) {
             $this->ensureSignedInWithBitrix($actor);
-            $this->bitrixChecklists->move($actor, $task->bitrix_task_id, (int) $item->bitrix_item_id, $after?->bitrix_item_id, $firstId);
+            $this->bitrixChecklists->move($actor, $task->bitrixId(), (int) $item->bitrix_item_id, $after?->bitrix_item_id, $firstId);
         }
 
         $this->refreshFromBitrix($task);
