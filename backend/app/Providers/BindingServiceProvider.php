@@ -23,6 +23,7 @@ final class BindingServiceProvider extends ServiceProvider
     public array $bindings = [
         // Integrations
         BitrixGatewayInterface::class => BitrixGateway::class,
+        Bitrix\Contracts\BitrixAppRepositoryInterface::class => Bitrix\Repositories\BitrixAppRepository::class,
         Bitrix\Contracts\BitrixProjectRepositoryInterface::class => Bitrix\Repositories\BitrixProjectRepository::class,
         Bitrix\Contracts\BitrixUserRepositoryInterface::class => Bitrix\Repositories\BitrixUserRepository::class,
         Bitrix\Contracts\BitrixTaskRepositoryInterface::class => Bitrix\Repositories\BitrixTaskRepository::class,

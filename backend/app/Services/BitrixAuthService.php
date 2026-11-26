@@ -12,7 +12,7 @@ use App\Exceptions\Bitrix\BitrixSignInException;
 use App\Integrations\Bitrix24\BitrixLoginCodes;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\BitrixUserSync;
-use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
+use App\Integrations\Bitrix24\Contracts\BitrixAppRepositoryInterface;
 use App\Integrations\Bitrix24\TokenManager;
 use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
@@ -38,7 +38,7 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
 
     public function __construct(
         private TokenManager $tokens,
-        private BitrixGatewayInterface $bitrix,
+        private BitrixAppRepositoryInterface $bitrixApp,
         private BitrixUserSync $users,
         private UserRepositoryInterface $userRepository,
         private BitrixLoginCodes $codes,
@@ -123,7 +123,7 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
     private function authenticate(BitrixToken $token): User
     {
         try {
-            $profile = $this->bitrix->callWithToken($token->accessToken, 'user.current')['result'] ?? [];
+            $profile = $this->bitrixApp->currentUser($token->accessToken);
         } catch (BitrixException) {
             throw new BitrixSignInException('bitrix_rejected');
         }
@@ -152,7 +152,7 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
     private function isOurAppToken(string $accessToken): bool
     {
         try {
-            $code = (string) ($this->bitrix->callWithToken($accessToken, 'app.info')['result']['CODE'] ?? '');
+            $code = (string) ($this->bitrixApp->appInfo($accessToken)['CODE'] ?? '');
         } catch (BitrixException) {
             return false;
         }

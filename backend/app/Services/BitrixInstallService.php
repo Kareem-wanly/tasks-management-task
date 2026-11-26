@@ -8,7 +8,7 @@ use App\DTOs\Bitrix\BitrixInstallDTO;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Exceptions\Bitrix\BitrixInstallRefusedException;
 use App\Integrations\Bitrix24\BitrixToken;
-use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
+use App\Integrations\Bitrix24\Contracts\BitrixAppRepositoryInterface;
 use App\Models\BitrixPortal;
 use App\Repositories\Contracts\BitrixPortalRepositoryInterface;
 use App\Services\Contracts\BitrixInstallServiceInterface;
@@ -39,10 +39,8 @@ final readonly class BitrixInstallService implements BitrixInstallServiceInterfa
         'OnSonetGroupDelete',
     ];
 
-    private const DEPARTMENTS_PAGE_SIZE = 50;
-
     public function __construct(
-        private BitrixGatewayInterface $bitrix,
+        private BitrixAppRepositoryInterface $bitrixApp,
         private BitrixPortalRepositoryInterface $portals,
     ) {}
 
@@ -87,8 +85,8 @@ final readonly class BitrixInstallService implements BitrixInstallServiceInterfa
     private function ensureInstallerMayInstall(string $accessToken): void
     {
         try {
-            $app = $this->bitrix->callWithToken($accessToken, 'app.info')['result'] ?? [];
-            $isAdmin = (bool) ($this->bitrix->callWithToken($accessToken, 'user.admin')['result'] ?? false);
+            $app = $this->bitrixApp->appInfo($accessToken);
+            $isAdmin = $this->bitrixApp->isAdmin($accessToken);
         } catch (BitrixException) {
             throw BitrixInstallRefusedException::tokenNotAccepted();
         }
@@ -145,13 +143,7 @@ final readonly class BitrixInstallService implements BitrixInstallServiceInterfa
 
     private function fetchPortalDetails(BitrixPortal $portal): void
     {
-        $batch = $this->bitrix->batch($portal, [
-            'app' => ['app.info'],
-            'scope' => ['scope'],
-            'me' => ['user.current'],
-            'admin' => ['user.admin'],
-            'departments' => ['department.get'],
-        ]);
+        $batch = $this->bitrixApp->portalDetails($portal);
 
         $result = $batch['result'] ?? [];
         $this->logBatchErrors($batch, 'details');
@@ -174,14 +166,10 @@ final readonly class BitrixInstallService implements BitrixInstallServiceInterfa
         }
     }
 
-    /** department.get returns 50 per page and has no "next", only "total". */
+    /** Every department, trimmed to the fields we keep. */
     private function departments(BitrixPortal $portal, array $firstPage, int $total): array
     {
-        $departments = $firstPage;
-
-        for ($start = self::DEPARTMENTS_PAGE_SIZE; $start < $total; $start += self::DEPARTMENTS_PAGE_SIZE) {
-            $departments = [...$departments, ...($this->bitrix->callAsUser($portal, 'department.get', ['START' => $start])['result'] ?? [])];
-        }
+        $departments = $this->bitrixApp->departments($portal, $firstPage, $total);
 
         return array_map(fn (array $d): array => array_intersect_key($d, array_flip(['ID', 'NAME', 'PARENT', 'SORT'])), $departments);
     }
@@ -190,12 +178,7 @@ final readonly class BitrixInstallService implements BitrixInstallServiceInterfa
     {
         $handler = rtrim((string) config('bitrix.public_url'), '/').'/api/bitrix/events';
 
-        $commands = [];
-        foreach (self::EVENTS as $event) {
-            $commands[$event] = ['event.bind', ['event' => $event, 'handler' => $handler]];
-        }
-
-        $this->logBatchErrors($this->bitrix->batch($portal, $commands), 'event.bind');
+        $this->logBatchErrors($this->bitrixApp->bindEvents($portal, self::EVENTS, $handler), 'event.bind');
     }
 
     /** ERROR_CORE "Handler already binded" is expected on reinstall/update. */
