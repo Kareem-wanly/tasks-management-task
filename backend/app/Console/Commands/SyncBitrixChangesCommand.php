@@ -12,7 +12,7 @@ use Illuminate\Console\Command;
  * brings in whatever changed in Bitrix since the last sync, so an event
  * lost while we were down (server, worker or tunnel) loses no data.
  */
-final class SyncBitrixChanges extends Command
+final class SyncBitrixChangesCommand extends Command
 {
     protected $signature = 'bitrix:sync-changes';
 

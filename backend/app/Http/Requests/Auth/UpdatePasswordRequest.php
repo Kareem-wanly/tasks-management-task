@@ -8,7 +8,7 @@ use App\DTOs\Auth\UpdatePasswordDTO;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** The signed-in user changes their password; the current one is required. */
-class UpdatePasswordRequest extends FormRequest
+final class UpdatePasswordRequest extends FormRequest
 {
     public function authorize(): bool
     {

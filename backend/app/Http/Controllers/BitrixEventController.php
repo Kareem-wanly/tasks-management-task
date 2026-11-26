@@ -12,7 +12,7 @@ use Illuminate\Http\JsonResponse;
  * Step 3.4: Bitrix24 calls this for every bound event. We queue the work
  * and answer at once.
  */
-class BitrixEventController extends Controller
+final class BitrixEventController extends Controller
 {
     public function __construct(private readonly BitrixEventServiceInterface $events) {}
 

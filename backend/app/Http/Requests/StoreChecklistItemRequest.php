@@ -9,7 +9,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /** Adds an item to one of the task's lists (list_id), or to its first one. */
-class StoreChecklistItemRequest extends FormRequest
+final class StoreChecklistItemRequest extends FormRequest
 {
     public function authorize(): bool
     {

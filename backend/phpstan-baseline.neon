@@ -1,24 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Using nullsafe property access "\?\-\>error" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Console/Commands/ImportFromBitrix.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>processed" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Console/Commands/ImportFromBitrix.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>total" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Console/Commands/ImportFromBitrix.php
-
-		-
 			message: '#^Access to an undefined property App\\Http\\Resources\\ProjectResource\:\:\$created_at\.$#'
 			identifier: property.notFound
 			count: 1

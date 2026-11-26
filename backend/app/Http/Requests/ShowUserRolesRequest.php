@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** A user's roles. */
-class ShowUserRolesRequest extends FormRequest
+final class ShowUserRolesRequest extends FormRequest
 {
     public function authorize(): bool
     {

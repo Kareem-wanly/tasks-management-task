@@ -8,7 +8,7 @@ use App\DTOs\Task\TaskChatMessageDTO;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Step 4.7: rewords one's own message (see TaskChatMessage::isChangeableBy()). */
-class UpdateTaskChatMessageRequest extends FormRequest
+final class UpdateTaskChatMessageRequest extends FormRequest
 {
     public function authorize(): bool
     {

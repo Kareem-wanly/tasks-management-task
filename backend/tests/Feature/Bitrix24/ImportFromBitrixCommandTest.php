@@ -8,14 +8,14 @@ use App\Enums\SyncCursorStatus;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
-use App\Jobs\Bitrix\ImportBitrixChat;
-use App\Jobs\Bitrix\ImportBitrixChecklists;
-use App\Jobs\Bitrix\ImportBitrixFiles;
-use App\Jobs\Bitrix\ImportBitrixProjects;
-use App\Jobs\Bitrix\ImportBitrixResults;
-use App\Jobs\Bitrix\ImportBitrixTasks;
-use App\Jobs\Bitrix\ImportBitrixTime;
-use App\Jobs\Bitrix\ImportBitrixUsers;
+use App\Jobs\Bitrix\ImportBitrixChatJob;
+use App\Jobs\Bitrix\ImportBitrixChecklistsJob;
+use App\Jobs\Bitrix\ImportBitrixFilesJob;
+use App\Jobs\Bitrix\ImportBitrixProjectsJob;
+use App\Jobs\Bitrix\ImportBitrixResultsJob;
+use App\Jobs\Bitrix\ImportBitrixTasksJob;
+use App\Jobs\Bitrix\ImportBitrixTimeJob;
+use App\Jobs\Bitrix\ImportBitrixUsersJob;
 use App\Models\BitrixSyncCursor;
 use App\Models\Project;
 use App\Models\Task;
@@ -121,7 +121,7 @@ class ImportFromBitrixCommandTest extends TestCase
 
         $this->artisan('bitrix:import --only=tasks,users')->assertSuccessful();
 
-        Bus::assertChained([ImportBitrixUsers::class, ImportBitrixTasks::class]);
+        Bus::assertChained([ImportBitrixUsersJob::class, ImportBitrixTasksJob::class]);
     }
 
     public function test_default_run_queues_the_full_chain_on_the_bitrix_queue(): void
@@ -130,8 +130,8 @@ class ImportFromBitrixCommandTest extends TestCase
 
         $this->artisan('bitrix:import')->assertSuccessful();
 
-        Bus::assertChained([ImportBitrixUsers::class, ImportBitrixProjects::class, ImportBitrixTasks::class, ImportBitrixChecklists::class, ImportBitrixTime::class, ImportBitrixFiles::class, ImportBitrixResults::class, ImportBitrixChat::class]);
-        Bus::assertDispatched(ImportBitrixUsers::class, fn (ImportBitrixUsers $job): bool => $job->queue === 'bitrix' && ! $job->linkByEmail);
+        Bus::assertChained([ImportBitrixUsersJob::class, ImportBitrixProjectsJob::class, ImportBitrixTasksJob::class, ImportBitrixChecklistsJob::class, ImportBitrixTimeJob::class, ImportBitrixFilesJob::class, ImportBitrixResultsJob::class, ImportBitrixChatJob::class]);
+        Bus::assertDispatched(ImportBitrixUsersJob::class, fn (ImportBitrixUsersJob $job): bool => $job->queue === 'bitrix' && ! $job->linkByEmail);
     }
 
     /** Review A3: linking by email only happens when an administrator asks for it. */
@@ -141,7 +141,7 @@ class ImportFromBitrixCommandTest extends TestCase
 
         $this->artisan('bitrix:import --only=users --link-by-email')->assertSuccessful();
 
-        Bus::assertDispatched(ImportBitrixUsers::class, fn (ImportBitrixUsers $job): bool => $job->linkByEmail);
+        Bus::assertDispatched(ImportBitrixUsersJob::class, fn (ImportBitrixUsersJob $job): bool => $job->linkByEmail);
     }
 
     public function test_unknown_only_value_is_rejected(): void

@@ -10,7 +10,7 @@ use App\Models\User;
 use App\Services\Contracts\UserRoleServiceInterface;
 use Illuminate\Http\JsonResponse;
 
-class UserRoleController extends Controller
+final class UserRoleController extends Controller
 {
     public function __construct(private readonly UserRoleServiceInterface $roles) {}
 

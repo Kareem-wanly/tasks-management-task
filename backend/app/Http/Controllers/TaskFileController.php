@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /**
  * Step 4.5: files attached to a task. Every write answers with the whole list.
  */
-class TaskFileController extends Controller
+final class TaskFileController extends Controller
 {
     public function __construct(private readonly TaskFileServiceInterface $files) {}
 

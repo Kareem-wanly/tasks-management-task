@@ -16,7 +16,7 @@ use Throwable;
  * The command only reads its options and shows progress; BitrixImportService
  * runs the import.
  */
-final class ImportFromBitrix extends Command
+final class ImportFromBitrixCommand extends Command
 {
     protected $signature = 'bitrix:import
         {--only= : Comma-separated subset of users,projects,tasks,checklists,time,files,results,chat}
@@ -130,10 +130,10 @@ final class ImportFromBitrix extends Command
             return [
                 $entity,
                 $cursor->status->value ?? 'never run',
-                $cursor?->processed ?? 0,
-                $cursor?->total ?? 0,
+                $cursor->processed ?? 0,
+                $cursor->total ?? 0,
                 $cursor?->last_synced_at?->toDateTimeString() ?? '-',
-                $cursor?->error ?? '',
+                $cursor->error ?? '',
             ];
         }, $entities));
 

@@ -18,7 +18,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /**
  * Step 4.7: a task's chat. Every answer is the whole (newest) chat.
  */
-class TaskChatController extends Controller
+final class TaskChatController extends Controller
 {
     public function __construct(private readonly TaskChatServiceInterface $chat) {}
 

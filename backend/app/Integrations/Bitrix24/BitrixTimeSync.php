@@ -14,11 +14,11 @@ use App\Repositories\Contracts\UserRepositoryInterface;
  * (task.elapseditem.getlist rows). Bitrix sends no events for the time
  * log, so this runs when the task is opened and every night.
  */
-class BitrixTimeSync
+final readonly class BitrixTimeSync
 {
     public function __construct(
-        private readonly TimeEntryRepositoryInterface $entries,
-        private readonly UserRepositoryInterface $users,
+        private TimeEntryRepositoryInterface $entries,
+        private UserRepositoryInterface $users,
     ) {}
 
     /**

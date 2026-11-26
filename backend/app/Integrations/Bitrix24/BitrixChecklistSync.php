@@ -13,12 +13,12 @@ use App\Repositories\Contracts\TaskChecklistRepositoryInterface;
  * (task.checklistitem.getlist rows). Bitrix sends no events for
  * checklists, so this runs when the task is opened and every night.
  */
-class BitrixChecklistSync
+final readonly class BitrixChecklistSync
 {
     /** Fields task.checklistitem.getlist must return for this sync. */
     public const SELECT = ['ID', 'PARENT_ID', 'TITLE', 'SORT_INDEX', 'IS_COMPLETE'];
 
-    public function __construct(private readonly TaskChecklistRepositoryInterface $checklists) {}
+    public function __construct(private TaskChecklistRepositoryInterface $checklists) {}
 
     /**
      * @param  list<array<string, mixed>>  $rows

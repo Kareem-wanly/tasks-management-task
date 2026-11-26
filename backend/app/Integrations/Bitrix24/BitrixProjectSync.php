@@ -16,12 +16,12 @@ use Illuminate\Support\Facades\Log;
  * Creates or updates our copy of a Bitrix24 workgroup and its members.
  * Bitrix wins on conflict. Users must be imported first (step 2.1).
  */
-class BitrixProjectSync
+final readonly class BitrixProjectSync
 {
     public function __construct(
-        private readonly BitrixProjectMapper $mapper,
-        private readonly ProjectRepositoryInterface $projects,
-        private readonly UserRepositoryInterface $users,
+        private BitrixProjectMapper $mapper,
+        private ProjectRepositoryInterface $projects,
+        private UserRepositoryInterface $users,
     ) {}
 
     /**

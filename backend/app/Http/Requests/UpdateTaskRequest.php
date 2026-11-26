@@ -12,7 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
-class UpdateTaskRequest extends FormRequest
+final class UpdateTaskRequest extends FormRequest
 {
     /** Changing the assignee also needs the assign permission. */
     public function authorize(): bool

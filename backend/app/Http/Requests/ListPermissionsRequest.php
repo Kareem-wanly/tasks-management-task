@@ -8,7 +8,7 @@ use App\Models\Permission;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Lists every permission. */
-class ListPermissionsRequest extends FormRequest
+final class ListPermissionsRequest extends FormRequest
 {
     public function authorize(): bool
     {

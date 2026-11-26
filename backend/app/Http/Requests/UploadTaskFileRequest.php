@@ -8,7 +8,7 @@ use App\DTOs\Task\UploadTaskFileDTO;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Attaches a file to a task. */
-class UploadTaskFileRequest extends FormRequest
+final class UploadTaskFileRequest extends FormRequest
 {
     /**
      * Kilobytes. The file goes to Bitrix base64-encoded in the request

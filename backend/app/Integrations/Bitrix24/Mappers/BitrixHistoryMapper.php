@@ -16,7 +16,7 @@ use Carbon\CarbonImmutable;
  * can show: Bitrix status/priority numbers become our keys, Bitrix user IDs
  * become names, timestamps become ISO dates. Other values pass through.
  */
-class BitrixHistoryMapper
+final readonly class BitrixHistoryMapper
 {
     /** Fields whose values are Bitrix user IDs (one, or several separated by commas). */
     private const PEOPLE_FIELDS = ['RESPONSIBLE_ID', 'CREATED_BY', 'CHANGED_BY', 'ACCOMPLICES', 'AUDITORS'];
@@ -25,8 +25,8 @@ class BitrixHistoryMapper
     private const DATE_FIELDS = ['DEADLINE', 'START_DATE_PLAN', 'END_DATE_PLAN'];
 
     public function __construct(
-        private readonly TaskLookupRepositoryInterface $lookups,
-        private readonly UserRepositoryInterface $users,
+        private TaskLookupRepositoryInterface $lookups,
+        private UserRepositoryInterface $users,
     ) {}
 
     /**

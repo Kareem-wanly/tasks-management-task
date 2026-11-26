@@ -20,15 +20,15 @@ use Illuminate\Support\Facades\Log;
  * Creates or updates our copy of a Bitrix24 task. Bitrix wins on conflict.
  * Users and projects must be imported first (steps 2.1 and 2.2).
  */
-class BitrixTaskSync
+final readonly class BitrixTaskSync
 {
     public function __construct(
-        private readonly BitrixTaskMapper $mapper,
-        private readonly TaskRepositoryInterface $tasks,
-        private readonly ProjectRepositoryInterface $projects,
-        private readonly UserRepositoryInterface $users,
-        private readonly TaskLookupRepositoryInterface $lookups,
-        private readonly BitrixRecordFetcher $fetch,
+        private BitrixTaskMapper $mapper,
+        private TaskRepositoryInterface $tasks,
+        private ProjectRepositoryInterface $projects,
+        private UserRepositoryInterface $users,
+        private TaskLookupRepositoryInterface $lookups,
+        private BitrixRecordFetcher $fetch,
     ) {}
 
     /**

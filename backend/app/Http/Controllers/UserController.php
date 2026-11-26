@@ -14,7 +14,7 @@ use App\Models\User;
 use App\Services\Contracts\UserServiceInterface;
 use Illuminate\Http\JsonResponse;
 
-class UserController extends Controller
+final class UserController extends Controller
 {
     public function __construct(private readonly UserServiceInterface $users) {}
 

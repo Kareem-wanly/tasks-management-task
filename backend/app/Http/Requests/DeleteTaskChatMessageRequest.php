@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Step 4.7: deletes one's own message (see TaskChatMessage::isChangeableBy()). */
-class DeleteTaskChatMessageRequest extends FormRequest
+final class DeleteTaskChatMessageRequest extends FormRequest
 {
     public function authorize(): bool
     {

@@ -7,7 +7,7 @@ namespace Tests\Feature\Bitrix24;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
-use App\Jobs\Bitrix\ImportBitrixTasks;
+use App\Jobs\Bitrix\ImportBitrixTasksJob;
 use App\Models\ActivityLog;
 use App\Models\Project;
 use App\Models\Task;
@@ -98,7 +98,7 @@ class ImportBitrixTasksTest extends TestCase
 
     public function test_job_runs_on_the_bitrix_queue(): void
     {
-        $this->assertSame('bitrix', (new ImportBitrixTasks)->queue);
+        $this->assertSame('bitrix', (new ImportBitrixTasksJob)->queue);
     }
 
     public function test_open_tasks_are_imported_before_closed_ones(): void
@@ -246,7 +246,7 @@ class ImportBitrixTasksTest extends TestCase
         $this->import();
 
         $this->tasks = [$this->task(15, ['title' => 'Changed in Bitrix'])];
-        dispatch_sync(new ImportBitrixTasks(CarbonImmutable::parse('2026-11-15 12:00:00', 'UTC')));
+        dispatch_sync(new ImportBitrixTasksJob(CarbonImmutable::parse('2026-11-15 12:00:00', 'UTC')));
 
         $this->assertSame('Changed in Bitrix', Task::where('bitrix_task_id', 15)->sole()->title);
         $this->assertSame(2, Task::count());
@@ -291,6 +291,6 @@ class ImportBitrixTasksTest extends TestCase
 
     private function import(): void
     {
-        dispatch_sync(new ImportBitrixTasks);
+        dispatch_sync(new ImportBitrixTasksJob);
     }
 }

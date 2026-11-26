@@ -8,7 +8,7 @@ use App\DTOs\Role\CreateRoleDTO;
 use App\Models\Role;
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreRoleRequest extends FormRequest
+final class StoreRoleRequest extends FormRequest
 {
     public function authorize(): bool
     {

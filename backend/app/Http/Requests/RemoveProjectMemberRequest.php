@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Removes a member from a project. */
-class RemoveProjectMemberRequest extends FormRequest
+final class RemoveProjectMemberRequest extends FormRequest
 {
     public function authorize(): bool
     {

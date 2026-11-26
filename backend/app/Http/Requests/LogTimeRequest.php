@@ -8,7 +8,7 @@ use App\Http\Requests\Concerns\HasTimeEntryInput;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Logs time on a task by hand. */
-class LogTimeRequest extends FormRequest
+final class LogTimeRequest extends FormRequest
 {
     use HasTimeEntryInput;
 

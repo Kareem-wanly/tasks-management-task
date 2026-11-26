@@ -11,7 +11,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * Bitrix24's install call (event or install page). Who may install is
  * decided by checking the portal and the token with Bitrix, in the service.
  */
-class BitrixInstallRequest extends FormRequest
+final class BitrixInstallRequest extends FormRequest
 {
     public function authorize(): bool
     {

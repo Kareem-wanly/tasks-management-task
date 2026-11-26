@@ -5,9 +5,9 @@ declare(strict_types=1);
 use App\Exceptions\Auth\InvalidCredentialsException;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Exceptions\Project\ProjectHasUnfinishedTasksException;
-use App\Jobs\Bitrix\SyncBitrixProject;
-use App\Jobs\Bitrix\SyncBitrixTask;
-use App\Jobs\Bitrix\SyncBitrixTaskChat;
+use App\Jobs\Bitrix\SyncBitrixProjectJob;
+use App\Jobs\Bitrix\SyncBitrixTaskChatJob;
+use App\Jobs\Bitrix\SyncBitrixTaskJob;
 use App\Services\Contracts\BitrixSyncServiceInterface;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 
@@ -20,9 +20,9 @@ it('runs each event job through one BitrixSyncService call', function (object $j
 
     dispatch_sync($job);
 })->with([
-    'task' => [new SyncBitrixTask(15), 'syncTask', 15],
-    'project' => [new SyncBitrixProject(4), 'syncProject', 4],
-    'task chat' => [new SyncBitrixTaskChat(23), 'syncTaskChat', 23],
+    'task' => [new SyncBitrixTaskJob(15), 'syncTask', 15],
+    'project' => [new SyncBitrixProjectJob(4), 'syncProject', 4],
+    'task chat' => [new SyncBitrixTaskChatJob(23), 'syncTaskChat', 23],
 ]);
 
 it('declares its retries, backoff, timeout and failure handling (QUE-1)', function (object $job): void {
@@ -31,9 +31,9 @@ it('declares its retries, backoff, timeout and failure handling (QUE-1)', functi
         ->and($job->timeout)->toBeLessThan($job->uniqueFor)
         ->and(method_exists($job, 'failed'))->toBeTrue();
 })->with([
-    'task' => [new SyncBitrixTask(15)],
-    'project' => [new SyncBitrixProject(4)],
-    'task chat' => [new SyncBitrixTaskChat(23)],
+    'task' => [new SyncBitrixTaskJob(15)],
+    'project' => [new SyncBitrixProjectJob(4)],
+    'task chat' => [new SyncBitrixTaskChatJob(23)],
 ]);
 
 it('does not log broken business rules', function (): void {

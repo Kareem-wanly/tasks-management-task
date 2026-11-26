@@ -12,9 +12,9 @@ use Illuminate\Foundation\Queue\Queueable;
 /**
  * Step 4.5: brings every Bitrix task's attached files up to date. Bitrix
  * sends no events for attachments, so this nightly pass (and opening a
- * task) is how files attached there reach us. Run after ImportBitrixTasks.
+ * task) is how files attached there reach us. Run after ImportBitrixTasksJob.
  */
-final class ImportBitrixFiles implements ShouldQueue
+final class ImportBitrixFilesJob implements ShouldQueue
 {
     use Queueable, TracksSyncProgress;
 

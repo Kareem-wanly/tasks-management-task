@@ -14,12 +14,12 @@ use App\Repositories\Contracts\UserRepositoryInterface;
  * Fetches single Bitrix24 records with the service account, in the shapes
  * the import mappers expect. Used when an event names one record.
  */
-class BitrixRecordFetcher
+final readonly class BitrixRecordFetcher
 {
     public function __construct(
-        private readonly BitrixGatewayInterface $bitrix,
-        private readonly BitrixUserSync $users,
-        private readonly UserRepositoryInterface $userRepository,
+        private BitrixGatewayInterface $bitrix,
+        private BitrixUserSync $users,
+        private UserRepositoryInterface $userRepository,
     ) {}
 
     /**

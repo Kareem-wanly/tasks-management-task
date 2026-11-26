@@ -8,7 +8,7 @@ use App\DTOs\Task\TaskResultDTO;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Rewords one's own result. */
-class UpdateTaskResultRequest extends FormRequest
+final class UpdateTaskResultRequest extends FormRequest
 {
     public function authorize(): bool
     {

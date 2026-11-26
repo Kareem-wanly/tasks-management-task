@@ -7,7 +7,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Downloads a task's file: anyone who sees the task may. */
-class DownloadTaskFileRequest extends FormRequest
+final class DownloadTaskFileRequest extends FormRequest
 {
     public function authorize(): bool
     {

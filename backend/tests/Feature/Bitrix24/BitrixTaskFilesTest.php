@@ -6,7 +6,7 @@ namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
-use App\Jobs\Bitrix\ImportBitrixFiles;
+use App\Jobs\Bitrix\ImportBitrixFilesJob;
 use App\Models\Permission;
 use App\Models\Project;
 use App\Models\Role;
@@ -262,7 +262,7 @@ class BitrixTaskFilesTest extends TestCase
     {
         $this->attach(24, 197, 'from-bitrix.docx', 5);
 
-        dispatch_sync(new ImportBitrixFiles);
+        dispatch_sync(new ImportBitrixFilesJob);
 
         $this->assertSame(['from-bitrix.docx'], TaskFile::pluck('name')->all());
     }

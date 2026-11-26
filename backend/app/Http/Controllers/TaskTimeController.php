@@ -19,7 +19,7 @@ use App\Services\Contracts\TaskTimeServiceInterface;
  * Step 4.4: a task's time log and the employee's timer. Every answer is
  * the whole log, with the totals and the caller's timer.
  */
-class TaskTimeController extends Controller
+final class TaskTimeController extends Controller
 {
     public function __construct(private readonly TaskTimeServiceInterface $time) {}
 

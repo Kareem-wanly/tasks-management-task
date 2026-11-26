@@ -13,7 +13,7 @@ use Illuminate\Http\Exceptions\HttpResponseException;
  * An event from Bitrix24 (outside auth:sanctum). Only events signed with our
  * portal's application token get through.
  */
-class BitrixEventRequest extends FormRequest
+final class BitrixEventRequest extends FormRequest
 {
     public function authorize(): bool
     {

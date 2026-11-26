@@ -21,11 +21,11 @@ use Illuminate\Support\Facades\Log;
  * - a run that would delete more than MAX_PER_RUN records deletes none and
  *   logs a warning, since a mass deletion is far more likely a fault.
  */
-class BitrixDeletionGuard
+final readonly class BitrixDeletionGuard
 {
     public const MAX_PER_RUN = 20;
 
-    public function __construct(private readonly BitrixGatewayInterface $bitrix) {}
+    public function __construct(private BitrixGatewayInterface $bitrix) {}
 
     public function serviceAccountIsAdmin(): bool
     {

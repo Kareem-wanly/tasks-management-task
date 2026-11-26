@@ -9,7 +9,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /** Renames a checklist item, or ticks/unticks it. */
-class UpdateChecklistItemRequest extends FormRequest
+final class UpdateChecklistItemRequest extends FormRequest
 {
     public function authorize(): bool
     {

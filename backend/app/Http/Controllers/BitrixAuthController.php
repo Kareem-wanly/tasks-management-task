@@ -8,7 +8,6 @@ use App\Exceptions\Bitrix\BitrixSignInException;
 use App\Http\Requests\BitrixAppSessionRequest;
 use App\Http\Requests\BitrixSignInRequest;
 use App\Http\Requests\ExchangeBitrixLoginCodeRequest;
-use App\Integrations\Bitrix24\BitrixLoginCodes;
 use App\Services\Contracts\BitrixAuthServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -29,7 +28,7 @@ use Illuminate\Support\Str;
  * This controller keeps only the HTTP side (session state and redirects);
  * BitrixAuthServiceInterface signs the user in.
  */
-class BitrixAuthController extends Controller
+final class BitrixAuthController extends Controller
 {
     private const STATE_KEY = 'bitrix_oauth_state';
 
@@ -47,8 +46,8 @@ class BitrixAuthController extends Controller
         // Compare hosts only: behind ngrok Laravel sees http while the public URL is https.
         $public = rtrim((string) config('bitrix.public_url'), '/');
         $publicHost = parse_url($public, PHP_URL_HOST);
-        $nonce = $request->query('nonce');
-        if (! BitrixLoginCodes::isNonce($nonce)) {
+        $nonce = $request->nonce();
+        if ($nonce === null) {
             return $this->fail('invalid_state');
         }
 
@@ -99,7 +98,7 @@ class BitrixAuthController extends Controller
         $expected = (string) $request->session()->pull(self::STATE_KEY, '');
         $nonce = $request->session()->pull(self::NONCE_KEY);
 
-        if ($expected === '' || ! hash_equals($expected, (string) $request->query('state', '')) || ! BitrixLoginCodes::isNonce($nonce)) {
+        if ($expected === '' || ! hash_equals($expected, (string) $request->query('state', '')) || ! $request->isNonce($nonce)) {
             throw new BitrixSignInException('invalid_state');
         }
 

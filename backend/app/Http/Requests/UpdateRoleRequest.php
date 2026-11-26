@@ -8,7 +8,7 @@ use App\DTOs\Role\UpdateRoleDTO;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class UpdateRoleRequest extends FormRequest
+final class UpdateRoleRequest extends FormRequest
 {
     public function authorize(): bool
     {

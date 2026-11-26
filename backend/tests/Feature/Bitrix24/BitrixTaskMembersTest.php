@@ -7,7 +7,7 @@ namespace Tests\Feature\Bitrix24;
 use App\Enums\OutboundOpStatus;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
-use App\Jobs\Bitrix\SyncBitrixTask;
+use App\Jobs\Bitrix\SyncBitrixTaskJob;
 use App\Models\ActivityLog;
 use App\Models\BitrixOutboundOp;
 use App\Models\Project;
@@ -163,7 +163,7 @@ class BitrixTaskMembersTest extends TestCase
     {
         $this->bitrixTask = [...$this->bitrixTask, 'accomplices' => ['8'], 'auditors' => ['5', '99']];
 
-        dispatch_sync(new SyncBitrixTask(15));
+        dispatch_sync(new SyncBitrixTaskJob(15));
 
         $this->assertSame([$this->outsider->id], $this->people('accomplices'));
         // 99 is not a Bitrix user we could import: left out.
@@ -175,7 +175,7 @@ class BitrixTaskMembersTest extends TestCase
         Sanctum::actingAs($this->actor);
         $this->putJson("/api/v1/tasks/{$this->task->id}/members", ['accomplice_ids' => [], 'auditor_ids' => [$this->outsider->id]])->assertOk();
 
-        dispatch_sync(new SyncBitrixTask(15));
+        dispatch_sync(new SyncBitrixTaskJob(15));
 
         $this->assertSame(OutboundOpStatus::Confirmed, BitrixOutboundOp::sole()->status);
         $this->assertFalse(ActivityLog::where('action', 'bitrix_conflict')->exists());
@@ -187,7 +187,7 @@ class BitrixTaskMembersTest extends TestCase
         $this->putJson("/api/v1/tasks/{$this->task->id}/members", ['accomplice_ids' => [], 'auditor_ids' => [$this->outsider->id]])->assertOk();
         $this->bitrixTask['auditors'] = ['8', '5'];
 
-        dispatch_sync(new SyncBitrixTask(15));
+        dispatch_sync(new SyncBitrixTaskJob(15));
 
         $this->assertSame(OutboundOpStatus::Conflict, BitrixOutboundOp::sole()->status);
         $this->assertSame([$this->actor->id, $this->outsider->id], $this->people('auditors'));
