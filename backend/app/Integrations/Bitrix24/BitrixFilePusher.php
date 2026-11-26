@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Integrations\Bitrix24;
 
 use App\Exceptions\Bitrix\BitrixException;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Models\Task;
 use App\Models\TaskFile;
 use App\Models\User;
@@ -32,7 +33,7 @@ class BitrixFilePusher
     private const FILES_LOCK_SECONDS = 15;
 
     public function __construct(
-        private readonly BitrixClient $bitrix,
+        private readonly BitrixGatewayInterface $bitrix,
         private readonly BitrixTaskPusher $tasks,
         private readonly BitrixFileSync $sync,
     ) {}
@@ -163,7 +164,7 @@ class BitrixFilePusher
     {
         $attachments = [];
 
-        foreach (array_chunk(array_values(array_unique($attachedIds)), BitrixClient::MAX_BATCH_COMMANDS) as $chunk) {
+        foreach (array_chunk(array_values(array_unique($attachedIds)), BitrixGatewayInterface::MAX_BATCH_COMMANDS) as $chunk) {
             $commands = [];
             foreach ($chunk as $id) {
                 $commands["a{$id}"] = ['disk.attachedObject.get', ['id' => $id]];

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Integrations\Bitrix24;
 
 use App\Exceptions\Bitrix\BitrixException;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Models\BitrixOutboundOp;
 use App\Models\Task;
 use App\Models\TaskPriority;
@@ -54,7 +55,7 @@ class BitrixTaskPusher
     ];
 
     public function __construct(
-        private readonly BitrixClient $bitrix,
+        private readonly BitrixGatewayInterface $bitrix,
         private readonly BitrixOutboundOpRepositoryInterface $ops,
         private readonly BitrixFingerprint $fingerprints,
         private readonly TaskLookupRepositoryInterface $lookups,

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Bitrix24;
 
 use App\Enums\OutboundOpStatus;
-use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Jobs\Bitrix\SyncBitrixProject;
 use App\Jobs\Bitrix\SyncBitrixTask;
 use App\Models\ActivityLog;
@@ -49,7 +49,7 @@ class BitrixEchoTest extends TestCase
         $this->actor = User::factory()->create(['bitrix_user_id' => 5]);
         $this->actor->roles()->attach(Role::where('name', 'Administrator')->first());
         $this->actor->storeBitrixToken(new BitrixToken('actor-access', 'actor-refresh', CarbonImmutable::now()->addHour()));
-        app()->instance(BitrixClient::SERVICE_ACCOUNT, $this->actor);
+        app()->instance(BitrixGatewayInterface::SERVICE_ACCOUNT, $this->actor);
 
         $this->task = Task::forceCreate([
             'title' => 'T', 'status' => 'todo', 'priority' => 'medium', 'project_id' => null,

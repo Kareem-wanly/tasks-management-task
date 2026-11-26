@@ -7,6 +7,7 @@ namespace App\Integrations\Bitrix24;
 use App\Enums\ProjectMemberRole;
 use App\Enums\ProjectStatus;
 use App\Exceptions\Bitrix\BitrixException;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Models\BitrixOutboundOp;
 use App\Models\Project;
 use App\Models\User;
@@ -36,7 +37,7 @@ class BitrixProjectPusher
     private const MEMBER_ROLES = [ProjectMemberRole::Moderator->value => 'E', ProjectMemberRole::Member->value => 'K'];
 
     public function __construct(
-        private readonly BitrixClient $bitrix,
+        private readonly BitrixGatewayInterface $bitrix,
         private readonly BitrixOutboundOpRepositoryInterface $ops,
         private readonly BitrixFingerprint $fingerprints,
     ) {}

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Exceptions\Bitrix\BitrixException;
-use App\Integrations\Bitrix24\BitrixClient;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Models\TaskLookup;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
@@ -23,7 +23,7 @@ class SyncBitrixTaskLookups extends Command
 
     protected $description = 'Sync task statuses and priorities from Bitrix24';
 
-    public function handle(BitrixClient $bitrix, TaskLookupRepositoryInterface $lookups): int
+    public function handle(BitrixGatewayInterface $bitrix, TaskLookupRepositoryInterface $lookups): int
     {
         try {
             $fields = $bitrix->callAsService('tasks.task.getFields')['result']['fields'] ?? [];

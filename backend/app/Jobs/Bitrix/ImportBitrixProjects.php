@@ -6,10 +6,10 @@ namespace App\Jobs\Bitrix;
 
 use App\Enums\QueueName;
 use App\Exceptions\Bitrix\BitrixException;
-use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixDeletionGuard;
 use App\Integrations\Bitrix24\BitrixProjectSync;
 use App\Integrations\Bitrix24\BitrixRecordFetcher;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;
 use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
 use App\Repositories\Contracts\ProjectRepositoryInterface;
@@ -33,7 +33,7 @@ class ImportBitrixProjects implements ShouldQueue
         $this->onQueue(QueueName::Bitrix);
     }
 
-    public function handle(BitrixClient $bitrix, BitrixProjectSync $projects, BitrixSyncCursorRepositoryInterface $cursors, ProjectRepositoryInterface $projectRepository, BitrixRecordFetcher $fetch, BitrixDeletionGuard $guard): void
+    public function handle(BitrixGatewayInterface $bitrix, BitrixProjectSync $projects, BitrixSyncCursorRepositoryInterface $cursors, ProjectRepositoryInterface $projectRepository, BitrixRecordFetcher $fetch, BitrixDeletionGuard $guard): void
     {
         $cursor = $cursors->start(self::ENTITY);
         $skipped = 0;
@@ -95,7 +95,7 @@ class ImportBitrixProjects implements ShouldQueue
      *
      * @return array<int, array> group ID => sonet_group.user.get result
      */
-    private function members(BitrixClient $bitrix, array $groups): array
+    private function members(BitrixGatewayInterface $bitrix, array $groups): array
     {
         $commands = [];
         foreach ($groups as $group) {

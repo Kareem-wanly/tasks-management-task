@@ -6,7 +6,7 @@ namespace App\Providers;
 
 use App\Enums\SystemRole;
 use App\Exceptions\Bitrix\BitrixException;
-use App\Integrations\Bitrix24\BitrixClient;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskPriority;
@@ -31,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(
-            BitrixClient::SERVICE_ACCOUNT,
+            BitrixGatewayInterface::SERVICE_ACCOUNT,
             fn ($app) => $app->make(BitrixPortalRepositoryInterface::class)->current() ?? throw BitrixException::missingToken()
         );
     }

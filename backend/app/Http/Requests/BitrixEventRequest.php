@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\DTOs\Bitrix\BitrixEventDTO;
 use App\Services\Contracts\BitrixEventServiceInterface;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -25,6 +26,14 @@ class BitrixEventRequest extends FormRequest
             'event' => ['nullable', 'string'],
             'data' => ['nullable', 'array'],
         ];
+    }
+
+    public function toDto(): BitrixEventDTO
+    {
+        /** @var array{event?: ?string, data?: array<string, mixed>|null} $validated */
+        $validated = $this->validated();
+
+        return BitrixEventDTO::fromArray($validated);
     }
 
     /** Bitrix expects 401 for a bad signature, not 403. */

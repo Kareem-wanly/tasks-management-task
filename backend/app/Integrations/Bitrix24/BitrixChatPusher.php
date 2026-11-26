@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Integrations\Bitrix24;
 
 use App\Exceptions\Bitrix\BitrixException;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Models\Task;
 use App\Models\TaskChatMessage;
 use App\Models\User;
@@ -24,7 +25,7 @@ class BitrixChatPusher
     public const PAGE_SIZE = 50;
 
     public function __construct(
-        private readonly BitrixClient $bitrix,
+        private readonly BitrixGatewayInterface $bitrix,
         private readonly BitrixTaskPusher $tasks,
         private readonly BitrixChatSync $sync,
         private readonly TaskRepositoryInterface $taskRepository,

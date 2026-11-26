@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Bitrix\BitrixFrameAuthDTO;
+use App\DTOs\Bitrix\ExchangeLoginCodeDTO;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Exceptions\Bitrix\BitrixLoginCodeExpiredException;
 use App\Exceptions\Bitrix\BitrixSignInException;
-use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixLoginCodes;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\BitrixUserSync;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\TokenManager;
 use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
@@ -36,7 +38,7 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
 
     public function __construct(
         private TokenManager $tokens,
-        private BitrixClient $bitrix,
+        private BitrixGatewayInterface $bitrix,
         private BitrixUserSync $users,
         private UserRepositoryInterface $userRepository,
         private BitrixLoginCodes $codes,
@@ -75,26 +77,24 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
     /**
      * The app opened inside Bitrix: the tokens Bitrix's JS SDK gave the app
      * page (the Bitrix user signed in around it). Returns a Sanctum token.
-     *
-     * @param  array{access_token: string, refresh_token: string, expires_in?: int|null, domain: string, member_id?: string|null}  $auth
      */
-    public function signInFromFrame(array $auth): string
+    public function signInFromFrame(BitrixFrameAuthDTO $auth): string
     {
-        if (! $this->isOurPortal($auth['domain'])) {
+        if (! $this->isOurPortal($auth->domain)) {
             throw new BitrixSignInException('unknown_portal');
         }
 
         // A valid token of another app on the portal is not a sign-in to ours.
-        if (! $this->isOurAppToken($auth['access_token'])) {
+        if (! $this->isOurAppToken($auth->accessToken)) {
             throw new BitrixSignInException('bitrix_rejected');
         }
 
         $user = $this->authenticate(new BitrixToken(
-            accessToken: $auth['access_token'],
-            refreshToken: $auth['refresh_token'],
-            expiresAt: CarbonImmutable::now()->addSeconds((int) (($auth['expires_in'] ?? null) ?: 3600)),
-            domain: $auth['domain'],
-            memberId: $auth['member_id'] ?? null,
+            accessToken: $auth->accessToken,
+            refreshToken: $auth->refreshToken,
+            expiresAt: CarbonImmutable::now()->addSeconds($auth->expiresIn ?: 3600),
+            domain: $auth->domain,
+            memberId: $auth->memberId,
         ));
 
         return $this->userRepository->createApiToken($user, self::TOKEN_NAME);
@@ -105,9 +105,9 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
      *
      * @throws BitrixLoginCodeExpiredException When the code is unknown, expired, already used, for another browser, or its user is inactive.
      */
-    public function exchangeCode(string $code, string $nonce): string
+    public function exchangeCode(ExchangeLoginCodeDTO $login): string
     {
-        $user = $this->codes->redeem($code, $nonce);
+        $user = $this->codes->redeem($login->code, $login->nonce);
 
         if (! $user instanceof User || ! $user->is_active) {
             throw new BitrixLoginCodeExpiredException;

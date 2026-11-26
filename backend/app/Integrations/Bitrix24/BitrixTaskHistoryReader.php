@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24;
 
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Mappers\BitrixHistoryMapper;
 use App\Models\Task;
 
@@ -15,7 +16,7 @@ use App\Models\Task;
 class BitrixTaskHistoryReader
 {
     public function __construct(
-        private readonly BitrixClient $bitrix,
+        private readonly BitrixGatewayInterface $bitrix,
         private readonly BitrixTaskPusher $tasks,
         private readonly BitrixHistoryMapper $mapper,
     ) {}

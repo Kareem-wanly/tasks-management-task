@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Bitrix24;
 
-use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
+use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use App\Jobs\Bitrix\ImportBitrixChat;
 use App\Jobs\Bitrix\ImportBitrixChecklists;
@@ -37,7 +37,7 @@ class ImportFromBitrixCommandTest extends TestCase
         parent::setUp();
         config(['bitrix.portal' => 'portal.test']);
 
-        app()->instance(BitrixClient::SERVICE_ACCOUNT, new class implements HasBitrixToken
+        app()->instance(BitrixGatewayInterface::SERVICE_ACCOUNT, new class implements HasBitrixToken
         {
             public function bitrixToken(): BitrixToken
             {
