@@ -6,7 +6,6 @@ namespace Tests\Feature\Bitrix24;
 
 use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixToken;
-use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use App\Jobs\Bitrix\ImportBitrixUsersJob;
 use App\Models\Role;
@@ -38,7 +37,7 @@ class ImportBitrixUsersTest extends TestCase
         config(['bitrix.portal' => 'portal.test']);
         Role::create(['name' => 'Member', 'display_name' => 'Team Member', 'description' => 'x']);
 
-        app()->instance(BitrixGatewayInterface::SERVICE_ACCOUNT, new class implements HasBitrixToken
+        $this->useBitrixServiceAccount(new class implements HasBitrixToken
         {
             public function bitrixToken(): BitrixToken
             {

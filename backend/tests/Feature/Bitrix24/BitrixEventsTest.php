@@ -6,7 +6,6 @@ namespace Tests\Feature\Bitrix24;
 
 use App\Enums\ProjectStatus;
 use App\Integrations\Bitrix24\BitrixToken;
-use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use App\Jobs\Bitrix\SyncBitrixProjectJob;
 use App\Jobs\Bitrix\SyncBitrixTaskChatJob;
@@ -42,7 +41,7 @@ class BitrixEventsTest extends TestCase
         config(['bitrix.portal' => 'portal.test']);
         BitrixPortal::forceCreate(['member_id' => 'member-1', 'domain' => 'portal.test', 'application_token' => 'app-token']);
 
-        app()->instance(BitrixGatewayInterface::SERVICE_ACCOUNT, new class implements HasBitrixToken
+        $this->useBitrixServiceAccount(new class implements HasBitrixToken
         {
             public function bitrixToken(): BitrixToken
             {

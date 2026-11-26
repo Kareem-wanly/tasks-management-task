@@ -6,7 +6,7 @@ namespace App\Rules;
 
 use App\Models\Task;
 use App\Models\User;
-use App\Repositories\Contracts\TaskRepositoryInterface;
+use App\Services\Contracts\TaskServiceInterface;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 
@@ -19,13 +19,17 @@ class ParentTask implements ValidationRule
     /** Bitrix nests deeper, but a chain this long is a loop in practice. */
     private const MAX_DEPTH = 50;
 
-    public function __construct(private readonly User $user, private readonly ?Task $task = null) {}
+    public function __construct(
+        private readonly TaskServiceInterface $tasks,
+        private readonly User $user,
+        private readonly ?Task $task = null,
+    ) {}
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        $parent = is_numeric($value) ? resolve(TaskRepositoryInterface::class)->find((int) $value) : null;
+        $parent = is_numeric($value) ? $this->tasks->find((int) $value) : null;
 
-        if (! $parent || ! $this->user->can('view', $parent)) {
+        if (! $parent instanceof Task || ! $this->user->can('view', $parent)) {
             $fail('The selected parent task does not exist.');
 
             return;

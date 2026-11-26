@@ -9,6 +9,7 @@ use App\Http\Requests\Concerns\ResolvesActor;
 use App\Models\Task;
 use App\Rules\ParentTask;
 use App\Rules\ProjectMember;
+use App\Services\Contracts\TaskServiceInterface;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -30,7 +31,7 @@ final class UpdateTaskRequest extends FormRequest
     }
 
     /** @return array<string, mixed> */
-    public function rules(): array
+    public function rules(TaskServiceInterface $tasks): array
     {
         return [
             'title' => ['sometimes', 'required', 'string', 'max:255'],
@@ -40,7 +41,7 @@ final class UpdateTaskRequest extends FormRequest
             'due_date' => ['nullable', 'date'],
             // Active users only: a task without a project has no membership check (SEC-2).
             'assigned_to' => ['nullable', 'integer', Rule::exists('users', 'id')->where('is_active', true), new ProjectMember($this->routeModel('task', Task::class)->project)],
-            'parent_id' => ['nullable', 'integer', new ParentTask($this->actor(), $this->routeModel('task', Task::class))],
+            'parent_id' => ['nullable', 'integer', new ParentTask($tasks, $this->actor(), $this->routeModel('task', Task::class))],
             'allow_time_tracking' => ['sometimes', 'boolean'],
             // Planned time in seconds (Bitrix TIME_ESTIMATE).
             'time_estimate' => ['sometimes', 'integer', 'min:0', 'max:3153600000'],

@@ -21,6 +21,7 @@ trait TracksSyncProgress
 
     public function failed(?Throwable $exception): void
     {
+        // The worker calls failed() with the exception only, so the service is resolved here (C.4: documented).
         resolve(BitrixImportServiceInterface::class)->markFailed($this->cursorEntity(), $exception?->getMessage() ?: 'Unknown error');
     }
 

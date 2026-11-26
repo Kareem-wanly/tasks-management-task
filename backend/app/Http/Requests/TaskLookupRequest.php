@@ -30,13 +30,13 @@ abstract class TaskLookupRequest extends FormRequest
     }
 
     /** @return array<string, mixed> */
-    public function rules(): array
+    public function rules(TaskLookupServiceInterface $lookups): array
     {
         $rules = [
             'name' => ['required', 'string', 'max:255'],
             'color' => ['nullable', Rule::in(TaskLookup::COLORS)],
             'sort' => ['integer', 'min:0', 'max:65535'],
-            'bitrix_id' => ['nullable', 'integer', Rule::in(resolve(TaskLookupServiceInterface::class)->bitrixIdsForCustomValues($this->model()))],
+            'bitrix_id' => ['nullable', 'integer', Rule::in($lookups->bitrixIdsForCustomValues($this->model()))],
             ...$this->extraRules(),
         ];
 

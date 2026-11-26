@@ -6,7 +6,6 @@ namespace Tests\Feature\Bitrix24;
 
 use App\Enums\SyncCursorStatus;
 use App\Integrations\Bitrix24\BitrixToken;
-use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use App\Jobs\Bitrix\ImportBitrixChatJob;
 use App\Jobs\Bitrix\ImportBitrixChecklistsJob;
@@ -38,7 +37,7 @@ class ImportFromBitrixCommandTest extends TestCase
         parent::setUp();
         config(['bitrix.portal' => 'portal.test']);
 
-        app()->instance(BitrixGatewayInterface::SERVICE_ACCOUNT, new class implements HasBitrixToken
+        $this->useBitrixServiceAccount(new class implements HasBitrixToken
         {
             public function bitrixToken(): BitrixToken
             {

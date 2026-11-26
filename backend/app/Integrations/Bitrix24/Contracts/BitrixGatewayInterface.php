@@ -21,12 +21,6 @@ interface BitrixGatewayInterface
     public const PAGE_SIZE = 50;
 
     /**
-     * Container key for the service account used by background sync,
-     * bound to the installed portal in AppServiceProvider.
-     */
-    public const SERVICE_ACCOUNT = 'bitrix.service_account';
-
-    /**
      * Call a method with the token of a user, so Bitrix applies that user's
      * permissions and records the change under their name.
      *
