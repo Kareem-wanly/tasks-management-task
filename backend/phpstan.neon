@@ -1,0 +1,10 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    # Legacy findings only (PR4a). New code is never added to the baseline; it shrinks to zero in PR10.
+    - phpstan-baseline.neon
+
+parameters:
+    paths:
+        - app/
+    # Legacy project: start at 5 and raise per PR, up to 9 (PR10).
+    level: 5
