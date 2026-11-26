@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24;
 
+use App\Enums\TaskMemberRole;
 use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
 use App\Models\Task;
 use App\Models\TaskPriority;
@@ -136,14 +137,14 @@ class BitrixTaskSync
      */
     private function syncMembers(Task $task, array $members): void
     {
-        foreach ([Task::ACCOMPLICE, Task::AUDITOR] as $role) {
-            $userIds = array_values($this->users->idsByBitrixIds($members[$role]));
+        foreach (TaskMemberRole::cases() as $role) {
+            $userIds = array_values($this->users->idsByBitrixIds($members[$role->value]));
 
-            if (count($userIds) < count($members[$role])) {
-                Log::warning("Bitrix24 task {$role}s skipped: not imported.", ['bitrix_task_id' => $task->bitrix_task_id]);
+            if (count($userIds) < count($members[$role->value])) {
+                Log::warning("Bitrix24 task {$role->value}s skipped: not imported.", ['bitrix_task_id' => $task->bitrix_task_id]);
             }
 
-            $role === Task::ACCOMPLICE ? $this->tasks->syncAccomplices($task, $userIds) : $this->tasks->syncAuditors($task, $userIds);
+            $role === TaskMemberRole::Accomplice ? $this->tasks->syncAccomplices($task, $userIds) : $this->tasks->syncAuditors($task, $userIds);
         }
     }
 

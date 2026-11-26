@@ -7,7 +7,7 @@ namespace App\Repositories\Eloquent;
 use App\Models\BitrixPortal;
 use App\Repositories\Contracts\BitrixPortalRepositoryInterface;
 
-class BitrixPortalRepository implements BitrixPortalRepositoryInterface
+final class EloquentBitrixPortalRepository implements BitrixPortalRepositoryInterface
 {
     public function current(): ?BitrixPortal
     {

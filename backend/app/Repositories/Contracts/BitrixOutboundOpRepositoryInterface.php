@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories\Contracts;
 
+use App\Enums\OutboundOpStatus;
 use App\Models\BitrixOutboundOp;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -23,5 +24,5 @@ interface BitrixOutboundOpRepositoryInterface
     public function pending(string $entity, int $bitrixId): Collection;
 
     /** Answers this change and every earlier one to the same record still waiting. */
-    public function settle(BitrixOutboundOp $op, string $status): void;
+    public function settle(BitrixOutboundOp $op, OutboundOpStatus $status): void;
 }

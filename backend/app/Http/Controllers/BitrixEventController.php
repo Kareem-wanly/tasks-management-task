@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\BitrixEventRequest;
-use App\Services\BitrixEventService;
+use App\Services\Contracts\BitrixEventServiceInterface;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -14,7 +14,7 @@ use Illuminate\Http\JsonResponse;
  */
 class BitrixEventController extends Controller
 {
-    public function __construct(private readonly BitrixEventService $events) {}
+    public function __construct(private readonly BitrixEventServiceInterface $events) {}
 
     public function handle(BitrixEventRequest $request): JsonResponse
     {

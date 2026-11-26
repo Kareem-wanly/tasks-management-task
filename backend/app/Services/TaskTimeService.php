@@ -17,6 +17,7 @@ use App\Models\TaskElapsedItem;
 use App\Models\User;
 use App\Repositories\Contracts\TaskRepositoryInterface;
 use App\Repositories\Contracts\TimeEntryRepositoryInterface;
+use App\Services\Contracts\TaskTimeServiceInterface;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -31,12 +32,12 @@ use Throwable;
  * The timer is ours (Bitrix has no REST method for its own): stopping it
  * logs the time. As in Bitrix, starting one stops the running one.
  */
-class TaskTimeService
+final readonly class TaskTimeService implements TaskTimeServiceInterface
 {
     public function __construct(
-        private readonly TimeEntryRepositoryInterface $entries,
-        private readonly TaskRepositoryInterface $tasks,
-        private readonly BitrixTimePusher $bitrix,
+        private TimeEntryRepositoryInterface $entries,
+        private TaskRepositoryInterface $tasks,
+        private BitrixTimePusher $bitrix,
     ) {}
 
     /** The log, fresh from Bitrix; our last copy when Bitrix can't be reached. */

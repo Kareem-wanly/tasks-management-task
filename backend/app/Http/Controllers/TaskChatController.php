@@ -12,7 +12,7 @@ use App\Http\Requests\UpdateTaskChatMessageRequest;
 use App\Http\Resources\TaskChatResource;
 use App\Models\Task;
 use App\Models\TaskChatMessage;
-use App\Services\TaskChatService;
+use App\Services\Contracts\TaskChatServiceInterface;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -20,7 +20,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class TaskChatController extends Controller
 {
-    public function __construct(private readonly TaskChatService $chat) {}
+    public function __construct(private readonly TaskChatServiceInterface $chat) {}
 
     public function index(ShowTaskChatRequest $request, Task $task): TaskChatResource
     {

@@ -8,11 +8,13 @@ use App\DTOs\Auth\LoginDTO;
 use App\DTOs\Auth\RegisterDTO;
 use App\DTOs\Auth\UpdatePasswordDTO;
 use App\DTOs\Auth\UpdateProfileDTO;
+use App\Enums\SystemRole;
 use App\Exceptions\Auth\AccountDeactivatedException;
 use App\Exceptions\Auth\InvalidCredentialsException;
 use App\Models\User;
 use App\Repositories\Contracts\RoleRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Services\Contracts\AuthServiceInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -20,13 +22,13 @@ use Illuminate\Support\Facades\Hash;
  * Password sign-up, sign-in and the user's own profile. (Bitrix24 sign-in
  * is BitrixAuthService.)
  */
-class AuthService
+final readonly class AuthService implements AuthServiceInterface
 {
     private const TOKEN_NAME = 'auth_token';
 
     public function __construct(
-        private readonly UserRepositoryInterface $users,
-        private readonly RoleRepositoryInterface $roles,
+        private UserRepositoryInterface $users,
+        private RoleRepositoryInterface $roles,
     ) {}
 
     /**
@@ -37,7 +39,7 @@ class AuthService
         $user = DB::transaction(function () use ($data): User {
             $user = $this->users->create(['name' => $data->name, 'email' => $data->email, 'password' => $data->password]);
 
-            if (($member = $this->roles->findByName('Member')) instanceof \App\Models\Role) {
+            if (($member = $this->roles->findByName(SystemRole::Member->value)) instanceof \App\Models\Role) {
                 $this->users->attachRole($user, $member->id);
             }
 

@@ -14,6 +14,7 @@ use App\Integrations\Bitrix24\BitrixUserSync;
 use App\Integrations\Bitrix24\TokenManager;
 use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Services\Contracts\BitrixAuthServiceInterface;
 use Carbon\CarbonImmutable;
 
 /**
@@ -29,16 +30,16 @@ use Carbon\CarbonImmutable;
  * An API token never travels in a URL. Failures throw BitrixSignInException
  * with a reason code.
  */
-class BitrixAuthService
+final readonly class BitrixAuthService implements BitrixAuthServiceInterface
 {
     private const TOKEN_NAME = 'bitrix_auth';
 
     public function __construct(
-        private readonly TokenManager $tokens,
-        private readonly BitrixClient $bitrix,
-        private readonly BitrixUserSync $users,
-        private readonly UserRepositoryInterface $userRepository,
-        private readonly BitrixLoginCodes $codes,
+        private TokenManager $tokens,
+        private BitrixClient $bitrix,
+        private BitrixUserSync $users,
+        private UserRepositoryInterface $userRepository,
+        private BitrixLoginCodes $codes,
     ) {}
 
     /** Bitrix's consent page; $state comes back with the code. */

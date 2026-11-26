@@ -22,7 +22,6 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
-use Mockery;
 use Tests\TestCase;
 
 /**
@@ -171,9 +170,7 @@ class BitrixTimeTest extends TestCase
     {
         RunningTimer::create(['user_id' => $this->actor->id, 'task_id' => $this->task->id, 'started_at' => now()]);
         // The other request's timer appears after this one looked for a running timer.
-        $entries = Mockery::mock(resolve(TimeEntryRepositoryInterface::class))->makePartial();
-        $entries->shouldReceive('runningTimer')->andReturnNull();
-        $this->app->instance(TimeEntryRepositoryInterface::class, $entries);
+        $this->replaceMethod(TimeEntryRepositoryInterface::class, 'runningTimer', fn (): null => null);
 
         $this->postJson("/api/tasks/{$this->task->id}/timer")->assertStatus(409);
 

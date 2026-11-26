@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\SystemRole;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use Carbon\CarbonImmutable;
@@ -15,6 +16,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
 use Laravel\Sanctum\HasApiTokens;
+
+use function Illuminate\Support\enum_value;
 
 /**
  * @property CarbonImmutable|null $bitrix_synced_at
@@ -105,13 +108,13 @@ class User extends Authenticatable implements HasBitrixToken
     /** Administrators, and anyone who can manage users, roles or permissions. */
     public function hasAdministrativeRights(): bool
     {
-        return $this->hasRole('Administrator')
+        return $this->hasRole(SystemRole::Administrator)
             || $this->permissionNames()->intersect(self::ADMINISTRATIVE_PERMISSIONS)->isNotEmpty();
     }
 
-    public function hasRole(string $name): bool
+    public function hasRole(SystemRole|string $name): bool
     {
-        return ($this->roleCache ??= $this->roles()->pluck('name'))->contains($name);
+        return ($this->roleCache ??= $this->roles()->pluck('name'))->contains(enum_value($name));
     }
 
     public function memberProjects(): BelongsToMany

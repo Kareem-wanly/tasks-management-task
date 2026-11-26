@@ -9,14 +9,14 @@ use App\Http\Requests\UpdateTaskMembersRequest;
 use App\Http\Requests\WatchTaskRequest;
 use App\Http\Resources\TaskResource;
 use App\Models\Task;
-use App\Services\TaskMemberService;
+use App\Services\Contracts\TaskMemberServiceInterface;
 
 /**
  * Step 4.1: accomplices and auditors.
  */
 class TaskMemberController extends Controller
 {
-    public function __construct(private readonly TaskMemberService $members) {}
+    public function __construct(private readonly TaskMemberServiceInterface $members) {}
 
     public function update(UpdateTaskMembersRequest $request, Task $task): TaskResource
     {

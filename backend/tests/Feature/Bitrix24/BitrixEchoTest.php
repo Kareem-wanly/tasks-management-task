@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Bitrix24;
 
+use App\Enums\OutboundOpStatus;
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Jobs\Bitrix\SyncBitrixProject;
@@ -74,10 +75,23 @@ class BitrixEchoTest extends TestCase
 
         dispatch_sync(new SyncBitrixTask(15));
 
-        $this->assertSame(BitrixOutboundOp::CONFIRMED, BitrixOutboundOp::sole()->status);
+        $this->assertSame(OutboundOpStatus::Confirmed, BitrixOutboundOp::sole()->status);
         $this->assertSame($logs, ActivityLog::count());
         // Handling the event sent nothing back to Bitrix: only our one update.
         $this->assertSame(['tasks.task.update'], $this->writes());
+    }
+
+    public function test_the_echo_of_a_due_date_is_confirmed(): void
+    {
+        $this->putJson("/api/tasks/{$this->task->id}", ['due_date' => '2026-11-26'])->assertOk();
+        // Bitrix keeps the deadline we sent, in its own ISO form.
+        $sent = collect(Http::recorded())->map(fn (array $pair) => $pair[0])
+            ->first(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.update.json'));
+        $this->bitrixTask['deadline'] = $sent['fields']['DEADLINE'];
+
+        dispatch_sync(new SyncBitrixTask(15));
+
+        $this->assertSame(OutboundOpStatus::Confirmed, BitrixOutboundOp::sole()->status);
     }
 
     public function test_two_concurrent_edits_end_with_the_bitrix_version(): void
@@ -89,7 +103,7 @@ class BitrixEchoTest extends TestCase
         dispatch_sync(new SyncBitrixTask(15));
 
         $this->assertSame('Theirs', $this->task->fresh()->title);
-        $this->assertSame(BitrixOutboundOp::CONFLICT, BitrixOutboundOp::sole()->status);
+        $this->assertSame(OutboundOpStatus::Conflict, BitrixOutboundOp::sole()->status);
         $this->assertTrue(ActivityLog::where('action', 'bitrix_conflict')->where('task_id', $this->task->id)->exists());
     }
 
@@ -124,7 +138,7 @@ class BitrixEchoTest extends TestCase
         dispatch_sync(new SyncBitrixTask(15));
 
         $this->assertSame('Later Bitrix edit', $this->task->fresh()->title);
-        $this->assertSame(BitrixOutboundOp::SENT, BitrixOutboundOp::sole()->status);
+        $this->assertSame(OutboundOpStatus::Sent, BitrixOutboundOp::sole()->status);
         $this->assertFalse(ActivityLog::where('action', 'bitrix_conflict')->exists());
     }
 
@@ -135,7 +149,7 @@ class BitrixEchoTest extends TestCase
 
         dispatch_sync(new SyncBitrixTask(15));
 
-        $this->assertSame(BitrixOutboundOp::CONFIRMED, BitrixOutboundOp::sole()->status);
+        $this->assertSame(OutboundOpStatus::Confirmed, BitrixOutboundOp::sole()->status);
     }
 
     public function test_the_echo_of_deleting_a_project_is_confirmed_and_it_stays_deleted(): void
@@ -146,7 +160,7 @@ class BitrixEchoTest extends TestCase
 
         dispatch_sync(new SyncBitrixProject(40));
 
-        $this->assertSame(BitrixOutboundOp::CONFIRMED, BitrixOutboundOp::where('entity', 'project')->sole()->status);
+        $this->assertSame(OutboundOpStatus::Confirmed, BitrixOutboundOp::where('entity', 'project')->sole()->status);
         $this->assertSoftDeleted($project);
     }
 
@@ -158,7 +172,7 @@ class BitrixEchoTest extends TestCase
 
         dispatch_sync(new SyncBitrixProject(40));
 
-        $this->assertSame(BitrixOutboundOp::CONFIRMED, BitrixOutboundOp::where('entity', 'project')->sole()->status);
+        $this->assertSame(OutboundOpStatus::Confirmed, BitrixOutboundOp::where('entity', 'project')->sole()->status);
     }
 
     public function test_two_quick_changes_of_ours_are_both_echoes_not_a_conflict(): void
@@ -171,7 +185,7 @@ class BitrixEchoTest extends TestCase
         dispatch_sync(new SyncBitrixTask(15));
         dispatch_sync(new SyncBitrixTask(15));
 
-        $this->assertSame([BitrixOutboundOp::CONFIRMED, BitrixOutboundOp::CONFIRMED], BitrixOutboundOp::orderBy('id')->pluck('status')->all());
+        $this->assertSame([OutboundOpStatus::Confirmed, OutboundOpStatus::Confirmed], BitrixOutboundOp::orderBy('id')->pluck('status')->all());
         $this->assertFalse(ActivityLog::where('action', 'bitrix_conflict')->exists());
         $this->assertSame('Second', $this->task->fresh()->title);
     }
@@ -185,7 +199,7 @@ class BitrixEchoTest extends TestCase
 
         dispatch_sync(new SyncBitrixTask(15));
 
-        $this->assertSame([BitrixOutboundOp::CONFIRMED, BitrixOutboundOp::SENT], BitrixOutboundOp::orderBy('id')->pluck('status')->all());
+        $this->assertSame([OutboundOpStatus::Confirmed, OutboundOpStatus::Sent], BitrixOutboundOp::orderBy('id')->pluck('status')->all());
         $this->assertSame('Second', $this->task->fresh()->title);
     }
 

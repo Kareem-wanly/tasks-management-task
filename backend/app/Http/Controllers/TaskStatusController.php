@@ -9,12 +9,12 @@ use App\Http\Requests\ListTaskLookupsRequest;
 use App\Http\Requests\StoreTaskStatusLookupRequest;
 use App\Http\Requests\UpdateTaskStatusLookupRequest;
 use App\Models\TaskStatus;
-use App\Services\TaskLookupService;
+use App\Services\Contracts\TaskLookupServiceInterface;
 use Illuminate\Http\JsonResponse;
 
 class TaskStatusController extends Controller
 {
-    public function __construct(private readonly TaskLookupService $lookups) {}
+    public function __construct(private readonly TaskLookupServiceInterface $lookups) {}
 
     public function index(ListTaskLookupsRequest $request): JsonResponse
     {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Bitrix;
 
+use App\Enums\QueueName;
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixTimeSync;
 use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
@@ -28,7 +29,7 @@ class ImportBitrixTime implements ShouldQueue
 
     public function __construct()
     {
-        $this->onQueue('bitrix');
+        $this->onQueue(QueueName::Bitrix);
     }
 
     public function handle(BitrixClient $bitrix, BitrixTimeSync $time, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $taskRepository): void

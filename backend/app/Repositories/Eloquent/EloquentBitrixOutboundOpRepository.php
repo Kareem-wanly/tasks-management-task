@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
 
+use App\Enums\OutboundOpStatus;
 use App\Models\BitrixOutboundOp;
 use App\Models\User;
 use App\Repositories\Contracts\BitrixOutboundOpRepositoryInterface;
 use Illuminate\Support\Collection;
 
-class BitrixOutboundOpRepository implements BitrixOutboundOpRepositoryInterface
+final class EloquentBitrixOutboundOpRepository implements BitrixOutboundOpRepositoryInterface
 {
     public function record(string $entity, int $bitrixId, string $action, ?string $fingerprint, User $actor): void
     {
@@ -18,7 +19,7 @@ class BitrixOutboundOpRepository implements BitrixOutboundOpRepositoryInterface
             'bitrix_id' => $bitrixId,
             'action' => $action,
             'fingerprint' => $fingerprint,
-            'status' => BitrixOutboundOp::SENT,
+            'status' => OutboundOpStatus::Sent,
             'user_id' => $actor->id,
         ]);
     }
@@ -27,19 +28,19 @@ class BitrixOutboundOpRepository implements BitrixOutboundOpRepositoryInterface
     {
         return BitrixOutboundOp::where('entity', $entity)
             ->where('bitrix_id', $bitrixId)
-            ->where('status', BitrixOutboundOp::SENT)
+            ->where('status', OutboundOpStatus::Sent->value)
             ->where('created_at', '>=', now()->subSeconds(BitrixOutboundOp::WINDOW_SECONDS))
             ->latest('id')
             ->get();
     }
 
-    public function settle(BitrixOutboundOp $op, string $status): void
+    public function settle(BitrixOutboundOp $op, OutboundOpStatus $status): void
     {
         BitrixOutboundOp::where('entity', $op->entity)
             ->where('bitrix_id', $op->bitrix_id)
-            ->where('status', BitrixOutboundOp::SENT)
+            ->where('status', OutboundOpStatus::Sent->value)
             ->where('id', '<=', $op->id)
-            ->update(['status' => $status, 'updated_at' => now()]);
+            ->update(['status' => $status->value, 'updated_at' => now()]);
         $op->status = $status;
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\DTOs\Project;
 
 use App\DTOs\Concerns\TracksProvidedFields;
+use App\Enums\ProjectStatus;
 
 /**
  * The project fields a client changes; fields it did not send stay as they are.
@@ -19,7 +20,7 @@ final readonly class UpdateProjectDTO
     public function __construct(
         public ?string $title = null,
         public ?string $description = null,
-        public ?string $status = null,
+        public ?ProjectStatus $status = null,
         public ?string $startDate = null,
         public ?string $dueDate = null,
         public array $provided = [],
@@ -33,7 +34,7 @@ final readonly class UpdateProjectDTO
         return new self(
             title: self::stringOrNull($data['title'] ?? null),
             description: self::stringOrNull($data['description'] ?? null),
-            status: self::stringOrNull($data['status'] ?? null),
+            status: isset($data['status']) ? ProjectStatus::from((string) $data['status']) : null,
             startDate: self::stringOrNull($data['start_date'] ?? null),
             dueDate: self::stringOrNull($data['due_date'] ?? null),
             provided: array_keys($data),

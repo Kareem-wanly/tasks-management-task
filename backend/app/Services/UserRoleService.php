@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\User\SyncUserRolesDTO;
+use App\Enums\SystemRole;
 use App\Exceptions\User\AdministratorRoleChangeDeniedException;
 use App\Exceptions\User\LastAdministratorException;
 use App\Exceptions\User\RoleAssignmentDeniedException;
@@ -12,6 +13,7 @@ use App\Models\User;
 use App\Repositories\Contracts\PermissionRepositoryInterface;
 use App\Repositories\Contracts\RoleRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Services\Contracts\UserRoleServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -20,12 +22,12 @@ use Illuminate\Support\Facades\DB;
  * only an Administrator touches the Administrator role, and the last
  * Administrator keeps it.
  */
-class UserRoleService
+final readonly class UserRoleService implements UserRoleServiceInterface
 {
     public function __construct(
-        private readonly UserRepositoryInterface $users,
-        private readonly RoleRepositoryInterface $roles,
-        private readonly PermissionRepositoryInterface $permissions,
+        private UserRepositoryInterface $users,
+        private RoleRepositoryInterface $roles,
+        private PermissionRepositoryInterface $permissions,
     ) {}
 
     public function list(User $user): Collection
@@ -37,14 +39,14 @@ class UserRoleService
     {
         $roleIds = $roles->roleIds;
 
-        $actorIsAdmin = $actor->hasRole('Administrator');
+        $actorIsAdmin = $actor->hasRole(SystemRole::Administrator);
 
         if (! $actorIsAdmin && $this->permissions->idsGrantedByRoles($roleIds)->diff($actor->permissionIds())->isNotEmpty()) {
             throw new RoleAssignmentDeniedException;
         }
 
         return DB::transaction(function () use ($actorIsAdmin, $user, $roleIds): User {
-            $adminRole = $this->roles->findByName('Administrator');
+            $adminRole = $this->roles->findByName(SystemRole::Administrator->value);
 
             if ($adminRole instanceof \App\Models\Role) {
                 $hasAdmin = $this->users->hasRoleId($user, $adminRole->id);

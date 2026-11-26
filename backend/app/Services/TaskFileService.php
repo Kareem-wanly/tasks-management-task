@@ -13,6 +13,7 @@ use App\Models\Task;
 use App\Models\TaskFile;
 use App\Models\User;
 use App\Repositories\Contracts\TaskFileRepositoryInterface;
+use App\Services\Contracts\TaskFileServiceInterface;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -22,7 +23,7 @@ use Illuminate\Support\Facades\Storage;
  * opened. Tasks in Bitrix keep their files there (on the uploader's Drive);
  * tasks of local-only projects keep them in our storage.
  */
-class TaskFileService
+final readonly class TaskFileService implements TaskFileServiceInterface
 {
     /** Our storage, for tasks outside Bitrix. */
     private const DISK = 'local';
@@ -30,8 +31,8 @@ class TaskFileService
     private const FOLDER = 'task-files';
 
     public function __construct(
-        private readonly TaskFileRepositoryInterface $files,
-        private readonly BitrixFilePusher $bitrix,
+        private TaskFileRepositoryInterface $files,
+        private BitrixFilePusher $bitrix,
     ) {}
 
     /** The files, fresh from Bitrix; our last copy when Bitrix can't be reached. */

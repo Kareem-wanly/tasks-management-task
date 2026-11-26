@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24;
 
+use App\Enums\ProjectMemberRole;
+use App\Enums\ProjectStatus;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Models\BitrixOutboundOp;
 use App\Models\Project;
@@ -31,7 +33,7 @@ class BitrixProjectPusher
     ];
 
     /** project_user.role => Bitrix member role. The owner is set by Bitrix itself. */
-    private const MEMBER_ROLES = ['moderator' => 'E', 'member' => 'K'];
+    private const MEMBER_ROLES = [ProjectMemberRole::Moderator->value => 'E', ProjectMemberRole::Member->value => 'K'];
 
     public function __construct(
         private readonly BitrixClient $bitrix,
@@ -67,8 +69,8 @@ class BitrixProjectPusher
 
         $fields = $this->fields($project, array_keys(array_intersect_key($project->getDirty(), self::FIELDS)));
 
-        $wasArchived = $project->getOriginal('status') === 'archived';
-        if ($project->isDirty('status') && $wasArchived !== ($project->status === 'archived')) {
+        $wasArchived = $project->getOriginal('status') === ProjectStatus::Archived;
+        if ($project->isDirty('status') && $wasArchived !== ($project->status === ProjectStatus::Archived)) {
             $fields['CLOSED'] = $wasArchived ? 'N' : 'Y';
         }
 
@@ -97,7 +99,7 @@ class BitrixProjectPusher
         $this->ops->record(BitrixOutboundOp::PROJECT, $project->bitrix_group_id, 'delete', null, $actor);
     }
 
-    public function addMember(User $actor, Project $project, User $member, string $role): void
+    public function addMember(User $actor, Project $project, User $member, ProjectMemberRole $role): void
     {
         if (! $project->bitrix_group_id) {
             return;
@@ -109,7 +111,7 @@ class BitrixProjectPusher
         $this->bitrix->callAsService('sonet_group.user.add', ['GROUP_ID' => $project->bitrix_group_id, 'USER_ID' => $memberId]);
 
         // Added as a participant (K); anything else is a role change.
-        if (($bitrixRole = self::MEMBER_ROLES[$role] ?? 'K') !== 'K') {
+        if (($bitrixRole = self::MEMBER_ROLES[$role->value] ?? 'K') !== 'K') {
             $this->bitrix->callAsService('sonet_group.user.update', [
                 'GROUP_ID' => $project->bitrix_group_id,
                 'USER_ID' => $memberId,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Bitrix;
 
+use App\Enums\QueueName;
 use App\Integrations\Bitrix24\BitrixChatPusher;
 use App\Repositories\Contracts\TaskRepositoryInterface;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
@@ -30,7 +31,7 @@ class SyncBitrixTaskChat implements ShouldBeUniqueUntilProcessing, ShouldQueue
 
     public function __construct(public readonly int $bitrixTaskId)
     {
-        $this->onQueue('bitrix');
+        $this->onQueue(QueueName::Bitrix);
     }
 
     public function uniqueId(): string

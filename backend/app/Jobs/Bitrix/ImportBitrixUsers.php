@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Bitrix;
 
+use App\Enums\QueueName;
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixUserSync;
 use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
@@ -25,7 +26,7 @@ class ImportBitrixUsers implements ShouldQueue
 
     public function __construct(public readonly bool $linkByEmail = false)
     {
-        $this->onQueue('bitrix');
+        $this->onQueue(QueueName::Bitrix);
     }
 
     public function handle(BitrixClient $bitrix, BitrixUserSync $users, BitrixSyncCursorRepositoryInterface $cursors): void

@@ -11,6 +11,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Repositories\Contracts\TaskRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Services\Contracts\TaskMemberServiceInterface;
 use Illuminate\Database\ConnectionInterface;
 
 /**
@@ -18,13 +19,13 @@ use Illuminate\Database\ConnectionInterface;
  * Tasks in Bitrix change there first (the pusher saves what Bitrix made of
  * it); tasks of local-only projects change here only.
  */
-class TaskMemberService
+final readonly class TaskMemberService implements TaskMemberServiceInterface
 {
     public function __construct(
-        private readonly TaskRepositoryInterface $tasks,
-        private readonly UserRepositoryInterface $users,
-        private readonly BitrixTaskMemberPusher $bitrix,
-        private readonly ConnectionInterface $database,
+        private TaskRepositoryInterface $tasks,
+        private UserRepositoryInterface $users,
+        private BitrixTaskMemberPusher $bitrix,
+        private ConnectionInterface $database,
     ) {}
 
     /** Replaces both lists. */

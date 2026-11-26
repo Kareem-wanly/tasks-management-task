@@ -13,6 +13,7 @@ use App\Models\Task;
 use App\Models\TaskChatMessage;
 use App\Models\User;
 use App\Repositories\Contracts\TaskChatMessageRepositoryInterface;
+use App\Services\Contracts\TaskChatServiceInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -22,7 +23,7 @@ use Illuminate\Support\Facades\Log;
  * also fetched when the task is opened. Tasks of local-only projects keep
  * their chat here only.
  */
-class TaskChatService
+final readonly class TaskChatService implements TaskChatServiceInterface
 {
     /** How many of the newest messages the task page shows. */
     public const SHOWN = 100;
@@ -31,8 +32,8 @@ class TaskChatService
     private const REFRESH_EVERY_SECONDS = 10;
 
     public function __construct(
-        private readonly TaskChatMessageRepositoryInterface $messages,
-        private readonly BitrixChatPusher $bitrix,
+        private TaskChatMessageRepositoryInterface $messages,
+        private BitrixChatPusher $bitrix,
     ) {}
 
     /** The chat, fresh from Bitrix; our last copy when Bitrix can't be reached. */

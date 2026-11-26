@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories\Contracts;
 
 use App\DTOs\Project\ProjectFiltersDTO;
+use App\Enums\ProjectMemberRole;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -37,7 +38,7 @@ interface ProjectRepositoryInterface
 
     public function hasMember(Project $project, int $userId): bool;
 
-    public function attachMember(Project $project, int $userId, string $role): void;
+    public function attachMember(Project $project, int $userId, ProjectMemberRole $role): void;
 
     public function detachMember(Project $project, int $userId): void;
 

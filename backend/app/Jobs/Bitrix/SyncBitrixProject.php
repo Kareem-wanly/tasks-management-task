@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Bitrix;
 
+use App\Enums\QueueName;
 use App\Integrations\Bitrix24\BitrixDeletionGuard;
 use App\Integrations\Bitrix24\BitrixEchoGuard;
 use App\Integrations\Bitrix24\BitrixProjectSync;
@@ -33,7 +34,7 @@ class SyncBitrixProject implements ShouldBeUniqueUntilProcessing, ShouldQueue
 
     public function __construct(public readonly int $bitrixGroupId)
     {
-        $this->onQueue('bitrix');
+        $this->onQueue(QueueName::Bitrix);
     }
 
     public function uniqueId(): string

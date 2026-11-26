@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24;
 
+use App\Enums\OutboundOpStatus;
+use App\Enums\ProjectStatus;
+use App\Enums\TaskMemberRole;
 use App\Models\BitrixOutboundOp;
 use App\Models\Project;
 use App\Models\Task;
@@ -45,7 +48,7 @@ class BitrixEchoGuard
 
         $fingerprint = $attributes === null
             ? null
-            : $this->fingerprints->task((new Task)->forceFill($attributes), $members ?? ['accomplice' => [], 'auditor' => []]);
+            : $this->fingerprints->task((new Task)->forceFill($attributes), $members ?? [TaskMemberRole::Accomplice->value => [], TaskMemberRole::Auditor->value => []]);
 
         return $this->settle($ops, $fingerprint, $this->tasks->findByBitrixId($bitrixTaskId, withTrashed: true));
     }
@@ -62,7 +65,7 @@ class BitrixEchoGuard
 
         $fingerprint = $attributes === null
             ? null
-            : $this->fingerprints->project((new Project)->forceFill([...$attributes, 'status' => $closed ? 'archived' : 'active']));
+            : $this->fingerprints->project((new Project)->forceFill([...$attributes, 'status' => $closed ? ProjectStatus::Archived : ProjectStatus::Active]));
 
         // Deleting here archives the group, so a closed group answers our delete.
         $answers = fn (BitrixOutboundOp $op): bool => $op->isDelete() && $closed;
@@ -85,13 +88,13 @@ class BitrixEchoGuard
             || ($alsoAnswers && $alsoAnswers($op)));
 
         if ($answered) {
-            $this->ops->settle($answered, BitrixOutboundOp::CONFIRMED);
+            $this->ops->settle($answered, OutboundOpStatus::Confirmed);
 
             return true;
         }
 
         $newest = $ops->first();
-        $this->ops->settle($newest, BitrixOutboundOp::CONFLICT);
+        $this->ops->settle($newest, OutboundOpStatus::Conflict);
         $this->logConflict($newest, $record);
 
         return false;
