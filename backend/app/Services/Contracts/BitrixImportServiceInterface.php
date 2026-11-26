@@ -54,6 +54,9 @@ interface BitrixImportServiceInterface
      */
     public function runImport(string $entity, bool $linkByEmail, ?Closure $onProgress = null): void;
 
+    /** Step 5.1: queues what syncChanges() does, for the "sync now" button. */
+    public function queueChangesSync(): void;
+
     /**
      * Where each entity's last import stands.
      *

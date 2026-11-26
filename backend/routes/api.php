@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BitrixAuthController;
 use App\Http\Controllers\Api\V1\BitrixEventController;
 use App\Http\Controllers\Api\V1\BitrixInstallController;
+use App\Http\Controllers\Api\V1\BitrixSyncController;
 use App\Http\Controllers\Api\V1\PermissionController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\RoleController;
@@ -145,5 +146,9 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         // 7. Activity Logs
         Route::get('/activities', [ProjectController::class, 'allActivities'])->name('activities.index');
         Route::get('/projects/{project}/activities', [ProjectController::class, 'activities'])->name('projects.activities.index');
+
+        // 8. Bitrix24 sync status (step 5.1)
+        Route::get('/bitrix/sync', [BitrixSyncController::class, 'show'])->name('bitrix-sync.show');
+        Route::post('/bitrix/sync', [BitrixSyncController::class, 'start'])->middleware('throttle:6,1')->name('bitrix-sync.start');
     });
 });

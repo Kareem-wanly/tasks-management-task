@@ -238,11 +238,12 @@ arch('services depend on Bitrix interfaces, not classes')
 // repositories serve the Bitrix layer, the sync actions and the policies.
 $repositoryOwners = [
     'ActivityLogRepositoryInterface' => ['ActivityLogService'],
-    // The echo bookkeeping of the project and task writes sent to Bitrix24.
-    'BitrixOutboundOpRepositoryInterface' => ['ProjectService', 'TaskService', 'TaskMemberService'],
+    // The echo bookkeeping of the project and task writes sent to Bitrix24; the sync status page counts it.
+    'BitrixOutboundOpRepositoryInterface' => ['ProjectService', 'TaskService', 'TaskMemberService', 'BitrixSyncStatusService'],
     'BitrixPortalRepositoryInterface' => ['BitrixEventService', 'BitrixInstallService', 'UserService'],
     'BitrixSyncCursorRepositoryInterface' => ['BitrixImportService'],
     'BitrixTokenRepositoryInterface' => ['BitrixAuthService', 'BitrixInstallService'],
+    'FailedJobRepositoryInterface' => ['BitrixSyncStatusService'],
     'PermissionRepositoryInterface' => ['PermissionService'],
     'ProjectRepositoryInterface' => ['ProjectService'],
     'RoleRepositoryInterface' => ['RoleService'],

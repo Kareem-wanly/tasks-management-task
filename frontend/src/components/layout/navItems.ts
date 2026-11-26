@@ -1,4 +1,12 @@
-import { FolderKanbanIcon, LayoutGridIcon, ListChecksIcon, ShieldCheckIcon, UsersIcon, type LucideIcon } from 'lucide-react';
+import {
+  FolderKanbanIcon,
+  LayoutGridIcon,
+  ListChecksIcon,
+  RefreshCwIcon,
+  ShieldCheckIcon,
+  UsersIcon,
+  type LucideIcon,
+} from 'lucide-react';
 
 export interface NavItem {
   to: string;
@@ -28,6 +36,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/users', label: 'Users', icon: UsersIcon, permission: 'users.view' },
       { to: '/roles', label: 'Roles', icon: ShieldCheckIcon, permission: 'roles.view' },
+      { to: '/sync', label: 'Bitrix24 sync', icon: RefreshCwIcon, permission: 'bitrix_sync.manage' },
     ],
   },
 ];

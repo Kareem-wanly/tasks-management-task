@@ -9,6 +9,7 @@ use App\Enums\OutboundOpEntity;
 use App\Enums\OutboundOpStatus;
 use App\Models\BitrixOutboundOp;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
 /**
@@ -27,4 +28,7 @@ interface BitrixOutboundOpRepositoryInterface
 
     /** Answers this change and every earlier one to the same record still waiting. */
     public function settle(BitrixOutboundOp $op, OutboundOpStatus $status): void;
+
+    /** Step 5.1: how many of our changes sent in [$from, $to] stand at $status. */
+    public function countSentBetween(OutboundOpStatus $status, CarbonImmutable $from, CarbonImmutable $to): int;
 }
