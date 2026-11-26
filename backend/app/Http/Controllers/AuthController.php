@@ -49,7 +49,7 @@ final class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Profile updated successfully',
-            'data' => $this->auth->updateProfile($request->actor(), $request->toDto()),
+            'data' => new UserResource($this->auth->updateProfile($request->actor(), $request->toDto())),
         ]);
     }
 

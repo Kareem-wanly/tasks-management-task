@@ -10,37 +10,40 @@ use App\Http\Requests\ShowUserRequest;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Requests\UserOptionsRequest;
+use App\Http\Resources\UserListItemResource;
+use App\Http\Resources\UserOptionResource;
 use App\Models\User;
 use App\Services\Contracts\UserServiceInterface;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 final class UserController extends Controller
 {
     public function __construct(private readonly UserServiceInterface $users) {}
 
-    public function index(ListUsersRequest $request): JsonResponse
+    public function index(ListUsersRequest $request): AnonymousResourceCollection
     {
-        return response()->json($this->users->list($request->toDto(), $request->perPage(10)));
+        return UserListItemResource::collection($this->users->list($request->toDto(), $request->perPage(10)));
     }
 
     public function store(StoreUserRequest $request): JsonResponse
     {
         return response()->json([
             'message' => 'User created successfully',
-            'data' => $this->users->invite($request->actor(), $request->toDto()),
+            'data' => new UserListItemResource($this->users->invite($request->actor(), $request->toDto())),
         ], 201);
     }
 
     public function show(ShowUserRequest $request, User $user): JsonResponse
     {
-        return response()->json(['data' => $this->users->show($user)]);
+        return response()->json(['data' => new UserListItemResource($this->users->show($user))]);
     }
 
     public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
         return response()->json([
             'message' => 'User details updated successfully',
-            'data' => $this->users->update($request->actor(), $user, $request->toDto()),
+            'data' => new UserListItemResource($this->users->update($request->actor(), $user, $request->toDto())),
         ]);
     }
 
@@ -50,12 +53,12 @@ final class UserController extends Controller
 
         return response()->json([
             'message' => $data->active ? 'User activated' : 'User deactivated',
-            'data' => $this->users->setActive($request->actor(), $user, $data),
+            'data' => new UserListItemResource($this->users->setActive($request->actor(), $user, $data)),
         ]);
     }
 
-    public function options(UserOptionsRequest $request): JsonResponse
+    public function options(UserOptionsRequest $request): AnonymousResourceCollection
     {
-        return response()->json(['data' => $this->users->options()]);
+        return UserOptionResource::collection($this->users->options());
     }
 }
