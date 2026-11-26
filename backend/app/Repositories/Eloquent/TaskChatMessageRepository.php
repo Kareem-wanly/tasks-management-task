@@ -15,7 +15,7 @@ class TaskChatMessageRepository implements TaskChatMessageRepositoryInterface
     public function latestForTask(Task $task, int $limit): Collection
     {
         return $task->chatMessages()
-            ->with(['author:id,name,avatar_url', 'task'])->latest()->orderByDesc('id')
+            ->with(['author', 'task'])->latest()->orderByDesc('id')
             ->limit($limit)
             ->get()
             ->reverse()

@@ -44,7 +44,7 @@ class TimeEntryRepository implements TimeEntryRepositoryInterface
 
     public function runningTimer(User $user): ?RunningTimer
     {
-        return RunningTimer::with('task:id,title')->where('user_id', $user->id)->first();
+        return RunningTimer::with('task')->where('user_id', $user->id)->first();
     }
 
     public function startTimer(User $user, Task $task): RunningTimer

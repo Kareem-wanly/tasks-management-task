@@ -32,6 +32,17 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            // Every column the app reads, as the database defaults them: Sanctum::actingAs()
+            // clears wasRecentlyCreated, so shouldBeStrict() would reject any column left unset.
+            'bitrix_user_id' => null,
+            'bitrix_access_token' => null,
+            'bitrix_refresh_token' => null,
+            'bitrix_token_expires_at' => null,
+            'bitrix_department_ids' => null,
+            'bitrix_synced_at' => null,
+            'avatar_url' => null,
+            'position' => null,
+            'is_active' => true,
         ];
     }
 

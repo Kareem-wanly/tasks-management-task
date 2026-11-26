@@ -14,12 +14,12 @@ class ActivityLogRepository implements ActivityLogRepositoryInterface
 {
     public function paginateForProject(Project $project, int $perPage): LengthAwarePaginator
     {
-        return ActivityLog::where('project_id', $project->id)->with('user:id,name,email')->latest()->paginate($perPage);
+        return ActivityLog::where('project_id', $project->id)->with('user')->latest()->paginate($perPage);
     }
 
     public function paginateForUser(User $user, bool $onlyTheirProjects, int $perPage): LengthAwarePaginator
     {
-        return ActivityLog::with('user:id,name,email')
+        return ActivityLog::with('user')
             ->latest()
             ->when($onlyTheirProjects, fn ($q) => $q->whereHas('project', fn ($p) => $p
                 ->where('owner_id', $user->id)
