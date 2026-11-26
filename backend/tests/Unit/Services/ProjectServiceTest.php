@@ -66,3 +66,14 @@ it('refuses to remove someone who is not a member', function (): void {
     expect(fn () => $this->service->removeMember(userWithRoles(), $this->project, $member))
         ->toThrow(ProjectMemberNotFoundException::class);
 });
+
+it('deletes a group gone from Bitrix here only, never sending it back', function (): void {
+    $project = (new Project)->forceFill(['id' => 3, 'bitrix_group_id' => 12]);
+    $this->projects->shouldReceive('delete')->once()->with($project);
+    $this->projects->shouldReceive('deleteByBitrixIds')->once()->with([12, 13])->andReturn(2);
+    $this->bitrixProjects->shouldNotReceive('delete');
+
+    $this->service->removeGoneFromBitrix($project);
+
+    expect($this->service->removeAllGoneFromBitrix([12, 13]))->toBe(2);
+});

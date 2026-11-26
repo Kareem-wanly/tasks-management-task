@@ -176,6 +176,45 @@ arch('services depend on Bitrix interfaces, not classes')
         'App\Integrations\Bitrix24\Repositories',
     ]);
 
+// ARC-9: a service reaches its own domain's repository; another domain's data
+// comes through that domain's service. The task's parts (chat, checklist,
+// time, files, results) belong to the task domain. Outside the services the
+// repositories serve the Bitrix layer, the sync actions and the policies.
+$repositoryOwners = [
+    'ActivityLogRepositoryInterface' => ['ActivityLogService'],
+    // The echo bookkeeping of the project and task writes sent to Bitrix24.
+    'BitrixOutboundOpRepositoryInterface' => ['ProjectService', 'TaskService', 'TaskMemberService'],
+    'BitrixPortalRepositoryInterface' => ['BitrixEventService', 'BitrixInstallService', 'UserService'],
+    'BitrixSyncCursorRepositoryInterface' => ['BitrixImportService'],
+    'BitrixTokenRepositoryInterface' => ['BitrixAuthService', 'BitrixInstallService'],
+    'PermissionRepositoryInterface' => ['PermissionService'],
+    'ProjectRepositoryInterface' => ['ProjectService'],
+    'RoleRepositoryInterface' => ['RoleService'],
+    'TaskChatMessageRepositoryInterface' => ['TaskChatService'],
+    'TaskChecklistRepositoryInterface' => ['TaskChecklistService'],
+    'TaskFileRepositoryInterface' => ['TaskFileService'],
+    'TaskLookupRepositoryInterface' => ['TaskLookupService'],
+    'TaskRepositoryInterface' => ['TaskService', 'TaskMemberService', 'TaskChatService', 'TaskTimeService'],
+    'TaskResultRepositoryInterface' => ['TaskResultService'],
+    'TimeEntryRepositoryInterface' => ['TaskTimeService'],
+    'UserRepositoryInterface' => ['UserService', 'UserRoleService', 'AuthService'],
+];
+
+foreach ($repositoryOwners as $repository => $services) {
+    arch("only its own domain's services use {$repository}")
+        ->expect("App\\Repositories\\Contracts\\{$repository}")
+        ->toOnlyBeUsedIn([
+            ...array_map(fn (string $service): string => "App\\Services\\{$service}", $services),
+            'App\Repositories', 'App\Providers', 'App\Actions', 'App\Integrations', 'App\Policies',
+        ]);
+}
+
+it('lists the owners of every repository', function () use ($repositoryOwners): void {
+    $repositories = array_map(fn (string $file): string => basename($file, '.php'), glob(__DIR__.'/../../app/Repositories/Contracts/*.php') ?: []);
+
+    expect($repositories)->not->toBeEmpty()->toEqualCanonicalizing(array_keys($repositoryOwners));
+});
+
 // ARC-6: transactions belong to the services, never to the Bitrix layer.
 arch('integrations do not own transactions')
     ->expect('App\Integrations')

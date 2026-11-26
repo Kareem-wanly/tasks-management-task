@@ -46,4 +46,28 @@ interface ProjectServiceInterface
     public function addMember(User $actor, Project $project, AddProjectMemberDTO $member): Project;
 
     public function removeMember(User $actor, Project $project, User $member): Project;
+
+    // --- For the Bitrix24 import and sync: Bitrix is the source, so nothing here goes back to Bitrix.
+
+    public function findByBitrixGroupId(int $bitrixGroupId): ?Project;
+
+    public function idByBitrixGroupId(int $bitrixGroupId): ?int;
+
+    /**
+     * The Bitrix IDs of all our linked groups.
+     *
+     * @return list<int>
+     */
+    public function allBitrixGroupIds(): array;
+
+    /** Deletes our copy of a group deleted in Bitrix (with its tasks), here only. */
+    public function removeGoneFromBitrix(Project $project): void;
+
+    /**
+     * Deletes our copies of groups deleted in Bitrix, here only.
+     *
+     * @param  list<int>  $bitrixGroupIds
+     * @return int How many were deleted.
+     */
+    public function removeAllGoneFromBitrix(array $bitrixGroupIds): int;
 }

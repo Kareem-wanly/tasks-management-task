@@ -25,6 +25,7 @@ use App\Services\Contracts\TaskLookupServiceInterface;
 use App\Services\Contracts\TaskServiceInterface;
 use App\Services\Contracts\UserServiceInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use LogicException;
 
 /**
@@ -105,6 +106,39 @@ final readonly class TaskService implements TaskServiceInterface
     {
         $this->deleteInBitrix($actor, $task);
         $this->tasks->delete($task);
+    }
+
+    public function findByBitrixId(int $bitrixTaskId): ?Task
+    {
+        return $this->tasks->findByBitrixId($bitrixTaskId);
+    }
+
+    /** @return list<int> */
+    public function allBitrixIds(): array
+    {
+        return $this->tasks->allBitrixIds();
+    }
+
+    public function countInBitrix(): int
+    {
+        return $this->tasks->countInBitrix();
+    }
+
+    /** @param  callable(Collection<int, Task>): void  $callback */
+    public function chunkInBitrix(int $size, callable $callback): void
+    {
+        $this->tasks->chunkInBitrix($size, $callback);
+    }
+
+    public function removeGoneFromBitrix(Task $task): void
+    {
+        $this->tasks->delete($task);
+    }
+
+    /** @param  list<int>  $bitrixTaskIds */
+    public function removeAllGoneFromBitrix(array $bitrixTaskIds): int
+    {
+        return $this->tasks->deleteByBitrixIds($bitrixTaskIds);
     }
 
     /**

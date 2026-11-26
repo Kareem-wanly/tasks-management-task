@@ -18,10 +18,10 @@ use App\Integrations\Bitrix24\Contracts\BitrixTaskResolverInterface;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use App\Repositories\Contracts\ProjectRepositoryInterface;
-use App\Repositories\Contracts\TaskRepositoryInterface;
 use App\Services\Contracts\BitrixSyncServiceInterface;
+use App\Services\Contracts\ProjectServiceInterface;
 use App\Services\Contracts\TaskChatServiceInterface;
+use App\Services\Contracts\TaskServiceInterface;
 use Illuminate\Database\ConnectionInterface;
 
 final readonly class BitrixSyncService implements BitrixSyncServiceInterface
@@ -37,8 +37,8 @@ final readonly class BitrixSyncService implements BitrixSyncServiceInterface
         private BitrixProjectMapperInterface $projectMapper,
         private BitrixEchoGuardInterface $echo,
         private BitrixDeletionGuardInterface $deletions,
-        private TaskRepositoryInterface $tasks,
-        private ProjectRepositoryInterface $projects,
+        private TaskServiceInterface $tasks,
+        private ProjectServiceInterface $projects,
         private TaskChatServiceInterface $chat,
     ) {}
 
@@ -139,7 +139,7 @@ final readonly class BitrixSyncService implements BitrixSyncServiceInterface
 
         $task = $this->tasks->findByBitrixId($bitrixTaskId);
         if ($task instanceof Task) {
-            $this->tasks->delete($task);
+            $this->tasks->removeGoneFromBitrix($task);
             $this->deletions->recordDeleted('tasks', [$bitrixTaskId], 'event');
         }
     }
@@ -153,7 +153,7 @@ final readonly class BitrixSyncService implements BitrixSyncServiceInterface
 
         $project = $this->projects->findByBitrixGroupId($bitrixGroupId);
         if ($project instanceof Project) {
-            $this->projects->delete($project);
+            $this->projects->removeGoneFromBitrix($project);
             $this->deletions->recordDeleted('groups', [$bitrixGroupId], 'event');
         }
     }
