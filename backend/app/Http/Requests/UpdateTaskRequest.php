@@ -53,7 +53,7 @@ final class UpdateTaskRequest extends FormRequest
             $project = $task->project;
 
             if ($project && $project->due_date && $this->filled('due_date')) {
-                $taskDueDate = \Illuminate\Support\Facades\Date::parse($this->input('due_date'))->startOfDay();
+                $taskDueDate = \Illuminate\Support\Facades\Date::parse($this->string('due_date')->toString())->startOfDay();
                 $projectDueDate = \Illuminate\Support\Facades\Date::parse($project->due_date)->startOfDay();
 
                 if ($taskDueDate->gt($projectDueDate)) {
@@ -79,6 +79,6 @@ final class UpdateTaskRequest extends FormRequest
 
         $assignee = $this->input('assigned_to');
 
-        return $assignee === null ? $task->assigned_to !== null : (int) $assignee !== $task->assigned_to;
+        return $assignee === null ? $task->assigned_to !== null : $this->integer('assigned_to') !== $task->assigned_to;
     }
 }

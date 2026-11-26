@@ -8,3 +8,10 @@ parameters:
         - app/
     # Legacy project: raised per PR, up to 9 (PR10b: 8).
     level: 8
+
+services:
+    # transaction() on the injected ConnectionInterface returns what its callback returns.
+    -
+        class: PHPStanExtensions\ConnectionTransactionReturnTypeExtension
+        tags:
+            - phpstan.broker.dynamicMethodReturnTypeExtension

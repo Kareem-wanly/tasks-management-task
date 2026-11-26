@@ -35,11 +35,11 @@ final readonly class UpdateTaskDTO
     public static function fromArray(array $data): self
     {
         return new self(
-            title: self::stringOrNull($data['title'] ?? null),
-            description: self::stringOrNull($data['description'] ?? null),
-            status: self::stringOrNull($data['status'] ?? null),
-            priority: self::stringOrNull($data['priority'] ?? null),
-            dueDate: self::stringOrNull($data['due_date'] ?? null),
+            title: self::textOrNull($data['title'] ?? null),
+            description: self::textOrNull($data['description'] ?? null),
+            status: self::textOrNull($data['status'] ?? null),
+            priority: self::textOrNull($data['priority'] ?? null),
+            dueDate: self::textOrNull($data['due_date'] ?? null),
             assignedTo: self::intOrNull($data['assigned_to'] ?? null),
             parentId: self::intOrNull($data['parent_id'] ?? null),
             allowTimeTracking: self::boolOrNull($data['allow_time_tracking'] ?? null),

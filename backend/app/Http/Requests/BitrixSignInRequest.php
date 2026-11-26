@@ -38,9 +38,21 @@ final class BitrixSignInRequest extends FormRequest
         return $this->isNonce($nonce) ? $nonce : null;
     }
 
-    /** Whether a value (e.g. the nonce kept in the session) has the shape of a sign-in nonce. */
+    /**
+     * Whether a value (e.g. the nonce kept in the session) has the shape of a sign-in nonce.
+     *
+     * @phpstan-assert-if-true string $value
+     */
     public function isNonce(mixed $value): bool
     {
         return BitrixLoginCodes::isNonce($value);
+    }
+
+    /** A query-string value Bitrix24 sends back (state, code); '' when missing or not text. */
+    public function queryText(string $key): string
+    {
+        $value = $this->query($key);
+
+        return is_string($value) ? $value : '';
     }
 }

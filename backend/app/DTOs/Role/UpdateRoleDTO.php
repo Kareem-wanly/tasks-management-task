@@ -35,9 +35,9 @@ final readonly class UpdateRoleDTO
         $permissions = $data['permissions'] ?? [];
 
         return new self(
-            name: self::stringOrNull($data['name'] ?? null),
-            displayName: self::stringOrNull($data['display_name'] ?? null),
-            description: self::stringOrNull($data['description'] ?? null),
+            name: self::textOrNull($data['name'] ?? null),
+            displayName: self::textOrNull($data['display_name'] ?? null),
+            description: self::textOrNull($data['description'] ?? null),
             permissionIds: array_map('intval', $permissions),
             provided: array_keys($data),
         );

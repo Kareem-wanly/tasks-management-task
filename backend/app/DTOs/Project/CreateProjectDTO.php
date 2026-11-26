@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\DTOs\Project;
 
+use App\DTOs\Concerns\ReadsInput;
 use App\Enums\ProjectStatus;
 
 final readonly class CreateProjectDTO
 {
+    use ReadsInput;
+
     public function __construct(
         public string $title,
         public ?string $description = null,
@@ -22,11 +25,11 @@ final readonly class CreateProjectDTO
     public static function fromArray(array $data): self
     {
         return new self(
-            title: (string) $data['title'],
-            description: isset($data['description']) ? (string) $data['description'] : null,
-            status: isset($data['status']) ? ProjectStatus::from((string) $data['status']) : ProjectStatus::Active,
-            startDate: isset($data['start_date']) ? (string) $data['start_date'] : null,
-            dueDate: isset($data['due_date']) ? (string) $data['due_date'] : null,
+            title: self::requiredText($data['title']),
+            description: self::textOrNull($data['description'] ?? null),
+            status: isset($data['status']) ? ProjectStatus::from(self::requiredText($data['status'])) : ProjectStatus::Active,
+            startDate: self::textOrNull($data['start_date'] ?? null),
+            dueDate: self::textOrNull($data['due_date'] ?? null),
         );
     }
 }

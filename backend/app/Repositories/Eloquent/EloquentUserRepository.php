@@ -7,12 +7,15 @@ namespace App\Repositories\Eloquent;
 use App\DTOs\User\UserFiltersDTO;
 use App\Models\Role;
 use App\Models\User;
+use App\Repositories\Concerns\ReadsColumns;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 final class EloquentUserRepository implements UserRepositoryInterface
 {
+    use ReadsColumns;
+
     /** @return LengthAwarePaginator<int, User> */
     public function paginate(UserFiltersDTO $filters, int $perPage): LengthAwarePaginator
     {
@@ -116,19 +119,24 @@ final class EloquentUserRepository implements UserRepositoryInterface
 
     public function idByBitrixId(int $bitrixId): ?int
     {
-        return $bitrixId === 0 ? null : User::where('bitrix_user_id', $bitrixId)->value('id');
+        return $bitrixId === 0 ? null : self::toIntOrNull(User::where('bitrix_user_id', $bitrixId)->value('id'));
     }
 
     public function idsByBitrixIds(array $bitrixIds): array
     {
-        return User::whereIn('bitrix_user_id', $bitrixIds)->pluck('id', 'bitrix_user_id')->all();
+        $ids = [];
+        foreach (User::whereIn('bitrix_user_id', $bitrixIds)->get(['id', 'bitrix_user_id']) as $user) {
+            $ids[self::toInt($user->bitrix_user_id)] = $user->id;
+        }
+
+        return $ids;
     }
 
     public function bitrixIdOf(int $userId): ?int
     {
         $bitrixId = User::whereKey($userId)->value('bitrix_user_id');
 
-        return $bitrixId === null ? null : (int) $bitrixId;
+        return self::toIntOrNull($bitrixId);
     }
 
     /** @return Collection<int, User> */

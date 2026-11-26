@@ -19,7 +19,7 @@ final class StoreTaskStatusLookupRequest extends TaskLookupRequest
         return TaskStatus::class;
     }
 
-    /** @return array<string, mixed> */
+    /** @return array<string, list<mixed>> */
     protected function extraRules(): array
     {
         return ['is_final' => ['boolean']];

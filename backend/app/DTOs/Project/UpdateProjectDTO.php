@@ -32,11 +32,11 @@ final readonly class UpdateProjectDTO
     public static function fromArray(array $data): self
     {
         return new self(
-            title: self::stringOrNull($data['title'] ?? null),
-            description: self::stringOrNull($data['description'] ?? null),
-            status: isset($data['status']) ? ProjectStatus::from((string) $data['status']) : null,
-            startDate: self::stringOrNull($data['start_date'] ?? null),
-            dueDate: self::stringOrNull($data['due_date'] ?? null),
+            title: self::textOrNull($data['title'] ?? null),
+            description: self::textOrNull($data['description'] ?? null),
+            status: isset($data['status']) ? ProjectStatus::from(self::requiredText($data['status'])) : null,
+            startDate: self::textOrNull($data['start_date'] ?? null),
+            dueDate: self::textOrNull($data['due_date'] ?? null),
             provided: array_keys($data),
         );
     }

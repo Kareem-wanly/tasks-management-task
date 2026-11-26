@@ -6,11 +6,14 @@ namespace App\Repositories\Eloquent;
 
 use App\Models\Task;
 use App\Models\TaskChecklistItem;
+use App\Repositories\Concerns\ReadsColumns;
 use App\Repositories\Contracts\TaskChecklistRepositoryInterface;
 use Illuminate\Support\Collection;
 
 final class EloquentTaskChecklistRepository implements TaskChecklistRepositoryInterface
 {
+    use ReadsColumns;
+
     /** @return Collection<int, TaskChecklistItem> */
     public function forTask(Task $task): Collection
     {
@@ -42,7 +45,7 @@ final class EloquentTaskChecklistRepository implements TaskChecklistRepositoryIn
         return $list->task->checklistItems()->create([
             'parent_id' => $list->id,
             'title' => $title,
-            'sort_index' => (int) $list->items()->max('sort_index') + 1,
+            'sort_index' => (self::toIntOrNull($list->items()->max('sort_index')) ?? 0) + 1,
         ]);
     }
 

@@ -23,7 +23,7 @@ class ParentTask implements ValidationRule
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        $parent = resolve(TaskRepositoryInterface::class)->find((int) $value);
+        $parent = is_numeric($value) ? resolve(TaskRepositoryInterface::class)->find((int) $value) : null;
 
         if (! $parent || ! $this->user->can('view', $parent)) {
             $fail('The selected parent task does not exist.');

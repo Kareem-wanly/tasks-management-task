@@ -67,7 +67,7 @@ abstract class TaskLookupRequest extends FormRequest
     /**
      * Rules only one kind of value has (e.g. is_final for statuses).
      *
-     * @return array<string, mixed>
+     * @return array<string, list<mixed>>
      */
     protected function extraRules(): array
     {

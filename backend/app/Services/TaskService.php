@@ -145,7 +145,8 @@ final readonly class TaskService implements TaskServiceInterface
         }
 
         if ($task->isDirty('status')) {
-            $this->applyStatusInBitrix($actor, $task, $this->bitrixStatus($task->getOriginal('status')));
+            $original = $task->getOriginal('status');
+            $this->applyStatusInBitrix($actor, $task, $this->bitrixStatus(is_string($original) ? $original : null));
         }
 
         if ($changed !== [] || $task->isDirty('status')) {

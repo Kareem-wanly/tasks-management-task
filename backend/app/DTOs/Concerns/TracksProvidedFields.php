@@ -11,6 +11,8 @@ namespace App\DTOs\Concerns;
  */
 trait TracksProvidedFields
 {
+    use ReadsInput;
+
     public function has(string $field): bool
     {
         return in_array($field, $this->provided, true);
@@ -23,20 +25,5 @@ trait TracksProvidedFields
     private function onlyProvided(array $values): array
     {
         return array_intersect_key($values, array_flip($this->provided));
-    }
-
-    private static function stringOrNull(mixed $value): ?string
-    {
-        return $value === null ? null : (string) $value;
-    }
-
-    private static function intOrNull(mixed $value): ?int
-    {
-        return $value === null ? null : (int) $value;
-    }
-
-    private static function boolOrNull(mixed $value): ?bool
-    {
-        return $value === null ? null : filter_var($value, FILTER_VALIDATE_BOOLEAN);
     }
 }

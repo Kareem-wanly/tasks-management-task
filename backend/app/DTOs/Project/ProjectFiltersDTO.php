@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\DTOs\Project;
 
+use App\DTOs\Concerns\ReadsInput;
+
 /**
  * Filters and sort of the project list. Null means "not filtered".
  */
 final readonly class ProjectFiltersDTO
 {
+    use ReadsInput;
+
     public function __construct(
         public ?string $search = null,
         public ?string $status = null,
@@ -23,17 +27,11 @@ final readonly class ProjectFiltersDTO
     public static function fromArray(array $data): self
     {
         return new self(
-            search: self::text($data['search'] ?? null),
-            status: self::text($data['status'] ?? null),
-            memberId: empty($data['member_id']) ? null : (int) $data['member_id'],
-            sort: self::text($data['sort'] ?? null),
-            direction: self::text($data['direction'] ?? null),
+            search: self::filledTextOrNull($data['search'] ?? null),
+            status: self::filledTextOrNull($data['status'] ?? null),
+            memberId: empty($data['member_id']) ? null : self::intOrNull($data['member_id']),
+            sort: self::filledTextOrNull($data['sort'] ?? null),
+            direction: self::filledTextOrNull($data['direction'] ?? null),
         );
-    }
-
-    /** An empty value filters nothing, as before. */
-    private static function text(mixed $value): ?string
-    {
-        return $value === null || $value === '' ? null : (string) $value;
     }
 }
