@@ -8,6 +8,9 @@ use App\DTOs\Project\AddProjectMemberDTO;
 use App\DTOs\Project\CreateProjectDTO;
 use App\DTOs\Project\ProjectFiltersDTO;
 use App\DTOs\Project\UpdateProjectDTO;
+use App\Enums\ActivityAction;
+use App\Enums\OutboundOpAction;
+use App\Enums\OutboundOpEntity;
 use App\Enums\ProjectMemberRole;
 use App\Enums\ProjectStatus;
 use App\Exceptions\Bitrix\BitrixException;
@@ -16,7 +19,6 @@ use App\Exceptions\Project\ProjectMemberAlreadyAddedException;
 use App\Exceptions\Project\ProjectMemberNotFoundException;
 use App\Integrations\Bitrix24\BitrixFingerprint;
 use App\Integrations\Bitrix24\Contracts\BitrixProjectRepositoryInterface;
-use App\Models\BitrixOutboundOp;
 use App\Models\Project;
 use App\Models\User;
 use App\Repositories\Contracts\ActivityLogRepositoryInterface;
@@ -146,7 +148,7 @@ final readonly class ProjectService implements ProjectServiceInterface
 
         $this->addMemberInBitrix($actor, $project, $this->users->findOrFail($userId), $role);
         $this->projects->attachMember($project, $userId, $role);
-        $this->log($actor, $project, 'member_added', "User ID {$userId} was added to project '{$project->title}'.");
+        $this->log($actor, $project, ActivityAction::MemberAdded, "User ID {$userId} was added to project '{$project->title}'.");
 
         return $this->projects->freshWithMembers($project);
     }
@@ -159,12 +161,12 @@ final readonly class ProjectService implements ProjectServiceInterface
 
         $this->removeMemberInBitrix($actor, $project, $member);
         $this->projects->detachMember($project, $member->id);
-        $this->log($actor, $project, 'member_removed', "{$member->name} was removed from project '{$project->title}'.");
+        $this->log($actor, $project, ActivityAction::MemberRemoved, "{$member->name} was removed from project '{$project->title}'.");
 
         return $this->projects->freshWithMembers($project);
     }
 
-    private function log(User $actor, Project $project, string $action, string $description): void
+    private function log(User $actor, Project $project, ActivityAction $action, string $description): void
     {
         $this->activities->create([
             'user_id' => $actor->id,
@@ -180,7 +182,7 @@ final readonly class ProjectService implements ProjectServiceInterface
         $this->ensureSignedInWithBitrix($actor);
         $project->bitrix_group_id = $this->bitrixProjects->createGroup($actor, $project);
         $project->bitrix_synced_at = now();
-        $this->recordOutbound($actor, $project, 'create');
+        $this->recordOutbound($actor, $project, OutboundOpAction::Create);
     }
 
     /** Sends the unsaved changes. Of `status`, Bitrix keeps only the archived state (CLOSED). */
@@ -200,7 +202,7 @@ final readonly class ProjectService implements ProjectServiceInterface
         $this->ensureSignedInWithBitrix($actor);
         $this->bitrixProjects->updateGroup($actor, $project, $columns, $archiving ? $isArchived : null);
         $project->bitrix_synced_at = now();
-        $this->recordOutbound($actor, $project, 'update');
+        $this->recordOutbound($actor, $project, OutboundOpAction::Update);
     }
 
     /** Deleting here only archives the Bitrix group: deleting one there is permanent and takes its feed and files. */
@@ -212,7 +214,7 @@ final readonly class ProjectService implements ProjectServiceInterface
 
         $this->ensureSignedInWithBitrix($actor);
         $this->bitrixProjects->closeGroup($actor, $project->bitrix_group_id);
-        $this->ops->record(BitrixOutboundOp::PROJECT, $project->bitrix_group_id, 'delete', null, $actor);
+        $this->ops->record(OutboundOpEntity::Project, $project->bitrix_group_id, OutboundOpAction::Delete, null, $actor);
     }
 
     private function addMemberInBitrix(User $actor, Project $project, User $member, ProjectMemberRole $role): void
@@ -251,8 +253,8 @@ final readonly class ProjectService implements ProjectServiceInterface
     }
 
     /** Remembered so the echo of our change is recognised, not taken for a change made in Bitrix. */
-    private function recordOutbound(User $actor, Project $project, string $action): void
+    private function recordOutbound(User $actor, Project $project, OutboundOpAction $action): void
     {
-        $this->ops->record(BitrixOutboundOp::PROJECT, (int) $project->bitrix_group_id, $action, $this->fingerprints->project($project), $actor);
+        $this->ops->record(OutboundOpEntity::Project, (int) $project->bitrix_group_id, $action, $this->fingerprints->project($project), $actor);
     }
 }

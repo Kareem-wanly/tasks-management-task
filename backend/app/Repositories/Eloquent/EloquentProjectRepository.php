@@ -9,6 +9,7 @@ use App\Enums\ProjectMemberRole;
 use App\Enums\ProjectStatus;
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\TaskStatus;
 use App\Models\User;
 use App\Repositories\Concerns\ReadsColumns;
 use App\Repositories\Contracts\ProjectRepositoryInterface;
@@ -174,7 +175,7 @@ final class EloquentProjectRepository implements ProjectRepositoryInterface
         return [
             'tasks',
             'tasks as completed_tasks_count' => fn ($q) => $q->finished(),
-            'tasks as in_progress_tasks_count' => fn ($q) => $q->where('status', 'in_progress'),
+            'tasks as in_progress_tasks_count' => fn ($q) => $q->where('status', TaskStatus::IN_PROGRESS_KEY),
         ];
     }
 }

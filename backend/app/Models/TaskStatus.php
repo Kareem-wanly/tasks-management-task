@@ -9,6 +9,9 @@ namespace App\Models;
  */
 class TaskStatus extends TaskLookup
 {
+    /** The seeded "In progress" status, counted on project cards. */
+    public const IN_PROGRESS_KEY = 'in_progress';
+
     /** Bitrix status 1 ("New") is legacy; Bitrix itself shows it as Pending (2). */
     private const BITRIX_NEW = 1;
 

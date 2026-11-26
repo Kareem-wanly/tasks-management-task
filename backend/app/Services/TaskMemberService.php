@@ -6,10 +6,11 @@ namespace App\Services;
 
 use App\DTOs\Task\DelegateTaskDTO;
 use App\DTOs\Task\TaskMembersDTO;
+use App\Enums\OutboundOpAction;
+use App\Enums\OutboundOpEntity;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixFingerprint;
 use App\Integrations\Bitrix24\Contracts\BitrixTaskRepositoryInterface;
-use App\Models\BitrixOutboundOp;
 use App\Models\Task;
 use App\Models\User;
 use App\Repositories\Contracts\BitrixOutboundOpRepositoryInterface;
@@ -107,7 +108,7 @@ final readonly class TaskMemberService implements TaskMemberServiceInterface
     {
         $this->bitrixSync->refreshTask($task->bitrixId());
         $this->tasks->reload($task);
-        $this->ops->record(BitrixOutboundOp::TASK, $task->bitrixId(), 'update', $this->fingerprints->task($task), $actor);
+        $this->ops->record(OutboundOpEntity::Task, $task->bitrixId(), OutboundOpAction::Update, $this->fingerprints->task($task), $actor);
     }
 
     /**
