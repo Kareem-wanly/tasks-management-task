@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Jobs\Bitrix;
 
+use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixClient;
 use App\Integrations\Bitrix24\BitrixDeletionGuard;
-use App\Integrations\Bitrix24\BitrixException;
 use App\Integrations\Bitrix24\BitrixProjectSync;
 use App\Integrations\Bitrix24\BitrixRecordFetcher;
 use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;

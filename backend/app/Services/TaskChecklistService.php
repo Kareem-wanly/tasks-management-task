@@ -8,9 +8,9 @@ use App\DTOs\Task\AddChecklistItemDTO;
 use App\DTOs\Task\MoveChecklistItemDTO;
 use App\DTOs\Task\TaskChecklistDTO;
 use App\DTOs\Task\UpdateChecklistItemDTO;
-use App\Exceptions\BusinessRuleException;
+use App\Exceptions\Bitrix\BitrixException;
+use App\Exceptions\Task\ChecklistListNotMovableException;
 use App\Integrations\Bitrix24\BitrixChecklistPusher;
-use App\Integrations\Bitrix24\BitrixException;
 use App\Models\Task;
 use App\Models\TaskChecklistItem;
 use App\Models\User;
@@ -101,7 +101,7 @@ class TaskChecklistService
         $afterId = $position->afterId;
 
         if ($item->isList()) {
-            throw new BusinessRuleException('Lists cannot be moved.');
+            throw new ChecklistListNotMovableException;
         }
 
         $task = $item->task;

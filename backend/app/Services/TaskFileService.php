@@ -7,7 +7,7 @@ namespace App\Services;
 use App\DTOs\Task\FileDownloadDTO;
 use App\DTOs\Task\TaskFilesDTO;
 use App\DTOs\Task\UploadTaskFileDTO;
-use App\Integrations\Bitrix24\BitrixException;
+use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixFilePusher;
 use App\Models\Task;
 use App\Models\TaskFile;

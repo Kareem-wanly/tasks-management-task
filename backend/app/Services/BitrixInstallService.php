@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Exceptions\BusinessRuleException;
+use App\Exceptions\Bitrix\BitrixException;
+use App\Exceptions\Bitrix\BitrixInstallRefusedException;
 use App\Integrations\Bitrix24\BitrixClient;
-use App\Integrations\Bitrix24\BitrixException;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Models\BitrixPortal;
 use App\Repositories\Contracts\BitrixPortalRepositoryInterface;
@@ -50,14 +50,14 @@ class BitrixInstallService
         $this->ensureOurPortal($auth['domain'] ?? null);
 
         if (empty($auth['member_id']) || empty($auth['application_token']) || empty($auth['access_token']) || empty($auth['refresh_token'])) {
-            throw new BusinessRuleException('Missing member_id, application_token or user tokens.');
+            throw BitrixInstallRefusedException::missingEventAuth();
         }
 
         // Anyone who knows member_id could forge this event: an installed portal
         // only accepts it with the application token Bitrix gave us before.
         $installed = $this->portals->findByMemberId((string) $auth['member_id']);
         if ($installed instanceof BitrixPortal && ! hash_equals((string) $installed->application_token, (string) $auth['application_token'])) {
-            throw BusinessRuleException::forbidden('The application token does not match this portal.');
+            throw BitrixInstallRefusedException::applicationTokenMismatch();
         }
 
         $this->ensureInstallerMayInstall((string) $auth['access_token']);
@@ -86,7 +86,7 @@ class BitrixInstallService
 
         foreach (['REFRESH_ID', 'member_id', 'APPLICATION_TOKEN'] as $key) {
             if (empty($page[$key])) {
-                throw new BusinessRuleException('Missing install parameters.');
+                throw BitrixInstallRefusedException::missingParameters();
             }
         }
 
@@ -111,22 +111,22 @@ class BitrixInstallService
             $app = $this->bitrix->callWithToken($accessToken, 'app.info')['result'] ?? [];
             $isAdmin = (bool) ($this->bitrix->callWithToken($accessToken, 'user.admin')['result'] ?? false);
         } catch (BitrixException) {
-            throw BusinessRuleException::forbidden('Bitrix24 did not accept the install token.');
+            throw BitrixInstallRefusedException::tokenNotAccepted();
         }
 
         if (! hash_equals((string) config('bitrix.client_id'), (string) ($app['CODE'] ?? ''))) {
-            throw BusinessRuleException::forbidden('The install token was not issued for this app.');
+            throw BitrixInstallRefusedException::tokenForAnotherApp();
         }
 
         if (! $isAdmin) {
-            throw BusinessRuleException::forbidden('Only a Bitrix24 administrator can install this app. Ask your portal administrator to install it.');
+            throw BitrixInstallRefusedException::notAnAdministrator();
         }
     }
 
     private function ensureOurPortal(mixed $domain): void
     {
         if (! is_string($domain) || ! hash_equals((string) config('bitrix.portal'), $domain)) {
-            throw BusinessRuleException::forbidden('Unknown portal.');
+            throw BitrixInstallRefusedException::unknownPortal();
         }
     }
 

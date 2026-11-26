@@ -8,7 +8,9 @@ use App\DTOs\Project\AddProjectMemberDTO;
 use App\DTOs\Project\CreateProjectDTO;
 use App\DTOs\Project\ProjectFiltersDTO;
 use App\DTOs\Project\UpdateProjectDTO;
-use App\Exceptions\BusinessRuleException;
+use App\Exceptions\Project\ProjectHasUnfinishedTasksException;
+use App\Exceptions\Project\ProjectMemberAlreadyAddedException;
+use App\Exceptions\Project\ProjectMemberNotFoundException;
 use App\Integrations\Bitrix24\BitrixProjectPusher;
 use App\Models\Project;
 use App\Models\User;
@@ -80,9 +82,7 @@ class ProjectService
     public function update(User $actor, Project $project, UpdateProjectDTO $data): Project
     {
         if ($data->status === 'completed' && $this->projects->hasUnfinishedTasks($project)) {
-            throw new BusinessRuleException('Cannot complete project with unfinished tasks.', 422, [
-                'status' => ['Project has pending or in-progress tasks that must be completed first.'],
-            ]);
+            throw new ProjectHasUnfinishedTasksException;
         }
 
         $project->fill($data->toArray());
@@ -120,8 +120,7 @@ class ProjectService
         $role = $member->role;
 
         if ($this->projects->hasMember($project, $userId)) {
-            throw new BusinessRuleException('User is already a member of this project.', 422,
-                ['user_id' => ['The specified user is already attached to this project.']], ['success' => false]);
+            throw new ProjectMemberAlreadyAddedException;
         }
 
         $this->bitrix->addMember($actor, $project, $this->users->findOrFail($userId), $role);
@@ -134,8 +133,7 @@ class ProjectService
     public function removeMember(User $actor, Project $project, User $member): Project
     {
         if (! $this->projects->hasMember($project, $member->id)) {
-            throw new BusinessRuleException('User is not a member of this project.', 404,
-                ['user_id' => ['The specified user is not attached to this project.']], ['success' => false]);
+            throw new ProjectMemberNotFoundException;
         }
 
         $this->bitrix->removeMember($actor, $project, $member);

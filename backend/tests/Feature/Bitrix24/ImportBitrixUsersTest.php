@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Bitrix24;
 
+use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixClient;
-use App\Integrations\Bitrix24\BitrixException;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use App\Jobs\Bitrix\ImportBitrixUsers;

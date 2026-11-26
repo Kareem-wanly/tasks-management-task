@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24;
 
+use App\Exceptions\Bitrix\BitrixException;
 use Illuminate\Support\Facades\Log;
 
 /**
