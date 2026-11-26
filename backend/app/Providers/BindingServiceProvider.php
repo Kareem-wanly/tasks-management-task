@@ -25,6 +25,7 @@ final class BindingServiceProvider extends ServiceProvider
         BitrixGatewayInterface::class => BitrixGateway::class,
         Bitrix\Contracts\BitrixProjectRepositoryInterface::class => Bitrix\Repositories\BitrixProjectRepository::class,
         Bitrix\Contracts\BitrixUserRepositoryInterface::class => Bitrix\Repositories\BitrixUserRepository::class,
+        Bitrix\Contracts\BitrixTaskRepositoryInterface::class => Bitrix\Repositories\BitrixTaskRepository::class,
 
         // Repositories
         RepositoryContracts\ActivityLogRepositoryInterface::class => Eloquent\EloquentActivityLogRepository::class,

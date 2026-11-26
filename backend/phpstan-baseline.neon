@@ -511,36 +511,6 @@ parameters:
 			path: app/Integrations/Bitrix24/BitrixResultPusher.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$bitrix_group_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Integrations/Bitrix24/BitrixTaskPusher.php
-
-		-
-			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Integrations/Bitrix24/BitrixTaskPusher.php
-
-		-
-			message: '#^Match expression does not handle remaining value\: string$#'
-			identifier: match.unhandled
-			count: 1
-			path: app/Integrations/Bitrix24/BitrixTaskPusher.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>bitrix_group_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Integrations/Bitrix24/BitrixTaskPusher.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>bitrix_user_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Integrations/Bitrix24/BitrixTaskPusher.php
-
-		-
 			message: '#^Parameter \#2 \$task of method App\\Integrations\\Bitrix24\\BitrixTimePusher\:\:call\(\) expects App\\Models\\Task, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
 			identifier: argument.type
 			count: 2
@@ -571,22 +541,10 @@ parameters:
 			path: app/Models/Task.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:hasMember\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/Task.php
-
-		-
 			message: '#^Empty array passed to foreach\.$#'
 			identifier: foreach.emptyArray
 			count: 1
 			path: app/Models/TaskChatMessage.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$owner_id\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Policies/TaskPolicy.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:unfinished\(\)\.$#'
