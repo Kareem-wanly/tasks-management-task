@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Actions\Bitrix\SyncBitrixResultsAction;
 use App\DTOs\Task\TaskResultDTO;
 use App\DTOs\Task\TaskResultsDTO;
 use App\Exceptions\Bitrix\BitrixException;
-use App\Integrations\Bitrix24\BitrixResultSync;
 use App\Integrations\Bitrix24\Contracts\BitrixResultRepositoryInterface;
 use App\Models\Task;
 use App\Models\TaskResult;
@@ -26,7 +26,7 @@ final readonly class TaskResultService implements TaskResultServiceInterface
     public function __construct(
         private TaskResultRepositoryInterface $results,
         private BitrixResultRepositoryInterface $bitrixResults,
-        private BitrixResultSync $resultSync,
+        private SyncBitrixResultsAction $resultSync,
     ) {}
 
     /** The results, fresh from Bitrix; our last copy when Bitrix can't be reached. */
@@ -97,7 +97,7 @@ final readonly class TaskResultService implements TaskResultServiceInterface
     /** Brings our copy of the task's results up to date (also the nightly import). */
     public function refreshFromBitrix(Task $task): void
     {
-        $this->resultSync->sync($task, $this->bitrixResults->list((int) $task->bitrix_task_id));
+        $this->resultSync->handle($task, $this->bitrixResults->list((int) $task->bitrix_task_id));
     }
 
     private function current(Task $task, bool $stale = false): TaskResultsDTO

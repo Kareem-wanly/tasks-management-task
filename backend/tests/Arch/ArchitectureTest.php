@@ -135,6 +135,27 @@ arch('only the Bitrix repositories call the gateway')
     ->expect('App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface')
     ->toOnlyBeUsedIn(['App\Integrations\Bitrix24', 'App\Providers', 'App\DTOs\Task\FileDownloadDTO', 'Tests']);
 
+// ARC-14: single-purpose steps inside the service layer, used by services only.
+arch('actions')
+    ->expect('App\Actions')
+    ->toBeFinal()
+    ->toBeReadonly()
+    ->toHaveSuffix('Action')
+    ->toHaveMethod('handle')
+    ->not->toHavePublicMethodsBesides(['__construct', 'handle'])
+    ->toOnlyBeUsedIn(['App\Services', 'Tests'])
+    ->not->toUse([
+        'Illuminate\Http\Request',
+        'Illuminate\Support\Facades\DB',
+        'Illuminate\Database\ConnectionInterface',
+        'App\Jobs',
+    ]);
+
+// ARC-6: transactions belong to the services, never to the Bitrix layer.
+arch('integrations do not own transactions')
+    ->expect('App\Integrations')
+    ->not->toUse(['Illuminate\Support\Facades\DB', 'Illuminate\Database\ConnectionInterface']);
+
 // ARC-5: models describe data (relations, casts, scopes); queries and writes live in repositories.
 arch('models do not use the DB facade')
     ->expect('App\Models')

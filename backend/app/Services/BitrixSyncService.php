@@ -4,28 +4,36 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Actions\Bitrix\SyncBitrixProjectAction;
+use App\Actions\Bitrix\SyncBitrixTaskAction;
+use App\Actions\Bitrix\SyncBitrixUserAction;
 use App\Enums\TaskMemberRole;
+use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixDeletionGuard;
 use App\Integrations\Bitrix24\BitrixEchoGuard;
-use App\Integrations\Bitrix24\BitrixProjectSync;
 use App\Integrations\Bitrix24\BitrixRecordFetcher;
-use App\Integrations\Bitrix24\BitrixTaskSync;
+use App\Integrations\Bitrix24\Contracts\BitrixTaskResolverInterface;
 use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;
 use App\Integrations\Bitrix24\Mappers\BitrixTaskMapper;
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\User;
 use App\Repositories\Contracts\ProjectRepositoryInterface;
 use App\Repositories\Contracts\TaskRepositoryInterface;
 use App\Services\Contracts\BitrixSyncServiceInterface;
 use App\Services\Contracts\TaskChatServiceInterface;
+use Illuminate\Database\ConnectionInterface;
 
 final readonly class BitrixSyncService implements BitrixSyncServiceInterface
 {
     public function __construct(
         private BitrixRecordFetcher $fetch,
-        private BitrixTaskSync $taskSync,
+        private BitrixTaskResolverInterface $taskResolver,
+        private SyncBitrixTaskAction $taskSync,
         private BitrixTaskMapper $taskMapper,
-        private BitrixProjectSync $projectSync,
+        private SyncBitrixProjectAction $projectSync,
+        private SyncBitrixUserAction $userSync,
+        private ConnectionInterface $database,
         private BitrixProjectMapper $projectMapper,
         private BitrixEchoGuard $echo,
         private BitrixDeletionGuard $deletions,
@@ -46,7 +54,7 @@ final readonly class BitrixSyncService implements BitrixSyncServiceInterface
 
         // The task may point at people or a group we haven't seen yet.
         $members = $this->taskMapper->members($row);
-        $this->fetch->importMissingUsers([
+        $this->importMissingUsers([
             $this->taskMapper->creatorBitrixId($row), $this->taskMapper->responsibleBitrixId($row),
             ...$members[TaskMemberRole::Accomplice->value] ?? [], ...$members[TaskMemberRole::Auditor->value] ?? [],
         ]);
@@ -57,12 +65,22 @@ final readonly class BitrixSyncService implements BitrixSyncServiceInterface
         }
 
         // Our own change coming back: already saved here.
-        $attributes = $this->taskSync->resolve($row);
+        $attributes = $this->taskResolver->resolve($row);
         if ($attributes !== null && $this->echo->isTaskEcho($bitrixTaskId, $attributes, $members)) {
             return;
         }
 
-        $this->taskSync->upsert($row);
+        $this->taskSync->handle($row);
+    }
+
+    public function refreshTask(int $bitrixTaskId): void
+    {
+        $row = $this->fetch->task($bitrixTaskId)
+            ?? throw BitrixException::cannotSync('The task is no longer in Bitrix24.');
+
+        $members = $this->taskMapper->members($row);
+        $this->importMissingUsers([...$members[TaskMemberRole::Accomplice->value] ?? [], ...$members[TaskMemberRole::Auditor->value] ?? []]);
+        $this->taskSync->handle($row);
     }
 
     public function syncProject(int $bitrixGroupId): void
@@ -81,9 +99,9 @@ final readonly class BitrixSyncService implements BitrixSyncServiceInterface
         }
 
         $members = $this->fetch->members($bitrixGroupId);
-        $this->fetch->importMissingUsers([$this->projectMapper->ownerBitrixId($group), ...array_keys($this->projectMapper->members($members))]);
+        $this->importMissingUsers([$this->projectMapper->ownerBitrixId($group), ...array_keys($this->projectMapper->members($members))]);
 
-        $this->projectSync->upsert($group, $members);
+        $this->database->transaction(fn (): ?Project => $this->projectSync->handle($group, $members));
     }
 
     public function syncTaskChat(int $bitrixTaskId): void
@@ -92,6 +110,19 @@ final readonly class BitrixSyncService implements BitrixSyncServiceInterface
 
         if ($task instanceof Task && $task->isInBitrix()) {
             $this->chat->refreshFromBitrix($task);
+        }
+    }
+
+    /**
+     * People a record points at that we haven't imported yet, each saved in
+     * its own transaction.
+     *
+     * @param  list<int>  $bitrixIds
+     */
+    private function importMissingUsers(array $bitrixIds): void
+    {
+        foreach ($this->fetch->missingUsers($bitrixIds) as $row) {
+            $this->database->transaction(fn (): ?User => $this->userSync->handle($row));
         }
     }
 

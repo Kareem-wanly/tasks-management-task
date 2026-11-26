@@ -18,7 +18,6 @@ final readonly class BitrixRecordFetcher
 {
     public function __construct(
         private BitrixGatewayInterface $bitrix,
-        private BitrixUserSync $users,
         private UserRepositoryInterface $userRepository,
     ) {}
 
@@ -58,20 +57,23 @@ final readonly class BitrixRecordFetcher
     }
 
     /**
-     * Imports the given Bitrix users we don't have yet (e.g. someone who
-     * joined after the last import), so records pointing at them can be saved.
+     * The Bitrix rows of the given users we don't have yet (e.g. someone who
+     * joined after the last import); the caller imports them, so records
+     * pointing at them can be saved.
      *
      * @param  list<int>  $bitrixIds
+     * @return list<array<string, mixed>>
      */
-    public function importMissingUsers(array $bitrixIds): void
+    public function missingUsers(array $bitrixIds): array
     {
         $bitrixIds = array_values(array_filter(array_unique($bitrixIds)));
         $known = array_keys($this->userRepository->idsByBitrixIds($bitrixIds));
 
+        $rows = [];
         foreach (array_diff($bitrixIds, $known) as $bitrixId) {
-            foreach (BitrixPayload::of($this->bitrix->callAsService('user.get', ['FILTER' => ['ID' => $bitrixId]]), 'user.get')->rows('result') as $row) {
-                $this->users->upsert($row);
-            }
+            $rows = [...$rows, ...BitrixPayload::of($this->bitrix->callAsService('user.get', ['FILTER' => ['ID' => $bitrixId]]), 'user.get')->rows('result')];
         }
+
+        return $rows;
     }
 }

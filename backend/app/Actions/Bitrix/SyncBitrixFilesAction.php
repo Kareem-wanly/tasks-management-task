@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Integrations\Bitrix24;
+namespace App\Actions\Bitrix;
 
+use App\Integrations\Bitrix24\BitrixPayload;
 use App\Models\Task;
 use App\Models\TaskFile;
 use App\Repositories\Contracts\TaskFileRepositoryInterface;
@@ -16,7 +17,7 @@ use Symfony\Component\Mime\MimeTypes;
  * (disk.attachedObject.get rows). Bitrix sends no events for attachments,
  * so this runs when the task is opened and every night.
  */
-final readonly class BitrixFileSync
+final readonly class SyncBitrixFilesAction
 {
     public function __construct(
         private TaskFileRepositoryInterface $files,
@@ -26,7 +27,7 @@ final readonly class BitrixFileSync
     /**
      * @param  list<array<string, mixed>>  $attachments
      */
-    public function sync(Task $task, array $attachments): void
+    public function handle(Task $task, array $attachments): void
     {
         $ours = $this->files->bitrixFiles($task);
         $attachments = array_map(fn (array $attachment): BitrixPayload => BitrixPayload::of($attachment, 'disk.attachedObject.get'), $attachments);

@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Integrations\Bitrix24;
+namespace App\Actions\Bitrix;
 
+use App\Integrations\Bitrix24\BitrixPayload;
 use App\Models\Task;
 use App\Models\TaskChecklistItem;
 use App\Repositories\Contracts\TaskChecklistRepositoryInterface;
@@ -13,7 +14,7 @@ use App\Repositories\Contracts\TaskChecklistRepositoryInterface;
  * (task.checklistitem.getlist rows). Bitrix sends no events for
  * checklists, so this runs when the task is opened and every night.
  */
-final readonly class BitrixChecklistSync
+final readonly class SyncBitrixChecklistAction
 {
     /** Fields task.checklistitem.getlist must return for this sync. */
     public const SELECT = ['ID', 'PARENT_ID', 'TITLE', 'SORT_INDEX', 'IS_COMPLETE'];
@@ -23,7 +24,7 @@ final readonly class BitrixChecklistSync
     /**
      * @param  list<array<string, mixed>>  $rows
      */
-    public function sync(Task $task, array $rows): void
+    public function handle(Task $task, array $rows): void
     {
         $ours = $this->checklists->bitrixItems($task);
         $byBitrixId = [];

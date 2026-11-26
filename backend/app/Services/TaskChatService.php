@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Actions\Bitrix\SyncBitrixChatAction;
 use App\DTOs\Task\FileDownloadDTO;
 use App\DTOs\Task\TaskChatDTO;
 use App\DTOs\Task\TaskChatMessageDTO;
 use App\Exceptions\Bitrix\BitrixException;
-use App\Integrations\Bitrix24\BitrixChatSync;
 use App\Integrations\Bitrix24\Contracts\BitrixChatRepositoryInterface;
 use App\Models\Task;
 use App\Models\TaskChatMessage;
@@ -37,7 +37,7 @@ final readonly class TaskChatService implements TaskChatServiceInterface
         private TaskChatMessageRepositoryInterface $messages,
         private TaskRepositoryInterface $tasks,
         private BitrixChatRepositoryInterface $bitrixChat,
-        private BitrixChatSync $chatSync,
+        private SyncBitrixChatAction $chatSync,
     ) {}
 
     /** The chat, fresh from Bitrix; our last copy when Bitrix can't be reached. */
@@ -119,7 +119,7 @@ final readonly class TaskChatService implements TaskChatServiceInterface
         }
 
         $page = $this->bitrixChat->messages($chatId, $complete);
-        $this->chatSync->sync($task, $page['messages'], $page['files'], $complete);
+        $this->chatSync->handle($task, $page['messages'], $page['files'], $complete);
     }
 
     private function current(Task $task, bool $stale = false): TaskChatDTO

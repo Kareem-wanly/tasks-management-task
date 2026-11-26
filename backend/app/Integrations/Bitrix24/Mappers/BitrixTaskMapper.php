@@ -13,7 +13,7 @@ use Carbon\CarbonImmutable;
 
 /**
  * Turns a Bitrix24 task (tasks.task.list, camelCase keys) into our tasks
- * columns. People and project are returned as Bitrix IDs; BitrixTaskSync
+ * columns. People and project are returned as Bitrix IDs; BitrixTaskResolver
  * resolves them.
  *
  * @phpstan-type TaskAttributes array{bitrix_task_id: int, title: string, description: string|null, status: string|null, priority: string|null, due_date: CarbonImmutable|null, allow_time_tracking: bool, time_estimate: int, time_spent: int, completed_at: CarbonImmutable|null, created_at?: CarbonImmutable}

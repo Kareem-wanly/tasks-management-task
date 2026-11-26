@@ -18,6 +18,13 @@ interface BitrixSyncServiceInterface
     public function syncTask(int $bitrixTaskId): void;
 
     /** The same for a workgroup (our project). */
+    /**
+     * Saves the task as Bitrix now has it, importing members we don't know
+     * yet. Used after our own member changes: Bitrix adds people of its own
+     * (a delegator who did not create the task becomes an auditor).
+     */
+    public function refreshTask(int $bitrixTaskId): void;
+
     public function syncProject(int $bitrixGroupId): void;
 
     /** A message was posted in a task's chat. */
