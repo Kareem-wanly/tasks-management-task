@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Models\Permission;
@@ -23,54 +25,6 @@ class Round2ReviewTest extends TestCase
     {
         parent::setUp();
         $this->seed();
-    }
-
-    private function userWith(array $permissions, ?string $roleName = null): User
-    {
-        $role = Role::create([
-            'name' => $roleName ?? 'custom_'.uniqid(),
-            'display_name' => 'Custom',
-            'description' => 'test',
-        ]);
-        $role->permissions()->sync(Permission::whereIn('name', $permissions)->pluck('id'));
-
-        $user = User::factory()->create();
-        $user->roles()->attach($role);
-
-        return $user;
-    }
-
-    private function memberUser(): User
-    {
-        $user = User::factory()->create();
-        $user->roles()->attach(Role::where('name', 'Member')->first());
-
-        return $user;
-    }
-
-    private function project(User $owner, array $members = [], array $attrs = []): Project
-    {
-        $project = Project::forceCreate(array_merge([
-            'title' => 'P '.uniqid(),
-            'status' => 'active',
-            'owner_id' => $owner->id,
-        ], $attrs));
-        foreach ($members as $m) {
-            $project->members()->attach($m->id, ['role' => 'member']);
-        }
-
-        return $project;
-    }
-
-    private function task(Project $project, array $attrs = []): Task
-    {
-        return Task::forceCreate(array_merge([
-            'title' => 'T '.uniqid(),
-            'status' => 'todo',
-            'priority' => 'medium',
-            'project_id' => $project->id,
-            'created_by' => $project->owner_id,
-        ], $attrs));
     }
 
     public function test_r1_roles_update_cannot_grant_permissions_user_lacks(): void
@@ -171,7 +125,7 @@ class Round2ReviewTest extends TestCase
 
         $this->getJson('/api/me')
             ->assertOk()
-            ->assertJsonPath('user.effective_permissions', fn ($p) => in_array('projects.view', (array) $p));
+            ->assertJsonPath('user.effective_permissions', fn ($p): bool => in_array('projects.view', (array) $p));
     }
 
     public function test_r9_project_members_do_not_expose_permissions(): void
@@ -266,5 +220,53 @@ class Round2ReviewTest extends TestCase
         Sanctum::actingAs($owner);
 
         $this->putJson("/api/projects/{$project->id}", ['due_date' => '2026-11-01'])->assertStatus(422);
+    }
+
+    private function userWith(array $permissions, ?string $roleName = null): User
+    {
+        $role = Role::create([
+            'name' => $roleName ?? 'custom_'.uniqid(),
+            'display_name' => 'Custom',
+            'description' => 'test',
+        ]);
+        $role->permissions()->sync(Permission::whereIn('name', $permissions)->pluck('id'));
+
+        $user = User::factory()->create();
+        $user->roles()->attach($role);
+
+        return $user;
+    }
+
+    private function memberUser(): User
+    {
+        $user = User::factory()->create();
+        $user->roles()->attach(Role::where('name', 'Member')->first());
+
+        return $user;
+    }
+
+    private function project(User $owner, array $members = [], array $attrs = []): Project
+    {
+        $project = Project::forceCreate(array_merge([
+            'title' => 'P '.uniqid(),
+            'status' => 'active',
+            'owner_id' => $owner->id,
+        ], $attrs));
+        foreach ($members as $m) {
+            $project->members()->attach($m->id, ['role' => 'member']);
+        }
+
+        return $project;
+    }
+
+    private function task(Project $project, array $attrs = []): Task
+    {
+        return Task::forceCreate(array_merge([
+            'title' => 'T '.uniqid(),
+            'status' => 'todo',
+            'priority' => 'medium',
+            'project_id' => $project->id,
+            'created_by' => $project->owner_id,
+        ], $attrs));
     }
 }

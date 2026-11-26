@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Models\Permission;
@@ -43,18 +45,6 @@ class TransactionsTest extends TestCase
             'created_by' => $this->admin->id, 'assigned_to' => $this->admin->id,
         ]);
         Sanctum::actingAs($this->admin);
-    }
-
-    /** Replaces one repository method with a failure, keeping the rest real. */
-    private function failing(string $interface, string $method, ?callable $before = null): void
-    {
-        $repository = Mockery::mock(app($interface))->makePartial();
-        $repository->shouldReceive($method)->andReturnUsing(function (...$args) use ($before) {
-            $before && $before(...$args);
-
-            throw new RuntimeException('Simulated failure.');
-        });
-        $this->app->instance($interface, $repository);
     }
 
     public function test_a_role_whose_permissions_are_refused_is_not_created(): void
@@ -104,5 +94,17 @@ class TransactionsTest extends TestCase
         $this->assertThrows(fn () => $this->postJson("/api/checklist-items/{$second->id}/move", ['after_id' => null]), RuntimeException::class, 'Simulated failure.');
 
         $this->assertSame([1, 2], [$first->fresh()->sort_index, $second->fresh()->sort_index]);
+    }
+
+    /** Replaces one repository method with a failure, keeping the rest real. */
+    private function failing(string $interface, string $method, ?callable $before = null): void
+    {
+        $repository = Mockery::mock(resolve($interface))->makePartial();
+        $repository->shouldReceive($method)->andReturnUsing(function (...$args) use ($before): void {
+            $before && $before(...$args);
+
+            throw new RuntimeException('Simulated failure.');
+        });
+        $this->app->instance($interface, $repository);
     }
 }

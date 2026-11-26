@@ -1,11 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests;
 
 use App\Models\Task;
 use App\Rules\ParentTask;
 use App\Rules\ProjectMember;
-use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -22,17 +23,6 @@ class UpdateTaskRequest extends FormRequest
         }
 
         return ! $this->changesAssignee($task) || $this->user()->can('assign', $task);
-    }
-
-    private function changesAssignee(Task $task): bool
-    {
-        if (! $this->has('assigned_to')) {
-            return false;
-        }
-
-        $assignee = $this->input('assigned_to');
-
-        return $assignee === null ? $task->assigned_to !== null : (int) $assignee !== $task->assigned_to;
     }
 
     public function rules(): array
@@ -53,13 +43,13 @@ class UpdateTaskRequest extends FormRequest
 
     public function withValidator(Validator $validator): void
     {
-        $validator->after(function ($validator) {
+        $validator->after(function ($validator): void {
             $task = $this->route('task');
             $project = $task?->project;
 
             if ($project && $project->due_date && $this->filled('due_date')) {
-                $taskDueDate = Carbon::parse($this->input('due_date'))->startOfDay();
-                $projectDueDate = Carbon::parse($project->due_date)->startOfDay();
+                $taskDueDate = \Illuminate\Support\Facades\Date::parse($this->input('due_date'))->startOfDay();
+                $projectDueDate = \Illuminate\Support\Facades\Date::parse($project->due_date)->startOfDay();
 
                 if ($taskDueDate->gt($projectDueDate)) {
                     $validator->errors()->add(
@@ -69,5 +59,16 @@ class UpdateTaskRequest extends FormRequest
                 }
             }
         });
+    }
+
+    private function changesAssignee(Task $task): bool
+    {
+        if (! $this->has('assigned_to')) {
+            return false;
+        }
+
+        $assignee = $this->input('assigned_to');
+
+        return $assignee === null ? $task->assigned_to !== null : (int) $assignee !== $task->assigned_to;
     }
 }

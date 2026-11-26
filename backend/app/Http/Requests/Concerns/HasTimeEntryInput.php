@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Concerns;
 
 use Illuminate\Validation\Validator;
@@ -21,7 +23,7 @@ trait HasTimeEntryInput
     public function after(): array
     {
         return [
-            function (Validator $validator) {
+            function (Validator $validator): void {
                 if (! $validator->errors()->any() && $this->seconds() === 0) {
                     $validator->errors()->add('minutes', 'Enter some time.');
                 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24;
 
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
@@ -16,11 +18,6 @@ class BitrixClient
 {
     public const MAX_BATCH_COMMANDS = 50;
 
-    /** Classic REST, and REST 3.0 (newer methods such as task results). */
-    private const REST_PATH = '/rest/';
-
-    private const REST_V3_PATH = '/rest/api/';
-
     /** Bytes per read when streaming a download. */
     public const DOWNLOAD_CHUNK_BYTES = 1048576;
 
@@ -32,6 +29,11 @@ class BitrixClient
      * bound to the installed portal in AppServiceProvider.
      */
     public const SERVICE_ACCOUNT = 'bitrix.service_account';
+
+    /** Classic REST, and REST 3.0 (newer methods such as task results). */
+    private const REST_PATH = '/rest/';
+
+    private const REST_V3_PATH = '/rest/api/';
 
     private const RATE_LIMIT_RETRIES = 3;
 
@@ -62,22 +64,6 @@ class BitrixClient
     public function callV3AsService(string $method, array $params = []): array
     {
         return $this->callV3AsUser($this->serviceAccount(), $method, $params);
-    }
-
-    /** @return array<string, mixed> */
-    private function callWithRefresh(HasBitrixToken $user, string $method, array $params, ?int $timeout, string $path): array
-    {
-        $token = $this->tokens->validTokenFor($user);
-
-        try {
-            return $this->send($token->accessToken, $method, $params, $timeout, $path);
-        } catch (BitrixException $e) {
-            if (! $e->isExpiredToken()) {
-                throw $e;
-            }
-
-            return $this->send($this->tokens->validTokenFor($user, force: true)->accessToken, $method, $params, $timeout, $path);
-        }
     }
 
     /**
@@ -195,7 +181,7 @@ class BitrixClient
             }
 
             $errors = (array) ($batch['result_error'] ?? []);
-            $limited = array_filter($errors, fn ($error) => BitrixException::fromResponse(is_array($error) ? $error : null, 200)->isRetryable());
+            $limited = array_filter($errors, fn ($error): bool => BitrixException::fromResponse(is_array($error) ? $error : null, 200)->isRetryable());
             $merged['result_error'] = array_replace($merged['result_error'], array_diff_key($errors, $limited));
 
             if ($limited === [] || $attempt >= self::RATE_LIMIT_RETRIES) {
@@ -259,13 +245,29 @@ class BitrixClient
         return $total;
     }
 
+    /** @return array<string, mixed> */
+    private function callWithRefresh(HasBitrixToken $user, string $method, array $params, ?int $timeout, string $path): array
+    {
+        $token = $this->tokens->validTokenFor($user);
+
+        try {
+            return $this->send($token->accessToken, $method, $params, $timeout, $path);
+        } catch (BitrixException $e) {
+            if (! $e->isExpiredToken()) {
+                throw $e;
+            }
+
+            return $this->send($this->tokens->validTokenFor($user, force: true)->accessToken, $method, $params, $timeout, $path);
+        }
+    }
+
     private function serviceAccount(): HasBitrixToken
     {
         if (! app()->bound(self::SERVICE_ACCOUNT)) {
             throw BitrixException::missingToken();
         }
 
-        return app(self::SERVICE_ACCOUNT);
+        return resolve(self::SERVICE_ACCOUNT);
     }
 
     private function batchParams(array $commands, bool $halt): array

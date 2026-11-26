@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -7,30 +9,10 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    private function dropForeignKeyIfExists(string $table, string $foreignKey): void
-    {
-        if (DB::getDriverName() !== 'mysql') {
-            return;
-        }
-
-        $databaseName = DB::getDatabaseName();
-        $exists = DB::select(
-            "SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS 
-             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND CONSTRAINT_NAME = ? AND CONSTRAINT_TYPE = 'FOREIGN KEY'",
-            [$databaseName, $table, $foreignKey]
-        );
-
-        if (! empty($exists)) {
-            Schema::table($table, function (Blueprint $t) use ($foreignKey) {
-                $t->dropForeign($foreignKey);
-            });
-        }
-    }
-
     public function up(): void
     {
         $this->dropForeignKeyIfExists('projects', 'projects_owner_id_foreign');
-        Schema::table('projects', function (Blueprint $table) {
+        Schema::table('projects', function (Blueprint $table): void {
             $table->foreign('owner_id')
                 ->references('id')
                 ->on('users')
@@ -40,7 +22,7 @@ return new class extends Migration
         $this->dropForeignKeyIfExists('tasks', 'tasks_assigned_to_foreign');
         $this->dropForeignKeyIfExists('tasks', 'tasks_created_by_foreign');
 
-        Schema::table('tasks', function (Blueprint $table) {
+        Schema::table('tasks', function (Blueprint $table): void {
             $table->unsignedBigInteger('assigned_to')->nullable()->change();
             $table->unsignedBigInteger('created_by')->nullable()->change();
 
@@ -57,7 +39,7 @@ return new class extends Migration
 
         $this->dropForeignKeyIfExists('comments', 'comments_user_id_foreign');
 
-        Schema::table('comments', function (Blueprint $table) {
+        Schema::table('comments', function (Blueprint $table): void {
             $table->unsignedBigInteger('user_id')->nullable()->change();
 
             $table->foreign('user_id')
@@ -70,20 +52,40 @@ return new class extends Migration
     public function down(): void
     {
         $this->dropForeignKeyIfExists('projects', 'projects_owner_id_foreign');
-        Schema::table('projects', function (Blueprint $table) {
+        Schema::table('projects', function (Blueprint $table): void {
             $table->foreign('owner_id')->references('id')->on('users')->cascadeOnDelete();
         });
 
         $this->dropForeignKeyIfExists('tasks', 'tasks_assigned_to_foreign');
         $this->dropForeignKeyIfExists('tasks', 'tasks_created_by_foreign');
-        Schema::table('tasks', function (Blueprint $table) {
+        Schema::table('tasks', function (Blueprint $table): void {
             $table->foreign('assigned_to')->references('id')->on('users')->cascadeOnDelete();
             $table->foreign('created_by')->references('id')->on('users')->cascadeOnDelete();
         });
 
         $this->dropForeignKeyIfExists('comments', 'comments_user_id_foreign');
-        Schema::table('comments', function (Blueprint $table) {
+        Schema::table('comments', function (Blueprint $table): void {
             $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
         });
+    }
+
+    private function dropForeignKeyIfExists(string $table, string $foreignKey): void
+    {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
+        $databaseName = DB::getDatabaseName();
+        $exists = DB::select(
+            "SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS 
+             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND CONSTRAINT_NAME = ? AND CONSTRAINT_TYPE = 'FOREIGN KEY'",
+            [$databaseName, $table, $foreignKey]
+        );
+
+        if (! empty($exists)) {
+            Schema::table($table, function (Blueprint $t) use ($foreignKey): void {
+                $t->dropForeign($foreignKey);
+            });
+        }
     }
 };

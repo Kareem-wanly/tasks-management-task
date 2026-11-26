@@ -1,11 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests;
 
 use App\Models\Task;
 use App\Rules\ParentTask;
 use App\Rules\ProjectMember;
-use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -46,12 +47,12 @@ class StoreTaskRequest extends FormRequest
 
     public function withValidator(Validator $validator): void
     {
-        $validator->after(function ($validator) {
+        $validator->after(function ($validator): void {
             $project = $this->route('project');
 
             if ($project && $project->due_date && $this->filled('due_date')) {
-                $taskDueDate = Carbon::parse($this->input('due_date'))->startOfDay();
-                $projectDueDate = Carbon::parse($project->due_date)->startOfDay();
+                $taskDueDate = \Illuminate\Support\Facades\Date::parse($this->input('due_date'))->startOfDay();
+                $projectDueDate = \Illuminate\Support\Facades\Date::parse($project->due_date)->startOfDay();
 
                 if ($taskDueDate->gt($projectDueDate)) {
                     $validator->errors()->add(

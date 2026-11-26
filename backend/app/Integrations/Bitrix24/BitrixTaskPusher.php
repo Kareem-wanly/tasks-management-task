@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24;
 
 use App\Models\BitrixOutboundOp;
@@ -201,7 +203,7 @@ class BitrixTaskPusher
     {
         $bitrixId = $this->lookups->bitrixIdForKey(TaskStatus::class, $key);
 
-        return $this->normalize((int) ($bitrixId ?? throw BitrixException::cannotSync("Status \"{$key}\" has no Bitrix24 value.")));
+        return $this->normalize($bitrixId ?? throw BitrixException::cannotSync("Status \"{$key}\" has no Bitrix24 value."));
     }
 
     /**

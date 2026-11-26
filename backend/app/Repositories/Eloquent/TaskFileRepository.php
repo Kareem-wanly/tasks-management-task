@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repositories\Eloquent;
 
 use App\Models\Task;
@@ -11,7 +13,7 @@ class TaskFileRepository implements TaskFileRepositoryInterface
 {
     public function forTask(Task $task): Collection
     {
-        return $task->files()->with(['uploader:id,name', 'task'])->orderByDesc('created_at')->orderByDesc('id')->get();
+        return $task->files()->with(['uploader:id,name', 'task'])->latest()->orderByDesc('id')->get();
     }
 
     public function bitrixFiles(Task $task): Collection

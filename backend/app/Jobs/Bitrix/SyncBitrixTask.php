@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs\Bitrix;
 
 use App\Integrations\Bitrix24\BitrixDeletionGuard;
@@ -49,7 +51,7 @@ class SyncBitrixTask implements ShouldBeUniqueUntilProcessing, ShouldQueue
         // service account sees every task, so "not found" proves nothing otherwise.
         if ($row === null) {
             if (! $echo->isTaskEcho($this->bitrixTaskId, null) && $guard->serviceAccountIsAdmin()) {
-                if ($task = $taskRepository->findByBitrixId($this->bitrixTaskId)) {
+                if (($task = $taskRepository->findByBitrixId($this->bitrixTaskId)) instanceof \App\Models\Task) {
                     $taskRepository->delete($task);
                     $guard->recordDeleted('tasks', [$this->bitrixTaskId], 'event');
                 }

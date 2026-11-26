@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -27,6 +29,9 @@ class BitrixTaskResultsTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** Access token => Bitrix user ID. */
+    private const TOKENS = ['actor-access' => 5, 'assignee-access' => 7, 'auditor-access' => 8];
+
     private User $actor;
 
     private Task $task;
@@ -38,9 +43,6 @@ class BitrixTaskResultsTest extends TestCase
 
     /** null, 'unreachable' or 'refuse'. */
     private ?string $failure = null;
-
-    /** Access token => Bitrix user ID. */
-    private const TOKENS = ['actor-access' => 5, 'assignee-access' => 7, 'auditor-access' => 8];
 
     protected function setUp(): void
     {
@@ -70,41 +72,6 @@ class BitrixTaskResultsTest extends TestCase
         Sanctum::actingAs($this->actor);
     }
 
-    private function user(int $bitrixId, string $name, Role $role): User
-    {
-        $user = User::factory()->create(['bitrix_user_id' => $bitrixId]);
-        $user->roles()->attach($role);
-        $user->storeBitrixToken(new BitrixToken("{$name}-access", "{$name}-refresh", CarbonImmutable::now()->addHour()));
-
-        return $user;
-    }
-
-    /** REST 3.0 answers with result.item / result.items. */
-    private function bitrix(string $method, array $data): mixed
-    {
-        $id = (int) ($data['id'] ?? 0);
-
-        return match ($method) {
-            'tasks.task.result.list' => ['items' => array_values(array_filter($this->results, fn ($r) => $r['taskId'] === $data['filter'][0][1]))],
-            'tasks.task.result.add' => ['item' => $this->bitrixResult($data['fields']['text'], self::TOKENS[$data['auth']])],
-            'tasks.task.result.update' => ['item' => $this->results[$id] = [...$this->results[$id], 'text' => $data['fields']['text']]],
-            'tasks.task.result.delete' => (function () use ($id) {
-                unset($this->results[$id]);
-
-                return true;
-            })(),
-            default => true,
-        };
-    }
-
-    private function bitrixResult(string $text, int $authorId): array
-    {
-        $id = $this->nextId++;
-
-        return $this->results[$id] = ['id' => $id, 'taskId' => 15, 'text' => $text, 'authorId' => $authorId,
-            'createdAt' => '2026-11-16T13:51:36+00:00', 'updatedAt' => '2026-11-16T13:51:36+00:00', 'status' => 'open'];
-    }
-
     public function test_opening_the_task_brings_in_its_bitrix_results(): void
     {
         $this->bitrixResult('Shipped the release', 5);
@@ -115,7 +82,7 @@ class BitrixTaskResultsTest extends TestCase
             ->assertJsonPath('data.0.author.id', $this->actor->id)
             ->assertJsonPath('data.0.created_at', '2026-11-16T13:51:36.000000Z')
             ->assertJsonPath('meta.can_add', true);
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), '/rest/api/tasks.task.result.list') && $r['filter'] === [['taskId', 15]]);
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), '/rest/api/tasks.task.result.list') && $r['filter'] === [['taskId', 15]]);
     }
 
     public function test_a_result_is_added_edited_and_deleted_as_the_employee_through_rest_3(): void
@@ -124,7 +91,7 @@ class BitrixTaskResultsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.text', 'Done and verified')
             ->assertJsonPath('data.0.can_edit', true);
-        Http::assertSent(fn (Request $r) => $r->url() === 'https://portal.test/rest/api/tasks.task.result.add'
+        Http::assertSent(fn (Request $r): bool => $r->url() === 'https://portal.test/rest/api/tasks.task.result.add'
             && $r['auth'] === 'actor-access' && $r['fields'] === ['taskId' => 15, 'text' => 'Done and verified']);
 
         $result = TaskResult::sole();
@@ -194,15 +161,50 @@ class BitrixTaskResultsTest extends TestCase
         $this->deleteJson("/api/task-results/{$result->id}")->assertOk();
         $this->assertNull($result->fresh());
 
-        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'tasks.task.result.update') || str_contains($r->url(), 'tasks.task.result.delete'));
+        Http::assertNotSent(fn (Request $r): bool => str_contains($r->url(), 'tasks.task.result.update') || str_contains($r->url(), 'tasks.task.result.delete'));
     }
 
     public function test_the_nightly_pass_brings_in_every_tasks_results(): void
     {
         $this->bitrixResult('From Bitrix', 5);
 
-        ImportBitrixResults::dispatchSync();
+        dispatch_sync(new ImportBitrixResults);
 
         $this->assertSame(['From Bitrix'], TaskResult::pluck('text')->all());
+    }
+
+    private function user(int $bitrixId, string $name, Role $role): User
+    {
+        $user = User::factory()->create(['bitrix_user_id' => $bitrixId]);
+        $user->roles()->attach($role);
+        $user->storeBitrixToken(new BitrixToken("{$name}-access", "{$name}-refresh", CarbonImmutable::now()->addHour()));
+
+        return $user;
+    }
+
+    /** REST 3.0 answers with result.item / result.items. */
+    private function bitrix(string $method, array $data): mixed
+    {
+        $id = (int) ($data['id'] ?? 0);
+
+        return match ($method) {
+            'tasks.task.result.list' => ['items' => array_values(array_filter($this->results, fn (array $r): bool => $r['taskId'] === $data['filter'][0][1]))],
+            'tasks.task.result.add' => ['item' => $this->bitrixResult($data['fields']['text'], self::TOKENS[$data['auth']])],
+            'tasks.task.result.update' => ['item' => $this->results[$id] = [...$this->results[$id], 'text' => $data['fields']['text']]],
+            'tasks.task.result.delete' => (function () use ($id): true {
+                unset($this->results[$id]);
+
+                return true;
+            })(),
+            default => true,
+        };
+    }
+
+    private function bitrixResult(string $text, int $authorId): array
+    {
+        $id = $this->nextId++;
+
+        return $this->results[$id] = ['id' => $id, 'taskId' => 15, 'text' => $text, 'authorId' => $authorId,
+            'createdAt' => '2026-11-16T13:51:36+00:00', 'updatedAt' => '2026-11-16T13:51:36+00:00', 'status' => 'open'];
     }
 }

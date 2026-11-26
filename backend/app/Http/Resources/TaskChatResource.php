@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use App\Data\TaskChat;
@@ -13,7 +15,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class TaskChatResource extends JsonResource
 {
-    public static $wrap = null;
+    public static $wrap;
 
     public function toArray(Request $request): array
     {

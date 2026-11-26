@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests;
 
 use App\Models\TaskLookup;
@@ -13,23 +15,14 @@ use Illuminate\Validation\Rule;
  */
 abstract class TaskLookupRequest extends FormRequest
 {
-    /** @return class-string<TaskLookup> */
-    abstract protected function model(): string;
-
     /** The value being changed; null when creating one. */
     abstract public function lookup(): ?TaskLookup;
-
-    /** Rules only one kind of value has (e.g. is_final for statuses). */
-    protected function extraRules(): array
-    {
-        return [];
-    }
 
     public function authorize(): bool
     {
         $lookup = $this->lookup();
 
-        return $lookup ? $this->user()->can('update', $lookup) : $this->user()->can('create', $this->model());
+        return $lookup instanceof TaskLookup ? $this->user()->can('update', $lookup) : $this->user()->can('create', $this->model());
     }
 
     public function rules(): array
@@ -38,12 +31,12 @@ abstract class TaskLookupRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'color' => ['nullable', Rule::in(TaskLookup::COLORS)],
             'sort' => ['integer', 'min:0', 'max:65535'],
-            'bitrix_id' => ['nullable', 'integer', Rule::in(app(TaskLookupService::class)->bitrixIdsForCustomValues($this->model()))],
+            'bitrix_id' => ['nullable', 'integer', Rule::in(resolve(TaskLookupService::class)->bitrixIdsForCustomValues($this->model()))],
             ...$this->extraRules(),
         ];
 
         $lookup = $this->lookup();
-        if ($lookup === null) {
+        if (! $lookup instanceof TaskLookup) {
             return [
                 'key' => ['required', 'string', 'max:50', 'regex:/^[a-z][a-z0-9_]*$/', Rule::unique((new ($this->model()))->getTable(), 'key')],
                 ...$rules,
@@ -55,6 +48,15 @@ abstract class TaskLookupRequest extends FormRequest
             unset($rules['bitrix_id']);
         }
 
-        return array_map(fn (array $rule) => ['sometimes', ...$rule], $rules);
+        return array_map(fn (array $rule): array => ['sometimes', ...$rule], $rules);
+    }
+
+    /** @return class-string<TaskLookup> */
+    abstract protected function model(): string;
+
+    /** Rules only one kind of value has (e.g. is_final for statuses). */
+    protected function extraRules(): array
+    {
+        return [];
     }
 }

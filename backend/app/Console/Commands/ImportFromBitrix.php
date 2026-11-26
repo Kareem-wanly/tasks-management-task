@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Console\Commands;
 
 use App\Jobs\Bitrix\ImportBitrixChat;
@@ -23,14 +25,6 @@ use Throwable;
  */
 class ImportFromBitrix extends Command
 {
-    protected $signature = 'bitrix:import
-        {--only= : Comma-separated subset of users,projects,tasks,checklists,time,files,results,chat}
-        {--sync : Run now in this process, with a progress bar, instead of queueing}
-        {--link-by-email : Link Bitrix24 users to existing local accounts with the same email (never accounts with administrative rights)}
-        {--status : Show the progress of the last import and exit}';
-
-    protected $description = 'Import users, projects, tasks and their checklists, time logs, files, results and chats from Bitrix24';
-
     /** In the order they must run. */
     private const JOBS = [
         ImportBitrixUsers::ENTITY => ImportBitrixUsers::class,
@@ -42,6 +36,14 @@ class ImportFromBitrix extends Command
         ImportBitrixResults::ENTITY => ImportBitrixResults::class,
         ImportBitrixChat::ENTITY => ImportBitrixChat::class,
     ];
+
+    protected $signature = 'bitrix:import
+        {--only= : Comma-separated subset of users,projects,tasks,checklists,time,files,results,chat}
+        {--sync : Run now in this process, with a progress bar, instead of queueing}
+        {--link-by-email : Link Bitrix24 users to existing local accounts with the same email (never accounts with administrative rights)}
+        {--status : Show the progress of the last import and exit}';
+
+    protected $description = 'Import users, projects, tasks and their checklists, time logs, files, results and chats from Bitrix24';
 
     private ?ProgressBar $bar = null;
 
@@ -95,7 +97,7 @@ class ImportFromBitrix extends Command
     private function queue(array $entities): int
     {
         // A chain stops at the first failure, so tasks never run on missing users or projects.
-        Bus::chain(array_map(fn (string $entity) => $this->job($entity), $entities))
+        Bus::chain(array_map($this->job(...), $entities))
             ->onQueue('bitrix')
             ->dispatch();
 
@@ -112,8 +114,8 @@ class ImportFromBitrix extends Command
     private function runNow(array $entities): int
     {
         // The jobs save their cursor after every page; mirror it on the bar.
-        BitrixSyncCursor::saved(function (BitrixSyncCursor $cursor) {
-            if ($this->bar && $cursor->entity === $this->running && $cursor->total > 0) {
+        BitrixSyncCursor::saved(function (BitrixSyncCursor $cursor): void {
+            if ($this->bar instanceof ProgressBar && $cursor->entity === $this->running && $cursor->total > 0) {
                 $this->bar->setMaxSteps($cursor->total);
                 $this->bar->setProgress(min($cursor->processed, $cursor->total));
             }
@@ -147,9 +149,9 @@ class ImportFromBitrix extends Command
 
     private function showStatus(): int
     {
-        $cursors = app(BitrixSyncCursorRepositoryInterface::class)->forEntities(array_keys(self::JOBS));
+        $cursors = resolve(BitrixSyncCursorRepositoryInterface::class)->forEntities(array_keys(self::JOBS));
 
-        $this->table(['Entity', 'Status', 'Processed', 'Total', 'Last synced', 'Error'], array_map(function (string $entity) use ($cursors) {
+        $this->table(['Entity', 'Status', 'Processed', 'Total', 'Last synced', 'Error'], array_map(function (string $entity) use ($cursors): array {
             $cursor = $cursors->get($entity);
 
             return [

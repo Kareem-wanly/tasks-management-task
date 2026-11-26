@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Data\FileDownload;
@@ -79,7 +81,7 @@ class TaskFileService
     public function download(TaskFile $file): FileDownload
     {
         if (! $file->isInBitrix()) {
-            return new FileDownload($file->name, $file->mime, fn () => fpassthru(Storage::disk(self::DISK)->readStream((string) $file->path)));
+            return new FileDownload($file->name, $file->mime, fn (): int => fpassthru(Storage::disk(self::DISK)->readStream((string) $file->path)));
         }
 
         // Opened before the response starts, so a refusal is a normal error.

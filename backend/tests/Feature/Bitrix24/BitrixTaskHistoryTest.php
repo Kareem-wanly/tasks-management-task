@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -70,12 +72,6 @@ class BitrixTaskHistoryTest extends TestCase
         Sanctum::actingAs($this->actor);
     }
 
-    private function row(int $id, string $field, mixed $from, mixed $to, string $date, int $userId = 5): array
-    {
-        return ['id' => $id, 'createdDate' => $date, 'field' => $field, 'value' => ['from' => $from, 'to' => $to],
-            'user' => ['id' => $userId, 'name' => 'Bitrix', 'lastName' => 'Name', 'secondName' => '', 'login' => 'x']];
-    }
-
     public function test_the_history_comes_from_bitrix_newest_first_in_our_terms(): void
     {
         $this->answer = [
@@ -104,7 +100,7 @@ class BitrixTaskHistoryTest extends TestCase
             ->assertJsonPath('data.5.field', 'NEW');
 
         // Read with the service account, never written to.
-        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), 'tasks.task.history.list.json') && $r['taskId'] === 23 && $r['auth'] === 'actor-access');
+        Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.history.list.json') && $r['taskId'] === 23 && $r['auth'] === 'actor-access');
         Http::assertSentCount(1);
     }
 
@@ -139,5 +135,11 @@ class BitrixTaskHistoryTest extends TestCase
         $this->getJson("/api/tasks/{$this->task->id}/history")->assertForbidden();
 
         Http::assertNothingSent();
+    }
+
+    private function row(int $id, string $field, mixed $from, mixed $to, string $date, int $userId = 5): array
+    {
+        return ['id' => $id, 'createdDate' => $date, 'field' => $field, 'value' => ['from' => $from, 'to' => $to],
+            'user' => ['id' => $userId, 'name' => 'Bitrix', 'lastName' => 'Name', 'secondName' => '', 'login' => 'x']];
     }
 }

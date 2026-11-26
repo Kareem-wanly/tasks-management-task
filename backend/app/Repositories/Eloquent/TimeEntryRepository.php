@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repositories\Eloquent;
 
 use App\Models\RunningTimer;
@@ -13,7 +15,7 @@ class TimeEntryRepository implements TimeEntryRepositoryInterface
 {
     public function forTask(Task $task): Collection
     {
-        return $task->elapsedItems()->with(['user', 'task'])->orderByDesc('created_date')->orderByDesc('id')->get();
+        return $task->elapsedItems()->with(['user', 'task'])->latest('created_date')->orderByDesc('id')->get();
     }
 
     public function create(Task $task, int $userId, int $seconds, ?string $comment): TaskElapsedItem

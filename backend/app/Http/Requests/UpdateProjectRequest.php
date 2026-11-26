@@ -1,8 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests;
 
-use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -26,11 +27,11 @@ class UpdateProjectRequest extends FormRequest
 
     public function withValidator(Validator $validator): void
     {
-        $validator->after(function ($validator) {
+        $validator->after(function ($validator): void {
             $project = $this->route('project');
 
             if ($project && $this->filled('due_date')) {
-                $newDueDate = Carbon::parse($this->input('due_date'))->startOfDay();
+                $newDueDate = \Illuminate\Support\Facades\Date::parse($this->input('due_date'))->startOfDay();
 
                 $latestUnfinishedTask = $project->tasks()
                     ->unfinished()
@@ -39,7 +40,7 @@ class UpdateProjectRequest extends FormRequest
                     ->first();
 
                 if ($latestUnfinishedTask && $latestUnfinishedTask->due_date) {
-                    $taskDueDate = Carbon::parse($latestUnfinishedTask->due_date)->startOfDay();
+                    $taskDueDate = \Illuminate\Support\Facades\Date::parse($latestUnfinishedTask->due_date)->startOfDay();
 
                     if ($newDueDate->lt($taskDueDate)) {
                         $validator->errors()->add(

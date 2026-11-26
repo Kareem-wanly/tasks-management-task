@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Concerns;
 
 /**
@@ -9,6 +11,12 @@ namespace App\Http\Requests\Concerns;
 trait HasPagination
 {
     private const MAX_PER_PAGE = 100;
+
+    public function perPage(int $default = 15): int
+    {
+        // Validation already enforces the range; the clamp is a safety net for a request that forgets paginationRules().
+        return min(max((int) $this->query('per_page', $default), 1), self::MAX_PER_PAGE);
+    }
 
     protected function paginationRules(): array
     {
@@ -22,11 +30,5 @@ trait HasPagination
             'per_page.min' => 'The per_page parameter must be at least 1.',
             'per_page.max' => 'The per_page parameter may not be greater than '.self::MAX_PER_PAGE.'.',
         ];
-    }
-
-    public function perPage(int $default = 15): int
-    {
-        // Validation already enforces the range; the clamp is a safety net for a request that forgets paginationRules().
-        return min(max((int) $this->query('per_page', $default), 1), self::MAX_PER_PAGE);
     }
 }

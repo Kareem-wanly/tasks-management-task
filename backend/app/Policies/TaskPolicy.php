@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Policies;
 
 use App\Models\Project;
@@ -16,16 +18,6 @@ class TaskPolicy
         return $user->hasPermission('tasks.view');
     }
 
-    private function canSee(User $user, Task $task): bool
-    {
-        return $task->isVisibleTo($user);
-    }
-
-    private function isAssignee(User $user, Task $task): bool
-    {
-        return $task->assigned_to === $user->id;
-    }
-
     public function view(User $user, Task $task): bool
     {
         return $user->hasPermission('tasks.view') && $this->canSee($user, $task);
@@ -37,7 +29,7 @@ class TaskPolicy
             return false;
         }
 
-        if (! $project) {
+        if (! $project instanceof Project) {
             return true;
         }
 
@@ -149,5 +141,15 @@ class TaskPolicy
 
         return $targetProject?->owner_id === $user->id
             || $user->hasPermission('tasks.assign');
+    }
+
+    private function canSee(User $user, Task $task): bool
+    {
+        return $task->isVisibleTo($user);
+    }
+
+    private function isAssignee(User $user, Task $task): bool
+    {
+        return $task->assigned_to === $user->id;
     }
 }

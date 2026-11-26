@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs\Bitrix;
 
 use App\Integrations\Bitrix24\BitrixClient;
@@ -33,9 +35,9 @@ class ImportBitrixUsers implements ShouldQueue
 
         // No ACTIVE filter: ACTIVE=true would drop deactivated users, and we
         // need them to block their access here too.
-        $total = $bitrix->eachPageAsService('user.get', ['sort' => 'ID', 'order' => 'ASC'], function (array $rows, int $total) use ($users, $cursor, $cursors, &$notLinked) {
+        $total = $bitrix->eachPageAsService('user.get', ['sort' => 'ID', 'order' => 'ASC'], function (array $rows, int $total) use ($users, $cursor, $cursors, &$notLinked): void {
             foreach ($rows as $row) {
-                if ($users->upsert($row, $this->linkByEmail) === null) {
+                if (! $users->upsert($row, $this->linkByEmail) instanceof \App\Models\User) {
                     $notLinked++;
                 }
             }

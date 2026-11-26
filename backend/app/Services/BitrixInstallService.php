@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Exceptions\BusinessRuleException;
@@ -54,7 +56,7 @@ class BitrixInstallService
         // Anyone who knows member_id could forge this event: an installed portal
         // only accepts it with the application token Bitrix gave us before.
         $installed = $this->portals->findByMemberId((string) $auth['member_id']);
-        if ($installed && ! hash_equals((string) $installed->application_token, (string) $auth['application_token'])) {
+        if ($installed instanceof BitrixPortal && ! hash_equals((string) $installed->application_token, (string) $auth['application_token'])) {
             throw BusinessRuleException::forbidden('The application token does not match this portal.');
         }
 
@@ -204,7 +206,7 @@ class BitrixInstallService
             $departments = [...$departments, ...($this->bitrix->callAsUser($portal, 'department.get', ['START' => $start])['result'] ?? [])];
         }
 
-        return array_map(fn (array $d) => array_intersect_key($d, array_flip(['ID', 'NAME', 'PARENT', 'SORT'])), $departments);
+        return array_map(fn (array $d): array => array_intersect_key($d, array_flip(['ID', 'NAME', 'PARENT', 'SORT'])), $departments);
     }
 
     private function bindEvents(BitrixPortal $portal): void
@@ -222,7 +224,7 @@ class BitrixInstallService
     /** ERROR_CORE "Handler already binded" is expected on reinstall/update. */
     private function logBatchErrors(array $batch, string $stage): void
     {
-        $errors = array_filter((array) ($batch['result_error'] ?? []), fn ($error) => ($error['error'] ?? '') !== 'ERROR_CORE');
+        $errors = array_filter((array) ($batch['result_error'] ?? []), fn (array $error): bool => ($error['error'] ?? '') !== 'ERROR_CORE');
 
         if ($errors !== []) {
             Log::warning("Bitrix24 install: some {$stage} calls failed.", ['errors' => $errors]);

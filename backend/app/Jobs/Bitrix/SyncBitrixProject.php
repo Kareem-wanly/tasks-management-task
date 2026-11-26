@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Jobs\Bitrix;
 
 use App\Integrations\Bitrix24\BitrixDeletionGuard;
@@ -47,7 +49,7 @@ class SyncBitrixProject implements ShouldBeUniqueUntilProcessing, ShouldQueue
         // service account sees every group, so "not found" proves nothing otherwise.
         if ($group === null) {
             if (! $echo->isProjectEcho($this->bitrixGroupId, null, false) && $guard->serviceAccountIsAdmin()) {
-                if ($project = $projectRepository->findByBitrixGroupId($this->bitrixGroupId)) {
+                if (($project = $projectRepository->findByBitrixGroupId($this->bitrixGroupId)) instanceof \App\Models\Project) {
                     $projectRepository->delete($project);
                     $guard->recordDeleted('groups', [$this->bitrixGroupId], 'event');
                 }

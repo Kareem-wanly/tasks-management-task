@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24\Mappers;
 
 use Illuminate\Support\Str;
@@ -51,7 +53,7 @@ class BitrixUserMapper
      */
     private function isActive(mixed $value): bool
     {
-        return $value === true || $value === 'Y' || $value === '1' || $value === 1;
+        return in_array($value, [true, 'Y', '1', 1], true);
     }
 
     private function nullIfBlank(mixed $value): ?string

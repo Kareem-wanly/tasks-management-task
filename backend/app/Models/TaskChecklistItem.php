@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -12,15 +14,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class TaskChecklistItem extends Model
 {
     protected $fillable = ['task_id', 'bitrix_item_id', 'parent_id', 'title', 'is_complete', 'sort_index'];
-
-    protected function casts(): array
-    {
-        return [
-            'bitrix_item_id' => 'integer',
-            'is_complete' => 'boolean',
-            'sort_index' => 'integer',
-        ];
-    }
 
     public function task(): BelongsTo
     {
@@ -41,5 +34,14 @@ class TaskChecklistItem extends Model
     public function isList(): bool
     {
         return $this->parent_id === null;
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'bitrix_item_id' => 'integer',
+            'is_complete' => 'boolean',
+            'sort_index' => 'integer',
+        ];
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Exceptions\BusinessRuleException;
 use App\Integrations\Bitrix24\BitrixException;
 use Illuminate\Auth\Access\AuthorizationException;

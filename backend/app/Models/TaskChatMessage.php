@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -11,15 +13,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class TaskChatMessage extends Model
 {
     protected $fillable = ['task_id', 'bitrix_message_id', 'author_id', 'is_system', 'text', 'files', 'created_at', 'updated_at'];
-
-    protected function casts(): array
-    {
-        return [
-            'bitrix_message_id' => 'integer',
-            'is_system' => 'boolean',
-            'files' => 'array',
-        ];
-    }
 
     public function task(): BelongsTo
     {
@@ -50,5 +43,14 @@ class TaskChatMessage extends Model
         }
 
         return null;
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'bitrix_message_id' => 'integer',
+            'is_system' => 'boolean',
+            'files' => 'array',
+        ];
     }
 }

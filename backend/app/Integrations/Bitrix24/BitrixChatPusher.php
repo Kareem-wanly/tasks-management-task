@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Integrations\Bitrix24;
 
 use App\Models\Task;
@@ -58,7 +60,7 @@ class BitrixChatPusher
             $rows = array_values((array) ($page['messages'] ?? []));
             $messages = [...$messages, ...$rows];
             $files = [...$files, ...array_values((array) ($page['files'] ?? []))];
-            $lastId = $rows === [] ? null : min(array_map(fn (array $row) => (int) $row['id'], $rows));
+            $lastId = $rows === [] ? null : min(array_map(fn (array $row): int => (int) $row['id'], $rows));
         } while ($complete && count($rows) === self::PAGE_SIZE);
 
         $this->sync->sync($task, $messages, $files, $complete);

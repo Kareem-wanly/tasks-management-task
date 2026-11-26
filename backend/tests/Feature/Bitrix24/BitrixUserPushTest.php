@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature\Bitrix24;
 
 use App\Integrations\Bitrix24\BitrixToken;
@@ -46,14 +48,6 @@ class BitrixUserPushTest extends TestCase
 
             return Http::response(['result' => str_ends_with($request->url(), 'user.add.json') ? 90 : true]);
         });
-    }
-
-    private function sent(string $method): Request
-    {
-        $pair = Http::recorded(fn (Request $r) => str_ends_with($r->url(), "/{$method}.json"))->first();
-        $this->assertNotNull($pair, "{$method} was not called.");
-
-        return $pair[0];
     }
 
     public function test_new_employee_is_invited_to_the_top_department(): void
@@ -147,5 +141,13 @@ class BitrixUserPushTest extends TestCase
 
         Http::assertNothingSent();
         $this->assertNull(User::where('email', 'sara@example.com')->first());
+    }
+
+    private function sent(string $method): Request
+    {
+        $pair = Http::recorded(fn (Request $r): bool => str_ends_with($r->url(), "/{$method}.json"))->first();
+        $this->assertNotNull($pair, "{$method} was not called.");
+
+        return $pair[0];
     }
 }

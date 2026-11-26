@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +32,7 @@ return new class extends Migration
     public function up(): void
     {
         foreach (['task_statuses', 'task_priorities'] as $name) {
-            Schema::create($name, function (Blueprint $table) use ($name) {
+            Schema::create($name, function (Blueprint $table) use ($name): void {
                 $table->id();
                 $table->string('key', 50)->unique();
                 $table->string('name');
@@ -55,12 +57,12 @@ return new class extends Migration
             self::PRIORITIES
         ));
 
-        Schema::table('tasks', function (Blueprint $table) {
+        Schema::table('tasks', function (Blueprint $table): void {
             $table->string('status', 50)->default('todo')->change();
             $table->string('priority', 50)->default('medium')->change();
         });
 
-        Schema::table('tasks', function (Blueprint $table) {
+        Schema::table('tasks', function (Blueprint $table): void {
             $table->foreign('status')->references('key')->on('task_statuses')->cascadeOnUpdate()->restrictOnDelete();
             $table->foreign('priority')->references('key')->on('task_priorities')->cascadeOnUpdate()->restrictOnDelete();
         });
@@ -76,7 +78,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('tasks', function (Blueprint $table) {
+        Schema::table('tasks', function (Blueprint $table): void {
             $table->dropForeign(['status']);
             $table->dropForeign(['priority']);
         });
@@ -85,7 +87,7 @@ return new class extends Migration
         DB::table('tasks')->whereNotIn('status', ['todo', 'in_progress', 'review', 'completed'])->update(['status' => 'todo']);
         DB::table('tasks')->whereNotIn('priority', ['low', 'medium', 'high', 'urgent'])->update(['priority' => 'medium']);
 
-        Schema::table('tasks', function (Blueprint $table) {
+        Schema::table('tasks', function (Blueprint $table): void {
             $table->enum('status', ['todo', 'in_progress', 'review', 'completed'])->default('todo')->change();
             $table->enum('priority', ['low', 'medium', 'high', 'urgent'])->default('medium')->change();
         });

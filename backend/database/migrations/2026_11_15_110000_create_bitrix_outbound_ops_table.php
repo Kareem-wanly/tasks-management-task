@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -10,7 +12,7 @@ return new class extends Migration
     {
         // Every change we send to Bitrix24, so the event Bitrix sends back for
         // it can be recognised (confirmed) or caught as a conflict.
-        Schema::create('bitrix_outbound_ops', function (Blueprint $table) {
+        Schema::create('bitrix_outbound_ops', function (Blueprint $table): void {
             $table->id();
             $table->string('entity');
             $table->unsignedBigInteger('bitrix_id');
