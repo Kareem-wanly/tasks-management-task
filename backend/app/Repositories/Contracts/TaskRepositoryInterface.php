@@ -86,6 +86,13 @@ interface TaskRepositoryInterface
     public function allBitrixIds(): array;
 
     /**
+     * The Bitrix IDs of our deleted tasks.
+     *
+     * @return list<int>
+     */
+    public function trashedBitrixIds(): array;
+
+    /**
      * Deletes our copies of these Bitrix tasks.
      *
      * @param  list<int>  $bitrixTaskIds

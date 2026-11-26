@@ -11,6 +11,7 @@ import type { BitrixSyncMode } from '@/types/api';
 import SyncCounters from './SyncCounters';
 import SyncEntitiesTable from './SyncEntitiesTable';
 import SyncFailuresPanel from './SyncFailuresPanel';
+import SyncReconciliationPanel from './SyncReconciliationPanel';
 import { hasRetryWaiting, useSyncFailures } from './useSyncFailures';
 import { useSyncStatus } from './useSyncStatus';
 
@@ -61,6 +62,10 @@ export default function SyncStatusPage() {
       )}
 
       <SyncFailuresPanel failures={failures} total={status.data?.failures} />
+
+      {!status.isError && (
+        <SyncReconciliationPanel reconciliation={status.data?.reconciliation ?? []} isLoading={status.isPending} />
+      )}
 
       <ConfirmModal
         isOpen={confirmFull}

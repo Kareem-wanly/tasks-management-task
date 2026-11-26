@@ -21,6 +21,7 @@ use App\Models\BitrixSyncCursor;
 use App\Models\BitrixSyncFailure;
 use App\Repositories\Contracts\BitrixOutboundOpRepositoryInterface;
 use App\Services\Contracts\BitrixImportServiceInterface;
+use App\Services\Contracts\BitrixReconciliationServiceInterface;
 use App\Services\Contracts\BitrixSyncFailureServiceInterface;
 use App\Services\Contracts\BitrixSyncStatusServiceInterface;
 use Carbon\CarbonImmutable;
@@ -52,6 +53,7 @@ final readonly class BitrixSyncStatusService implements BitrixSyncStatusServiceI
         private BitrixOutboundOpRepositoryInterface $outboundOps,
         private BitrixSyncFailureServiceInterface $failures,
         private Cache $cache,
+        private BitrixReconciliationServiceInterface $reconciliation,
     ) {}
 
     public function status(): BitrixSyncStatusDTO
@@ -66,6 +68,7 @@ final readonly class BitrixSyncStatusService implements BitrixSyncStatusServiceI
             conflicts: $this->outboundOps->countSentBetween(OutboundOpStatus::Conflict, $recent, $now),
             // Still waiting inside the echo window is normal; only older ones count.
             unconfirmed: $this->outboundOps->countSentBetween(OutboundOpStatus::Sent, $recent, $now->subSeconds(BitrixOutboundOp::WINDOW_SECONDS)),
+            reconciliation: $this->reconciliation->summary(),
         );
     }
 

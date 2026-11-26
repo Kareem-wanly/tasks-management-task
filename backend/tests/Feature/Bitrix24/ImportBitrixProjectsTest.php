@@ -10,6 +10,7 @@ use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use App\Jobs\Bitrix\ImportBitrixProjectsJob;
 use App\Models\ActivityLog;
+use App\Models\BitrixReconciliation;
 use App\Models\Project;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -249,6 +250,58 @@ class ImportBitrixProjectsTest extends TestCase
         $this->import();
 
         $this->assertSame($updatedAt, Project::sole()->updated_at->toDateTimeString());
+    }
+
+    /** Step 5.3: a group the import skips shows as missing here. */
+    public function test_reconciliation_counts_a_skipped_group_as_missing_here(): void
+    {
+        $this->groups = [$this->group(10, ['ownerId' => '99']), $this->group(11)];
+        $this->members = [11 => [['USER_ID' => '1', 'ROLE' => 'A']]];
+
+        $this->import();
+
+        $check = BitrixReconciliation::where('entity', 'projects')->sole();
+        $this->assertSame([2, 1, 1, 0, [10], []], [
+            $check->bitrix_count, $check->local_count, $check->missing_here_count, $check->extra_here_count, $check->missing_here, $check->extra_here,
+        ]);
+    }
+
+    /** Step 5.3: deleting here archives the group (step 3.2), which is not a difference. */
+    public function test_reconciliation_accepts_a_project_deleted_here_whose_group_is_archived(): void
+    {
+        $this->groups = [$this->group(10)];
+        $this->import();
+        Project::sole()->delete();
+
+        $this->groups = [$this->group(10, ['closed' => 'Y'])];
+        $this->import();
+
+        $this->assertTrue(BitrixReconciliation::where('entity', 'projects')->latest('id')->first()->hasNoDifference());
+    }
+
+    /** Step 5.3: a group kept here because deleting wasn't allowed shows as extra here. */
+    public function test_reconciliation_shows_a_group_kept_here_after_bitrix_dropped_it(): void
+    {
+        $this->groups = [$this->group(10), $this->group(11)];
+        $this->import();
+
+        $this->groups = [$this->group(10)];
+        $this->serviceIsAdmin = false;
+        $this->import();
+
+        $check = BitrixReconciliation::where('entity', 'projects')->latest('id')->first();
+        $this->assertSame([1, 2, [11]], [$check->bitrix_count, $check->local_count, $check->extra_here]);
+    }
+
+    /** Step 5.3: the projects pass of the 5-minute changes sync is not the nightly check. */
+    public function test_the_changes_sync_projects_pass_does_not_reconcile(): void
+    {
+        $this->groups = [$this->group(10)];
+
+        dispatch_sync(new ImportBitrixProjectsJob(partOfChangesSync: true));
+
+        $this->assertSame(1, Project::count());
+        $this->assertSame(0, BitrixReconciliation::count());
     }
 
     private function group(int $id, array $overrides = []): array

@@ -8,6 +8,7 @@ use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use App\Jobs\Bitrix\ImportBitrixTasksJob;
 use App\Models\ActivityLog;
+use App\Models\BitrixReconciliation;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -262,6 +263,74 @@ class ImportBitrixTasksTest extends TestCase
         $task = Task::sole();
         $this->assertSame($updatedAt, $task->updated_at->toDateTimeString());
         $this->assertSame(now()->toDateTimeString(), $task->bitrix_synced_at->toDateTimeString());
+    }
+
+    /** Step 5.3: tasks the import skips show as missing here, with their IDs. */
+    public function test_reconciliation_counts_skipped_tasks_as_missing_here(): void
+    {
+        $this->tasks = [$this->task(15, ['createdBy' => '99']), $this->task(16, ['groupId' => '42']), $this->task(17)];
+
+        $this->import();
+
+        $check = BitrixReconciliation::where('entity', 'tasks')->sole();
+        $this->assertSame([3, 1, [15, 16], []], [$check->bitrix_count, $check->local_count, $check->missing_here, $check->extra_here]);
+    }
+
+    /** Step 5.3: a clean run, and a delta or an empty listing records no check. */
+    public function test_reconciliation_runs_on_full_listings_only(): void
+    {
+        $this->tasks = [$this->task(15)];
+        $this->import();
+        $this->assertTrue(BitrixReconciliation::sole()->hasNoDifference());
+
+        $this->tasks = [];
+        $this->import();
+        dispatch_sync(new ImportBitrixTasksJob(CarbonImmutable::now()->subHour()));
+
+        $this->assertSame(1, BitrixReconciliation::count());
+    }
+
+    /** Step 5.3: deleting a project here only closes its group, so Bitrix still lists its tasks. */
+    public function test_reconciliation_accepts_tasks_of_a_project_deleted_here(): void
+    {
+        $this->tasks = [$this->task(15), $this->task(16)];
+        $this->import();
+        Task::query()->delete();
+        Project::query()->delete();
+
+        $this->import();
+
+        $check = BitrixReconciliation::where('entity', 'tasks')->latest('id')->first();
+        $this->assertTrue($check->hasNoDifference());
+        $this->assertSame([2, 2], [$check->bitrix_count, $check->local_count]);
+    }
+
+    /** Step 5.3: a task the listing missed but Bitrix confirms still exists is not a difference. */
+    public function test_reconciliation_counts_a_task_bitrix_confirms_as_still_there(): void
+    {
+        $this->tasks = [$this->task(15), $this->task(16)];
+        $this->import();
+
+        $this->tasks = [$this->task(15)];
+        $this->stillThere = [16];
+        $this->import();
+
+        $check = BitrixReconciliation::where('entity', 'tasks')->latest('id')->first();
+        $this->assertTrue($check->hasNoDifference());
+        $this->assertSame(2, $check->bitrix_count);
+    }
+
+    /** Step 5.3: a task deleted in Bitrix but kept here (no admin to confirm) is a real difference. */
+    public function test_reconciliation_shows_a_task_kept_here_when_deletion_is_not_confirmed(): void
+    {
+        $this->tasks = [$this->task(15), $this->task(16)];
+        $this->import();
+
+        $this->tasks = [$this->task(15)];
+        $this->serviceIsAdmin = false;
+        $this->import();
+
+        $this->assertSame([16], BitrixReconciliation::where('entity', 'tasks')->latest('id')->first()->extra_here);
     }
 
     private function task(int $id, array $overrides = []): array

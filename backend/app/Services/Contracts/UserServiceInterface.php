@@ -52,4 +52,11 @@ interface UserServiceInterface
      * @return Collection<int, User>
      */
     public function findMany(array $userIds): Collection;
+
+    /**
+     * Step 5.3: the Bitrix IDs of every linked account, for the nightly reconciliation.
+     *
+     * @return list<int>
+     */
+    public function allBitrixIds(): array;
 }

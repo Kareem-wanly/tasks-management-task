@@ -162,6 +162,11 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
         return self::toIntList(Task::whereNotNull('bitrix_task_id')->pluck('bitrix_task_id'));
     }
 
+    public function trashedBitrixIds(): array
+    {
+        return self::toIntList(Task::onlyTrashed()->whereNotNull('bitrix_task_id')->pluck('bitrix_task_id'));
+    }
+
     public function deleteByBitrixIds(array $bitrixTaskIds): int
     {
         $gone = Task::whereIn('bitrix_task_id', $bitrixTaskIds)->get();

@@ -49,6 +49,14 @@ interface TaskServiceInterface
      */
     public function allBitrixIds(): array;
 
+    /**
+     * Step 5.3: the Bitrix IDs of tasks deleted here. Deleting a project here
+     * only closes its group, so Bitrix still lists its tasks: not a difference.
+     *
+     * @return list<int>
+     */
+    public function trashedBitrixIds(): array;
+
     /** How many of our tasks are in Bitrix. */
     public function countInBitrix(): int;
 

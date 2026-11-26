@@ -241,6 +241,7 @@ $repositoryOwners = [
     // The echo bookkeeping of the project and task writes sent to Bitrix24; the sync status page counts it.
     'BitrixOutboundOpRepositoryInterface' => ['ProjectService', 'TaskService', 'TaskMemberService', 'BitrixSyncStatusService'],
     'BitrixPortalRepositoryInterface' => ['BitrixEventService', 'BitrixInstallService', 'UserService'],
+    'BitrixReconciliationRepositoryInterface' => ['BitrixReconciliationService'],
     'BitrixSyncCursorRepositoryInterface' => ['BitrixImportService'],
     'BitrixSyncFailureRepositoryInterface' => ['BitrixSyncFailureService'],
     'BitrixTokenRepositoryInterface' => ['BitrixAuthService', 'BitrixInstallService'],

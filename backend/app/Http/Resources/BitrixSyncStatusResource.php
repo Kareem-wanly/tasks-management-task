@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Step 5.1: { data: { is_running, entities, failures, conflicts, unconfirmed } }.
+ * Step 5.1: { data: { is_running, entities, failures, conflicts, unconfirmed, reconciliation } }.
  *
  * @property BitrixSyncStatusDTO $resource
  */
@@ -24,6 +24,7 @@ final class BitrixSyncStatusResource extends JsonResource
             'failures' => $this->resource->failures,
             'conflicts' => $this->resource->conflicts,
             'unconfirmed' => $this->resource->unconfirmed,
+            'reconciliation' => BitrixReconciliationResource::collection($this->resource->reconciliation),
         ];
     }
 }

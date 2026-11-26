@@ -86,6 +86,13 @@ interface UserRepositoryInterface
      */
     public function findMany(array $userIds): Collection;
 
+    /**
+     * The Bitrix IDs of every linked account (active or not).
+     *
+     * @return list<int>
+     */
+    public function allBitrixIds(): array;
+
     /** An account with this email (any case) that isn't linked to Bitrix yet. */
     public function findUnlinkedByEmail(string $email): ?User;
 

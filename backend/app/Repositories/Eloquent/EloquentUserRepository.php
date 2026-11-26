@@ -145,6 +145,11 @@ final class EloquentUserRepository implements UserRepositoryInterface
         return User::whereIn('id', $userIds)->get(['id', 'name', 'bitrix_user_id']);
     }
 
+    public function allBitrixIds(): array
+    {
+        return self::toIntList(User::whereNotNull('bitrix_user_id')->pluck('bitrix_user_id'));
+    }
+
     public function findUnlinkedByEmail(string $email): ?User
     {
         return User::whereRaw('LOWER(email) = ?', [strtolower($email)])->whereNull('bitrix_user_id')->first();

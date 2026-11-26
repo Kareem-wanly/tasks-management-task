@@ -31,7 +31,7 @@ final class ImportBitrixProjectsJob implements ShouldQueue
 
     public function handle(BitrixImportServiceInterface $import): void
     {
-        $import->importProjects();
+        $import->importProjects(reconcile: ! $this->partOfChangesSync);
     }
 
     protected function deadLetterSubject(): string
