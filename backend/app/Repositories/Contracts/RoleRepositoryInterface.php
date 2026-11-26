@@ -9,7 +9,11 @@ use Illuminate\Support\Collection;
 
 interface RoleRepositoryInterface
 {
-    /** Every role with its permissions and its permission/user counts. */
+    /**
+     * Every role with its permissions and its permission/user counts.
+     *
+     * @return Collection<int, Role>
+     */
     public function allWithPermissions(): Collection;
 
     /** @param  array<string, mixed>  $attributes */

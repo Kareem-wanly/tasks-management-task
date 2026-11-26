@@ -18,6 +18,7 @@ final class UpdateTaskMembersRequest extends FormRequest
         return $this->user()->can('update', $this->route('task'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         $activeUser = Rule::exists('users', 'id')->where('is_active', true);

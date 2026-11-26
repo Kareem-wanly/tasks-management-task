@@ -30,6 +30,7 @@ final class StoreTaskRequest extends FormRequest
             || $this->user()->can('assign', [new Task(['project_id' => $project?->id]), $project]);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

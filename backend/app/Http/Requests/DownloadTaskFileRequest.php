@@ -14,6 +14,7 @@ final class DownloadTaskFileRequest extends FormRequest
         return $this->user()->can('view', $this->route('file')->task);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [];

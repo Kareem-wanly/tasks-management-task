@@ -17,6 +17,7 @@ final class UpdateProjectRequest extends FormRequest
         return $this->user()->can('update', $this->route('project'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

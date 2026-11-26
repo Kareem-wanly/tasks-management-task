@@ -14,6 +14,7 @@ final class ShowRoleRequest extends FormRequest
         return $this->user()->can('view', $this->route('role'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [];

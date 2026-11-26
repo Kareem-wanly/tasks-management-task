@@ -15,6 +15,7 @@ final class StoreTaskChatMessageRequest extends FormRequest
         return $this->user()->can('postInChat', $this->route('task'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return ['text' => ['required', 'string', 'max:5000']];

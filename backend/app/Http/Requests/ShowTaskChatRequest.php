@@ -14,6 +14,7 @@ final class ShowTaskChatRequest extends FormRequest
         return $this->user()->can('viewChat', $this->route('task'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [];

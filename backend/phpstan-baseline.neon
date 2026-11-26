@@ -385,28 +385,10 @@ parameters:
 			path: app/Integrations/Bitrix24/BitrixFingerprint.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:onlyTrashed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/Project.php
-
-		-
 			message: '#^Cannot call method diffInSeconds\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
 			path: app/Models/RunningTimer.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:unfinished\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/Task.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<Illuminate\\Database\\Eloquent\\Model\>\:\:accessibleBy\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/Task.php
 
 		-
 			message: '#^Empty array passed to foreach\.$#'
@@ -415,91 +397,7 @@ parameters:
 			path: app/Models/TaskChatMessage.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:unfinished\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Repositories/Eloquent/EloquentProjectRepository.php
-
-		-
-			message: '#^Method App\\Repositories\\Eloquent\\EloquentTaskChatMessageRepository\:\:bitrixMessages\(\) should return Illuminate\\Support\\Collection\<int, App\\Models\\TaskChatMessage\> but returns Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Illuminate\\Database\\Eloquent\\Model\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Repositories/Eloquent/EloquentTaskChatMessageRepository.php
-
-		-
-			message: '#^Method App\\Repositories\\Eloquent\\EloquentTaskChatMessageRepository\:\:create\(\) should return App\\Models\\TaskChatMessage but returns Illuminate\\Database\\Eloquent\\Model\.$#'
-			identifier: return.type
-			count: 2
-			path: app/Repositories/Eloquent/EloquentTaskChatMessageRepository.php
-
-		-
-			message: '#^Method App\\Repositories\\Eloquent\\EloquentTaskChatMessageRepository\:\:latestForTask\(\) should return Illuminate\\Support\\Collection\<int, App\\Models\\TaskChatMessage\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Repositories/Eloquent/EloquentTaskChatMessageRepository.php
-
-		-
-			message: '#^Method App\\Repositories\\Eloquent\\EloquentTaskChecklistRepository\:\:firstItemOf\(\) should return App\\Models\\TaskChecklistItem\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Repositories/Eloquent/EloquentTaskChecklistRepository.php
-
-		-
 			message: '#^Parameter \#1 \$array \(list\<App\\Models\\TaskChecklistItem\>\) of array_values is already a list, call has no effect\.$#'
 			identifier: arrayValues.list
 			count: 1
 			path: app/Repositories/Eloquent/EloquentTaskChecklistRepository.php
-
-		-
-			message: '#^Method App\\Repositories\\Eloquent\\EloquentTaskFileRepository\:\:bitrixFiles\(\) should return Illuminate\\Support\\Collection\<int, App\\Models\\TaskFile\> but returns Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Illuminate\\Database\\Eloquent\\Model\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Repositories/Eloquent/EloquentTaskFileRepository.php
-
-		-
-			message: '#^Method App\\Repositories\\Eloquent\\EloquentTaskFileRepository\:\:createLocal\(\) should return App\\Models\\TaskFile but returns Illuminate\\Database\\Eloquent\\Model\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Repositories/Eloquent/EloquentTaskFileRepository.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:finished\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Repositories/Eloquent/EloquentTaskRepository.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:unfinished\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: app/Repositories/Eloquent/EloquentTaskRepository.php
-
-		-
-			message: '#^Method App\\Repositories\\Eloquent\\EloquentTaskResultRepository\:\:bitrixResults\(\) should return Illuminate\\Support\\Collection\<int, App\\Models\\TaskResult\> but returns Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Illuminate\\Database\\Eloquent\\Model\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Repositories/Eloquent/EloquentTaskResultRepository.php
-
-		-
-			message: '#^Method App\\Repositories\\Eloquent\\EloquentTaskResultRepository\:\:create\(\) should return App\\Models\\TaskResult but returns Illuminate\\Database\\Eloquent\\Model\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Repositories/Eloquent/EloquentTaskResultRepository.php
-
-		-
-			message: '#^Method App\\Repositories\\Eloquent\\EloquentTimeEntryRepository\:\:bitrixEntries\(\) should return Illuminate\\Support\\Collection\<int, App\\Models\\TaskElapsedItem\> but returns Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\), Illuminate\\Database\\Eloquent\\Model\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Repositories/Eloquent/EloquentTimeEntryRepository.php
-
-		-
-			message: '#^Method App\\Repositories\\Eloquent\\EloquentTimeEntryRepository\:\:create\(\) should return App\\Models\\TaskElapsedItem but returns Illuminate\\Database\\Eloquent\\Model\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Repositories/Eloquent/EloquentTimeEntryRepository.php
-
-		-
-			message: '#^Parameter \#1 \$list of method App\\Repositories\\Contracts\\TaskChecklistRepositoryInterface\:\:firstItemOf\(\) expects App\\Models\\TaskChecklistItem, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/TaskChecklistService.php

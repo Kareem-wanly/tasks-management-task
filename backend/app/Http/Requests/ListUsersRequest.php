@@ -19,6 +19,7 @@ final class ListUsersRequest extends FormRequest
         return $this->user()->can('viewAny', User::class);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

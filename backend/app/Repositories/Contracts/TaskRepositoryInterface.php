@@ -17,10 +17,15 @@ interface TaskRepositoryInterface
      * The task list with its filters and sort.
      *
      * @param  User|null  $visibleTo  Only tasks this user may see; null for everything (administrators).
+     * @return LengthAwarePaginator<int, Task>
      */
     public function paginate(?User $visibleTo, TaskFiltersDTO $filters, int $perPage): LengthAwarePaginator;
 
-    /** A project's tasks, newest first, with their assignees. */
+    /**
+     * A project's tasks, newest first, with their assignees.
+     *
+     * @return LengthAwarePaginator<int, Task>
+     */
     public function paginateForProject(Project $project, int $perPage): LengthAwarePaginator;
 
     /** Everything the task page shows. */

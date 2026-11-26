@@ -10,6 +10,7 @@ use Illuminate\Support\Collection;
 
 interface UserRoleServiceInterface
 {
+    /** @return Collection<int, \App\Models\Role> */
     public function list(User $user): Collection;
 
     public function sync(User $actor, User $user, SyncUserRolesDTO $roles): User;

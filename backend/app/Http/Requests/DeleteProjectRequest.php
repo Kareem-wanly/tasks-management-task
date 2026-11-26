@@ -14,6 +14,7 @@ final class DeleteProjectRequest extends FormRequest
         return $this->user()->can('delete', $this->route('project'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [];

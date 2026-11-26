@@ -26,6 +26,7 @@ final class UpdateTaskRequest extends FormRequest
         return ! $this->changesAssignee($task) || $this->user()->can('assign', $task);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

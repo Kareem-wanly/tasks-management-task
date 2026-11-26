@@ -65,6 +65,7 @@ final readonly class BitrixFingerprint
         ]);
     }
 
+    /** @param  array<mixed>  $values */
     private function hash(array $values): string
     {
         return hash('sha256', json_encode($values));

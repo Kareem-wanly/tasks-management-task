@@ -27,7 +27,10 @@ final readonly class TaskLookupService implements TaskLookupServiceInterface
         private BitrixTaskRepositoryInterface $bitrixTasks,
     ) {}
 
-    /** @param  class-string<TaskLookup>  $model */
+    /**
+     * @param  class-string<TaskLookup>  $model
+     * @return Collection<int, TaskLookup>
+     */
     public function list(string $model): Collection
     {
         return $this->lookups->ordered($model);

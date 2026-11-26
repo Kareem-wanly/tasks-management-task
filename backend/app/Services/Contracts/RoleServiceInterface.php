@@ -13,6 +13,7 @@ use Illuminate\Support\Collection;
 
 interface RoleServiceInterface
 {
+    /** @return Collection<int, Role> */
     public function list(): Collection;
 
     public function show(Role $role): Role;

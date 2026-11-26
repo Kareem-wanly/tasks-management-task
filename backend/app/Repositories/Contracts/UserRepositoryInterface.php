@@ -14,10 +14,16 @@ interface UserRepositoryInterface
 {
     /**
      * Newest first, with roles.
+     *
+     * @return LengthAwarePaginator<int, User>
      */
     public function paginate(UserFiltersDTO $filters, int $perPage): LengthAwarePaginator;
 
-    /** Active users (id, name, email) for dropdowns. */
+    /**
+     * Active users (id, name, email) for dropdowns.
+     *
+     * @return Collection<int, User>
+     */
     public function activeOptions(int $limit): Collection;
 
     public function findByEmail(string $email): ?User;
@@ -38,6 +44,7 @@ interface UserRepositoryInterface
     /** @param  list<int>  $roleIds */
     public function syncRoles(User $user, array $roleIds): void;
 
+    /** @return Collection<int, Role> */
     public function roles(User $user): Collection;
 
     public function hasRoleId(User $user, int $roleId): bool;
@@ -75,6 +82,7 @@ interface UserRepositoryInterface
      * id, name and Bitrix ID of the given users.
      *
      * @param  list<int>  $userIds
+     * @return Collection<int, User>
      */
     public function findMany(array $userIds): Collection;
 

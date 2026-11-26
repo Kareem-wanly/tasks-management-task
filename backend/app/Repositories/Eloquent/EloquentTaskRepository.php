@@ -20,6 +20,7 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
 {
     private const SORTS = ['created_at', 'due_date', 'priority', 'title', 'status'];
 
+    /** @return LengthAwarePaginator<int, Task> */
     public function paginate(?User $visibleTo, TaskFiltersDTO $filters, int $perPage): LengthAwarePaginator
     {
         $query = Task::with(['project', 'assignee']);
@@ -34,6 +35,7 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
         return $query->paginate($perPage);
     }
 
+    /** @return LengthAwarePaginator<int, Task> */
     public function paginateForProject(Project $project, int $perPage): LengthAwarePaginator
     {
         return $project->tasks()->with('assignee')->latest()->paginate($perPage);
@@ -173,6 +175,7 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
         ];
     }
 
+    /** @param  Builder<Task>  $query */
     private function applyFilters(Builder $query, TaskFiltersDTO $filters): void
     {
         if ($filters->search !== null) {
@@ -203,6 +206,7 @@ final class EloquentTaskRepository implements TaskRepositoryInterface
         }
     }
 
+    /** @param  Builder<Task>  $query */
     private function applySort(Builder $query, ?string $sortBy, ?string $sortOrder): void
     {
         $sortBy = in_array($sortBy, self::SORTS, true) ? $sortBy : 'created_at';

@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Project extends Model
 {
+    /** @use HasFactory<\Database\Factories\ProjectFactory> */
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
@@ -34,11 +35,17 @@ class Project extends Model
         'status' => ProjectStatus::class,
     ];
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');
     }
 
+    /**
+     * @return BelongsToMany<User, $this, \Illuminate\Database\Eloquent\Relations\Pivot>
+     */
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class)
@@ -46,11 +53,17 @@ class Project extends Model
             ->withTimestamps();
     }
 
+    /**
+     * @return HasMany<Task, $this>
+     */
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);
     }
 
+    /**
+     * @return HasMany<ActivityLog, $this>
+     */
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);
@@ -82,6 +95,10 @@ class Project extends Model
         });
     }
 
+    /**
+     * @param  Builder<Project>  $query
+     * @return Builder<Project>
+     */
     protected function scopeAccessibleBy(Builder $query, User $user): Builder
     {
         if ($user->hasRole(SystemRole::Administrator)) {

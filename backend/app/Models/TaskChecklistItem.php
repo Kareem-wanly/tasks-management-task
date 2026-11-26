@@ -21,11 +21,17 @@ class TaskChecklistItem extends Model
         return $this->belongsTo(Task::class);
     }
 
+    /**
+     * @return BelongsTo<TaskChecklistItem, $this>
+     */
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_id');
     }
 
+    /**
+     * @return HasMany<TaskChecklistItem, $this>
+     */
     public function items(): HasMany
     {
         return $this->hasMany(self::class, 'parent_id');

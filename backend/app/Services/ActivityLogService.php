@@ -18,12 +18,17 @@ final readonly class ActivityLogService implements ActivityLogServiceInterface
 {
     public function __construct(private ActivityLogRepositoryInterface $activities) {}
 
+    /** @return LengthAwarePaginator<int, \App\Models\ActivityLog> */
     public function forProject(Project $project, int $perPage): LengthAwarePaginator
     {
         return $this->activities->paginateForProject($project, $perPage);
     }
 
-    /** Administrators see everything; others see the projects they own or belong to. */
+    /**
+     * Administrators see everything; others see the projects they own or belong to.
+     *
+     * @return LengthAwarePaginator<int, \App\Models\ActivityLog>
+     */
     public function forUser(User $user, int $perPage): LengthAwarePaginator
     {
         return $this->activities->paginateForUser($user, ! $user->hasRole(SystemRole::Administrator), $perPage);

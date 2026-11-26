@@ -13,7 +13,11 @@ use Illuminate\Support\Collection;
  */
 interface TaskChecklistRepositoryInterface
 {
-    /** Lists and items, by sort_index. */
+    /**
+     * Lists and items, by sort_index.
+     *
+     * @return Collection<int, TaskChecklistItem>
+     */
     public function forTask(Task $task): Collection;
 
     public function find(int $id): ?TaskChecklistItem;
@@ -41,7 +45,11 @@ interface TaskChecklistRepositoryInterface
      */
     public function reorder(array $items): void;
 
-    /** The other items of the item's list, in order. */
+    /**
+     * The other items of the item's list, in order.
+     *
+     * @return Collection<int, TaskChecklistItem>
+     */
     public function siblingsOf(TaskChecklistItem $item): Collection;
 
     /**

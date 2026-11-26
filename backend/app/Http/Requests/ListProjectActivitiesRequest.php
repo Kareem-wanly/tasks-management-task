@@ -17,6 +17,7 @@ final class ListProjectActivitiesRequest extends FormRequest
         return $this->user()->can('view', $this->route('project'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return $this->paginationRules();

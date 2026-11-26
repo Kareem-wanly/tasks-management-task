@@ -31,6 +31,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
      * Call a method with the token of a user, so Bitrix applies that user's
      * permissions and records the change under their name.
      *
+     * @param  array<string, mixed>  $params
      * @return array<string, mixed> The decoded body: result, plus next/total for list methods.
      */
     public function callAsUser(HasBitrixToken $user, string $method, array $params = [], ?int $timeout = null): array
@@ -41,6 +42,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
     /**
      * Call a REST 3.0 method (/rest/api/...) as a user, e.g. task results.
      *
+     * @param  array<string, mixed>  $params
      * @return array<string, mixed> The decoded body: result (with item or items).
      */
     public function callV3AsUser(HasBitrixToken $user, string $method, array $params = []): array
@@ -48,7 +50,10 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
         return $this->callWithRefresh($user, $method, $params, null, self::REST_V3_PATH);
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
     public function callV3AsService(string $method, array $params = []): array
     {
         return $this->callV3AsUser($this->serviceAccount(), $method, $params);
@@ -130,6 +135,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
     /**
      * Call a method with the service account's token (background sync).
      *
+     * @param  array<string, mixed>  $params
      * @return array<string, mixed>
      */
     public function callAsService(string $method, array $params = []): array
@@ -141,6 +147,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
      * Call a method with a raw access token (e.g. the one in the install
      * event). The token cannot be refreshed here, so expiry is final.
      *
+     * @param  array<string, mixed>  $params
      * @return array<string, mixed>
      */
     public function callWithToken(string $accessToken, string $method, array $params = []): array
@@ -153,7 +160,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
      * rate limit (in result_error, the batch itself succeeds) are sent again
      * on their own, with the same backoff as single calls.
      *
-     * @param  array<string, array{0: string, 1?: array}>  $commands  key => [method, params]
+     * @param  array<string, array{0: string, 1?: array<string, mixed>}>  $commands  key => [method, params]
      * @return array<string, mixed> result.result, result_error, result_total, result_next, result_time
      */
     public function batch(HasBitrixToken $holder, array $commands, bool $halt = false): array
@@ -186,7 +193,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
     /**
      * Run a batch with the service account's token (background sync).
      *
-     * @param  array<string, array{0: string, 1?: array}>  $commands
+     * @param  array<string, array{0: string, 1?: array<string, mixed>}>  $commands
      * @return array<string, mixed>
      */
     public function batchAsService(array $commands, bool $halt = false): array
@@ -198,7 +205,8 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
      * Walk every page of a list method with the service account: one call
      * for the first page and its total, then the rest batched 50 at a time.
      *
-     * @param  callable(array, int): void  $onPage  Receives each page's `result` and the total Bitrix reported.
+     * @param  callable(array<mixed>, int): void  $onPage  Receives each page's `result` and the total Bitrix reported.
+     * @param  array<string, mixed>  $params
      * @return int The total Bitrix reported.
      */
     public function eachPageAsService(string $method, array $params, callable $onPage): int
@@ -233,7 +241,10 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
         return $total;
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
     private function callWithRefresh(HasBitrixToken $user, string $method, array $params, ?int $timeout, string $path): array
     {
         $token = $this->tokens->validTokenFor($user);
@@ -258,6 +269,10 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
         return resolve(self::SERVICE_ACCOUNT);
     }
 
+    /**
+     * @param  array<string, array{0: string, 1?: array<string, mixed>}>  $commands
+     * @return array<string, mixed>
+     */
     private function batchParams(array $commands, bool $halt): array
     {
         if ($commands === [] || count($commands) > self::MAX_BATCH_COMMANDS) {
@@ -274,6 +289,7 @@ final readonly class BitrixGateway implements BitrixGatewayInterface
     }
 
     /**
+     * @param  array<string, mixed>  $params
      * @return array<string, mixed>
      */
     private function send(string $accessToken, string $method, array $params, ?int $timeout = null, string $path = self::REST_PATH): array

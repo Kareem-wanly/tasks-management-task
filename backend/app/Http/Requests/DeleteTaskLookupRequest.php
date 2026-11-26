@@ -14,6 +14,7 @@ final class DeleteTaskLookupRequest extends FormRequest
         return $this->user()->can('delete', $this->route('taskStatus') ?? $this->route('taskPriority'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [];

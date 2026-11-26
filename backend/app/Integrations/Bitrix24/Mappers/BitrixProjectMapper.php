@@ -28,6 +28,7 @@ final class BitrixProjectMapper
      * Project columns Bitrix owns. Status is left out: only the archived
      * state comes from Bitrix, see isClosed().
      *
+     * @param  array<string, mixed>  $group
      * @return array<string, mixed>
      */
     public function attributes(array $group): array
@@ -44,17 +45,20 @@ final class BitrixProjectMapper
         ];
     }
 
+    /** @param  array<string, mixed>  $group */
     public function ownerBitrixId(array $group): int
     {
         return (int) ($group['ownerId'] ?? 0);
     }
 
+    /** @param  array<string, mixed>  $group */
     public function isClosed(array $group): bool
     {
         return ($group['closed'] ?? 'N') === 'Y';
     }
 
     /**
+     * @param  list<array<string, mixed>>  $members
      * @return array<int, string> Bitrix user ID => project_user.role
      */
     public function members(array $members): array

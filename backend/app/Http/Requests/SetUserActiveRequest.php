@@ -15,6 +15,7 @@ final class SetUserActiveRequest extends FormRequest
         return $this->user()->can('delete', $this->route('user'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return ['active' => ['required', 'boolean']];

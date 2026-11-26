@@ -26,6 +26,7 @@ abstract class TaskLookupRequest extends FormRequest
         return $lookup instanceof TaskLookup ? $this->user()->can('update', $lookup) : $this->user()->can('create', $this->model());
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         $rules = [
@@ -60,7 +61,11 @@ abstract class TaskLookupRequest extends FormRequest
     /** @return class-string<TaskLookup> */
     abstract protected function model(): string;
 
-    /** Rules only one kind of value has (e.g. is_final for statuses). */
+    /**
+     * Rules only one kind of value has (e.g. is_final for statuses).
+     *
+     * @return array<string, mixed>
+     */
     protected function extraRules(): array
     {
         return [];

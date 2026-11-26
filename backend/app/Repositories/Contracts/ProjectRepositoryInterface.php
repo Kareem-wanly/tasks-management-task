@@ -15,6 +15,8 @@ interface ProjectRepositoryInterface
 {
     /**
      * Projects the user may open, with their owner and task counts.
+     *
+     * @return LengthAwarePaginator<int, Project>
      */
     public function paginateAccessible(User $user, ProjectFiltersDTO $filters, int $perPage): LengthAwarePaginator;
 
@@ -24,7 +26,11 @@ interface ProjectRepositoryInterface
     /** A fresh copy with owner and members, as write responses return it. */
     public function freshWithMembers(Project $project): Project;
 
-    /** id, title, status of the projects the user may open, for dropdowns. */
+    /**
+     * id, title, status of the projects the user may open, for dropdowns.
+     *
+     * @return Collection<int, Project>
+     */
     public function optionsFor(User $user, bool $includeArchived, int $limit): Collection;
 
     public function save(Project $project): void;
@@ -33,7 +39,11 @@ interface ProjectRepositoryInterface
 
     public function hasUnfinishedTasks(Project $project): bool;
 
-    /** Members (users.id, name, email). */
+    /**
+     * Members (users.id, name, email).
+     *
+     * @return Collection<int, User>
+     */
     public function members(Project $project): Collection;
 
     public function hasMember(Project $project, int $userId): bool;

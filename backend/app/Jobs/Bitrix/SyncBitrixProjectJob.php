@@ -23,7 +23,11 @@ final class SyncBitrixProjectJob implements ShouldBeUniqueUntilProcessing, Shoul
 
     public int $tries = 3;
 
-    /** Seconds before each retry, e.g. while Bitrix is unreachable. */
+    /**
+     * Seconds before each retry, e.g. while Bitrix is unreachable.
+     *
+     * @var list<int>
+     */
     public array $backoff = [10, 60];
 
     /** One group's fetch and save; well under $uniqueFor. */

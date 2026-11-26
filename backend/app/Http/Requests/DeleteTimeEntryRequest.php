@@ -14,6 +14,7 @@ final class DeleteTimeEntryRequest extends FormRequest
         return $this->user()->can('manageTimeEntry', [$this->route('entry')->task, $this->route('entry')]);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [];

@@ -28,6 +28,7 @@ final readonly class BitrixTaskMapper
     public function __construct(private TaskLookupRepositoryInterface $lookups) {}
 
     /**
+     * @param  array<string, mixed>  $task
      * @return array<string, mixed>
      */
     public function attributes(array $task): array
@@ -58,11 +59,13 @@ final readonly class BitrixTaskMapper
         return $attributes;
     }
 
+    /** @param  array<string, mixed>  $task */
     public function creatorBitrixId(array $task): int
     {
         return (int) ($task['createdBy'] ?? 0);
     }
 
+    /** @param  array<string, mixed>  $task */
     public function responsibleBitrixId(array $task): int
     {
         return (int) ($task['responsibleId'] ?? 0);
@@ -71,6 +74,7 @@ final readonly class BitrixTaskMapper
     /**
      * Step 4.1: accomplices and auditors as sorted Bitrix user IDs.
      *
+     * @param  array<string, mixed>  $task
      * @return array{accomplice: list<int>, auditor: list<int>}|null Null when the row has no member lists (not selected).
      */
     public function members(array $task): ?array
@@ -89,13 +93,21 @@ final readonly class BitrixTaskMapper
         return [TaskMemberRole::Accomplice->value => $ids($task['accomplices'] ?? []), TaskMemberRole::Auditor->value => $ids($task['auditors'] ?? [])];
     }
 
-    /** 0 means the task is not a subtask. */
+    /**
+     * 0 means the task is not a subtask.
+     *
+     * @param  array<string, mixed>  $task
+     */
     public function parentBitrixId(array $task): int
     {
         return (int) ($task['parentId'] ?? 0);
     }
 
-    /** 0 means the task has no project. */
+    /**
+     * 0 means the task has no project.
+     *
+     * @param  array<string, mixed>  $task
+     */
     public function groupBitrixId(array $task): int
     {
         return (int) ($task['groupId'] ?? 0);

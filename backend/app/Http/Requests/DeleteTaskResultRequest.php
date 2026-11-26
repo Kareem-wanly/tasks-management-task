@@ -14,6 +14,7 @@ final class DeleteTaskResultRequest extends FormRequest
         return $this->user()->can('manageResult', [$this->route('result')->task, $this->route('result')]);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [];

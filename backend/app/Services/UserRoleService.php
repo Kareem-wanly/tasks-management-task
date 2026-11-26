@@ -31,6 +31,7 @@ final readonly class UserRoleService implements UserRoleServiceInterface
         private ConnectionInterface $database,
     ) {}
 
+    /** @return Collection<int, \App\Models\Role> */
     public function list(User $user): Collection
     {
         return $this->users->roles($user);

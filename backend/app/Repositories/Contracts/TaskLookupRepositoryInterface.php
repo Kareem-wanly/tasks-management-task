@@ -12,7 +12,10 @@ use Illuminate\Support\Collection;
  */
 interface TaskLookupRepositoryInterface
 {
-    /** @param  class-string<TaskLookup>  $model */
+    /**
+     * @param  class-string<TaskLookup>  $model
+     * @return Collection<int, TaskLookup>
+     */
     public function ordered(string $model): Collection;
 
     /**

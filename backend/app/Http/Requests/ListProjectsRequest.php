@@ -19,6 +19,7 @@ final class ListProjectsRequest extends FormRequest
         return $this->user()->can('viewAny', Project::class);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [

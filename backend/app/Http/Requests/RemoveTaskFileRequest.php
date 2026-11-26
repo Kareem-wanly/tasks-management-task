@@ -14,6 +14,7 @@ final class RemoveTaskFileRequest extends FormRequest
         return $this->user()->can('manageFiles', $this->route('file')->task);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [];

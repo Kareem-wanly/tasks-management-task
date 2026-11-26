@@ -41,12 +41,14 @@ final readonly class TaskService implements TaskServiceInterface
         private BitrixFingerprint $fingerprints,
     ) {}
 
+    /** @return LengthAwarePaginator<int, Task> */
     public function list(User $viewer, TaskFiltersDTO $filters, int $perPage): LengthAwarePaginator
     {
         // Administrators see every task; everyone else what they may see.
         return $this->tasks->paginate($viewer->hasRole(SystemRole::Administrator) ? null : $viewer, $filters, $perPage);
     }
 
+    /** @return LengthAwarePaginator<int, Task> */
     public function listForProject(Project $project, int $perPage): LengthAwarePaginator
     {
         return $this->tasks->paginateForProject($project, $perPage);

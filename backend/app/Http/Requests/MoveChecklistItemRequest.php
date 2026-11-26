@@ -16,6 +16,7 @@ final class MoveChecklistItemRequest extends FormRequest
         return $this->user()->can('updateChecklist', $this->route('item')->task);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         $item = $this->route('item');

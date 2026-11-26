@@ -20,6 +20,9 @@ class TaskElapsedItem extends Model
         return $this->belongsTo(Task::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

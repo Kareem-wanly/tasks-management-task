@@ -20,6 +20,9 @@ class TaskChatMessage extends Model
         return $this->belongsTo(Task::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');

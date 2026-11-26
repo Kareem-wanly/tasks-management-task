@@ -16,6 +16,7 @@ final class DownloadTaskChatFileRequest extends FormRequest
         return $message->file($this->fileId()) !== null && $this->user()->can('viewChat', $message->task);
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [];

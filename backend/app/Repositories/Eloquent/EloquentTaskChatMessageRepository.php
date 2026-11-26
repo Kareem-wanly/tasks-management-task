@@ -57,6 +57,7 @@ final class EloquentTaskChatMessageRepository implements TaskChatMessageReposito
         $this->bitrixQuery($task, $fromBitrixMessageId)->whereNotIn('bitrix_message_id', $bitrixMessageIds ?: [0])->delete();
     }
 
+    /** @return HasMany<TaskChatMessage, Task> */
     private function bitrixQuery(Task $task, ?int $fromBitrixMessageId): HasMany
     {
         return $task->chatMessages()

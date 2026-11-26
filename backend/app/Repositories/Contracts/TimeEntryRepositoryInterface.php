@@ -15,7 +15,11 @@ use Illuminate\Support\Collection;
  */
 interface TimeEntryRepositoryInterface
 {
-    /** Newest first, with their authors (and task, for permission checks). */
+    /**
+     * Newest first, with their authors (and task, for permission checks).
+     *
+     * @return Collection<int, TaskElapsedItem>
+     */
     public function forTask(Task $task): Collection;
 
     public function create(Task $task, int $userId, int $seconds, ?string $comment): TaskElapsedItem;

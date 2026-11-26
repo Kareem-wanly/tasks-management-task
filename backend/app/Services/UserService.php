@@ -40,12 +40,17 @@ final readonly class UserService implements UserServiceInterface
         private ConnectionInterface $database,
     ) {}
 
+    /** @return LengthAwarePaginator<int, User> */
     public function list(UserFiltersDTO $filters, int $perPage): LengthAwarePaginator
     {
         return $this->users->paginate($filters, $perPage);
     }
 
-    /** Only active employees can be picked as assignees or members. */
+    /**
+     * Only active employees can be picked as assignees or members.
+     *
+     * @return Collection<int, User>
+     */
     public function options(): Collection
     {
         return $this->users->activeOptions(self::OPTIONS_LIMIT);

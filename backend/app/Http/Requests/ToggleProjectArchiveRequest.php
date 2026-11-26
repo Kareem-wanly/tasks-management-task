@@ -14,6 +14,7 @@ final class ToggleProjectArchiveRequest extends FormRequest
         return $this->user()->can('archive', $this->route('project'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [];

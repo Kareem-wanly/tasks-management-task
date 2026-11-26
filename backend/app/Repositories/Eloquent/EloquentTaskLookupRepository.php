@@ -11,6 +11,7 @@ use Illuminate\Support\Collection;
 
 final class EloquentTaskLookupRepository implements TaskLookupRepositoryInterface
 {
+    /** @return Collection<int, TaskLookup> */
     public function ordered(string $model): Collection
     {
         return $model::ordered()->get();

@@ -14,6 +14,7 @@ final class ShowUserRequest extends FormRequest
         return $this->user()->can('view', $this->route('user'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [];

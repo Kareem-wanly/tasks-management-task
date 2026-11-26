@@ -49,6 +49,10 @@ abstract class TaskLookup extends Model
         ];
     }
 
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
     protected function scopeOrdered(Builder $query): Builder
     {
         return $query->orderBy('sort')->orderBy('id');

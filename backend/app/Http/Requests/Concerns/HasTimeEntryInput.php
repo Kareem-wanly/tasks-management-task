@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Concerns;
 
 use App\DTOs\Task\TimeEntryDTO;
+use Closure;
 use Illuminate\Validation\Validator;
 
 /**
@@ -12,6 +13,7 @@ use Illuminate\Validation\Validator;
  */
 trait HasTimeEntryInput
 {
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
@@ -21,6 +23,7 @@ trait HasTimeEntryInput
         ];
     }
 
+    /** @return list<Closure> */
     public function after(): array
     {
         return [

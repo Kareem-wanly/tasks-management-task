@@ -19,6 +19,7 @@ final class EloquentProjectRepository implements ProjectRepositoryInterface
 
     private const WITH_MEMBERS = ['owner', 'members'];
 
+    /** @return LengthAwarePaginator<int, Project> */
     public function paginateAccessible(User $user, ProjectFiltersDTO $filters, int $perPage): LengthAwarePaginator
     {
         $query = Project::query()->accessibleBy($user);
@@ -58,6 +59,7 @@ final class EloquentProjectRepository implements ProjectRepositoryInterface
         return $project->fresh(self::WITH_MEMBERS);
     }
 
+    /** @return Collection<int, Project> */
     public function optionsFor(User $user, bool $includeArchived, int $limit): Collection
     {
         return Project::query()
@@ -83,6 +85,7 @@ final class EloquentProjectRepository implements ProjectRepositoryInterface
         return $project->tasks()->unfinished()->exists();
     }
 
+    /** @return Collection<int, User> */
     public function members(Project $project): Collection
     {
         return $project->members()->get(['users.id', 'name', 'email']);

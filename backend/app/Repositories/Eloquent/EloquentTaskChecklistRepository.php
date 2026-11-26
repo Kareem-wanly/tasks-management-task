@@ -11,6 +11,7 @@ use Illuminate\Support\Collection;
 
 final class EloquentTaskChecklistRepository implements TaskChecklistRepositoryInterface
 {
+    /** @return Collection<int, TaskChecklistItem> */
     public function forTask(Task $task): Collection
     {
         return $task->checklistItems()->orderBy('sort_index')->orderBy('id')->get();
@@ -62,6 +63,7 @@ final class EloquentTaskChecklistRepository implements TaskChecklistRepositoryIn
         }
     }
 
+    /** @return Collection<int, TaskChecklistItem> */
     public function siblingsOf(TaskChecklistItem $item): Collection
     {
         return TaskChecklistItem::where('parent_id', $item->parent_id)

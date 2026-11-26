@@ -24,7 +24,11 @@ final class SyncBitrixTaskChatJob implements ShouldBeUniqueUntilProcessing, Shou
 
     public int $tries = 3;
 
-    /** Seconds before each retry, e.g. while Bitrix is unreachable. */
+    /**
+     * Seconds before each retry, e.g. while Bitrix is unreachable.
+     *
+     * @var list<int>
+     */
     public array $backoff = [10, 60];
 
     /** One page of messages; well under $uniqueFor. */

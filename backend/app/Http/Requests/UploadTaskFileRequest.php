@@ -21,6 +21,7 @@ final class UploadTaskFileRequest extends FormRequest
         return $this->user()->can('manageFiles', $this->route('task'));
     }
 
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return ['file' => ['required', 'file', 'max:'.self::MAX_KB]];
