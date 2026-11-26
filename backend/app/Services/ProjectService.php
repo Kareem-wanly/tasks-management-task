@@ -10,13 +10,17 @@ use App\DTOs\Project\ProjectFiltersDTO;
 use App\DTOs\Project\UpdateProjectDTO;
 use App\Enums\ProjectMemberRole;
 use App\Enums\ProjectStatus;
+use App\Exceptions\Bitrix\BitrixException;
 use App\Exceptions\Project\ProjectHasUnfinishedTasksException;
 use App\Exceptions\Project\ProjectMemberAlreadyAddedException;
 use App\Exceptions\Project\ProjectMemberNotFoundException;
-use App\Integrations\Bitrix24\BitrixProjectPusher;
+use App\Integrations\Bitrix24\BitrixFingerprint;
+use App\Integrations\Bitrix24\Contracts\BitrixProjectRepositoryInterface;
+use App\Models\BitrixOutboundOp;
 use App\Models\Project;
 use App\Models\User;
 use App\Repositories\Contracts\ActivityLogRepositoryInterface;
+use App\Repositories\Contracts\BitrixOutboundOpRepositoryInterface;
 use App\Repositories\Contracts\ProjectRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Contracts\ProjectServiceInterface;
@@ -26,8 +30,13 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Projects and their members. Changes to a project linked to Bitrix24 go to
- * Bitrix first (BitrixProjectPusher) and are saved here only when Bitrix
- * accepts them.
+ * Bitrix first and are saved here only when Bitrix accepts them (a refusal
+ * throws, and nothing is saved).
+ *
+ * Group changes go with the employee's own token, so they need a Bitrix
+ * sign-in. Member changes go with the service account (Bitrix lets only
+ * administrators add members or change their role); our policy has already
+ * allowed them.
  */
 final readonly class ProjectService implements ProjectServiceInterface
 {
@@ -38,7 +47,9 @@ final readonly class ProjectService implements ProjectServiceInterface
         private ProjectRepositoryInterface $projects,
         private UserRepositoryInterface $users,
         private ActivityLogRepositoryInterface $activities,
-        private BitrixProjectPusher $bitrix,
+        private BitrixProjectRepositoryInterface $bitrixProjects,
+        private BitrixOutboundOpRepositoryInterface $ops,
+        private BitrixFingerprint $fingerprints,
     ) {}
 
     public function list(User $user, ProjectFiltersDTO $filters, int $perPage): LengthAwarePaginator
@@ -71,7 +82,7 @@ final readonly class ProjectService implements ProjectServiceInterface
             'status' => $data->status,
         ]);
 
-        $this->bitrix->create($actor, $project);
+        $this->createInBitrix($actor, $project);
 
         DB::transaction(function () use ($actor, $project): void {
             $this->projects->save($project);
@@ -89,7 +100,7 @@ final readonly class ProjectService implements ProjectServiceInterface
         }
 
         $project->fill($data->toArray());
-        $this->bitrix->update($actor, $project);
+        $this->updateInBitrix($actor, $project);
         $this->projects->save($project);
 
         return $this->projects->freshWithMembers($project);
@@ -98,7 +109,7 @@ final readonly class ProjectService implements ProjectServiceInterface
     /** Deleting here only archives the Bitrix group. */
     public function delete(User $actor, Project $project): void
     {
-        $this->bitrix->delete($actor, $project);
+        $this->deleteInBitrix($actor, $project);
         $this->projects->delete($project);
     }
 
@@ -106,7 +117,7 @@ final readonly class ProjectService implements ProjectServiceInterface
     public function toggleArchive(User $actor, Project $project): Project
     {
         $project->status = $project->status === ProjectStatus::Archived ? ProjectStatus::Active : ProjectStatus::Archived;
-        $this->bitrix->update($actor, $project);
+        $this->updateInBitrix($actor, $project);
         $this->projects->save($project);
 
         return $this->projects->freshWithMembers($project);
@@ -126,7 +137,7 @@ final readonly class ProjectService implements ProjectServiceInterface
             throw new ProjectMemberAlreadyAddedException;
         }
 
-        $this->bitrix->addMember($actor, $project, $this->users->findOrFail($userId), $role);
+        $this->addMemberInBitrix($actor, $project, $this->users->findOrFail($userId), $role);
         $this->projects->attachMember($project, $userId, $role);
         $this->log($actor, $project, 'member_added', "User ID {$userId} was added to project '{$project->title}'.");
 
@@ -139,7 +150,7 @@ final readonly class ProjectService implements ProjectServiceInterface
             throw new ProjectMemberNotFoundException;
         }
 
-        $this->bitrix->removeMember($actor, $project, $member);
+        $this->removeMemberInBitrix($actor, $project, $member);
         $this->projects->detachMember($project, $member->id);
         $this->log($actor, $project, 'member_removed', "{$member->name} was removed from project '{$project->title}'.");
 
@@ -154,5 +165,87 @@ final readonly class ProjectService implements ProjectServiceInterface
             'action' => $action,
             'description' => $description,
         ]);
+    }
+
+    /** New projects are Bitrix projects; the creator becomes the group owner. */
+    private function createInBitrix(User $actor, Project $project): void
+    {
+        $this->ensureSignedInWithBitrix($actor);
+        $project->bitrix_group_id = $this->bitrixProjects->createGroup($actor, $project);
+        $project->bitrix_synced_at = now();
+        $this->recordOutbound($actor, $project, 'create');
+    }
+
+    /** Sends the unsaved changes. Of `status`, Bitrix keeps only the archived state (CLOSED). */
+    private function updateInBitrix(User $actor, Project $project): void
+    {
+        if (! $project->bitrix_group_id) {
+            return;
+        }
+
+        $columns = $this->bitrixProjects->syncedColumns(array_keys($project->getDirty()));
+        $isArchived = $project->status === ProjectStatus::Archived;
+        $archiving = $project->isDirty('status') && ($project->getOriginal('status') === ProjectStatus::Archived) !== $isArchived;
+        if ($columns === [] && ! $archiving) {
+            return;
+        }
+
+        $this->ensureSignedInWithBitrix($actor);
+        $this->bitrixProjects->updateGroup($actor, $project, $columns, $archiving ? $isArchived : null);
+        $project->bitrix_synced_at = now();
+        $this->recordOutbound($actor, $project, 'update');
+    }
+
+    /** Deleting here only archives the Bitrix group: deleting one there is permanent and takes its feed and files. */
+    private function deleteInBitrix(User $actor, Project $project): void
+    {
+        if (! $project->bitrix_group_id) {
+            return;
+        }
+
+        $this->ensureSignedInWithBitrix($actor);
+        $this->bitrixProjects->closeGroup($actor, $project->bitrix_group_id);
+        $this->ops->record(BitrixOutboundOp::PROJECT, $project->bitrix_group_id, 'delete', null, $actor);
+    }
+
+    private function addMemberInBitrix(User $actor, Project $project, User $member, ProjectMemberRole $role): void
+    {
+        if (! $project->bitrix_group_id) {
+            return;
+        }
+
+        $this->ensureSignedInWithBitrix($actor);
+        $this->bitrixProjects->addMember($project->bitrix_group_id, $this->bitrixUserId($member), $role);
+    }
+
+    private function removeMemberInBitrix(User $actor, Project $project, User $member): void
+    {
+        if (! $project->bitrix_group_id) {
+            return;
+        }
+
+        $this->ensureSignedInWithBitrix($actor);
+        $this->bitrixProjects->removeMember($project->bitrix_group_id, $this->bitrixUserId($member));
+    }
+
+    /** Changes to a Bitrix project are made with the employee's own Bitrix token. */
+    private function ensureSignedInWithBitrix(User $actor): void
+    {
+        if (! $actor->isLinkedToBitrix()) {
+            throw BitrixException::missingToken();
+        }
+    }
+
+    /** Only Bitrix24 users can be members of a Bitrix project. */
+    private function bitrixUserId(User $user): int
+    {
+        return $user->bitrix_user_id
+            ?? throw BitrixException::cannotSync("{$user->name} is not a Bitrix24 user, so they cannot be added to this project.");
+    }
+
+    /** Remembered so the echo of our change is recognised, not taken for a change made in Bitrix. */
+    private function recordOutbound(User $actor, Project $project, string $action): void
+    {
+        $this->ops->record(BitrixOutboundOp::PROJECT, (int) $project->bitrix_group_id, $action, $this->fingerprints->project($project), $actor);
     }
 }

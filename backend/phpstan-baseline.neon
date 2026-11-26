@@ -547,18 +547,6 @@ parameters:
 			path: app/Integrations/Bitrix24/BitrixTimePusher.php
 
 		-
-			message: '#^Property App\\Models\\User\:\:\$bitrix_department_ids \(string\|null\) does not accept array\<int, int\>\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: app/Integrations/Bitrix24/BitrixUserPusher.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>departments" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Integrations/Bitrix24/BitrixUserPusher.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:onlyTrashed\(\)\.$#'
 			identifier: method.notFound
 			count: 1

@@ -48,7 +48,7 @@ class BitrixProjectSync
             $project = $this->projects->findByBitrixGroupId($attributes['bitrix_group_id'], withTrashed: true) ?? new Project;
 
             if ($project->trashed()) {
-                // Deleting here archives the Bitrix group (BitrixProjectPusher::delete),
+                // Deleting here archives the Bitrix group (ProjectService::delete),
                 // so a closed group is our own delete: leave it deleted. Reopened in
                 // Bitrix means someone wants it back.
                 if ($this->mapper->isClosed($group)) {

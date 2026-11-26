@@ -9,10 +9,12 @@ use App\DTOs\User\SetUserActiveDTO;
 use App\DTOs\User\UpdateUserDTO;
 use App\DTOs\User\UserFiltersDTO;
 use App\Enums\SystemRole;
+use App\Exceptions\Bitrix\BitrixException;
 use App\Exceptions\User\AdministratorChangeDeniedException;
 use App\Exceptions\User\CannotDeactivateOwnAccountException;
-use App\Integrations\Bitrix24\BitrixUserPusher;
+use App\Integrations\Bitrix24\Contracts\BitrixUserRepositoryInterface;
 use App\Models\User;
+use App\Repositories\Contracts\BitrixPortalRepositoryInterface;
 use App\Repositories\Contracts\RoleRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Contracts\UserServiceInterface;
@@ -21,8 +23,9 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Employees. Changes go to Bitrix24 first (BitrixUserPusher) and are saved
- * here only when Bitrix accepts them.
+ * Employees. Changes go to Bitrix24 first, with the acting employee's token,
+ * and are saved here only when Bitrix accepts them. Bitrix has no user delete
+ * over REST, so employees are deactivated instead.
  */
 final readonly class UserService implements UserServiceInterface
 {
@@ -32,7 +35,8 @@ final readonly class UserService implements UserServiceInterface
     public function __construct(
         private UserRepositoryInterface $users,
         private RoleRepositoryInterface $roles,
-        private BitrixUserPusher $bitrix,
+        private BitrixUserRepositoryInterface $bitrixUsers,
+        private BitrixPortalRepositoryInterface $portals,
     ) {}
 
     public function list(UserFiltersDTO $filters, int $perPage): LengthAwarePaginator
@@ -58,7 +62,7 @@ final readonly class UserService implements UserServiceInterface
     public function invite(User $actor, InviteUserDTO $data): User
     {
         $user = new User(['name' => $data->name, 'email' => $data->email, 'password' => $data->password]);
-        $this->bitrix->invite($actor, $user);
+        $this->inviteInBitrix($actor, $user);
 
         DB::transaction(function () use ($user, $data): void {
             $this->users->save($user);
@@ -71,7 +75,7 @@ final readonly class UserService implements UserServiceInterface
     public function update(User $actor, User $user, UpdateUserDTO $data): User
     {
         $user->fill($data->toArray());
-        $this->bitrix->update($actor, $user);
+        $this->updateInBitrix($actor, $user);
         $this->users->save($user);
 
         return $user;
@@ -93,7 +97,7 @@ final readonly class UserService implements UserServiceInterface
             throw new AdministratorChangeDeniedException;
         }
 
-        $this->bitrix->setActive($actor, $user, $active);
+        $this->setActiveInBitrix($actor, $user, $active);
         $user->is_active = $active;
         $this->users->save($user);
 
@@ -102,5 +106,67 @@ final readonly class UserService implements UserServiceInterface
         }
 
         return $this->users->withRoles($user);
+    }
+
+    /**
+     * Invites the (unsaved) user: Bitrix emails them an invitation, and the
+     * returned ID links the accounts, so their later Bitrix sign-in finds this user.
+     */
+    private function inviteInBitrix(User $actor, User $user): void
+    {
+        $this->ensureSignedInWithBitrix($actor);
+        $department = $this->rootDepartmentId();
+
+        $user->bitrix_user_id = $this->bitrixUsers->invite($actor, $user->email, $user->name, $department);
+        $user->bitrix_department_ids = [$department];
+        $user->bitrix_synced_at = now();
+    }
+
+    /** Sends the user's unsaved name/email changes. */
+    private function updateInBitrix(User $actor, User $user): void
+    {
+        if (! $user->bitrix_user_id || ! $user->isDirty(['name', 'email'])) {
+            return;
+        }
+
+        $this->ensureSignedInWithBitrix($actor);
+        $this->bitrixUsers->update(
+            $actor,
+            $user->bitrix_user_id,
+            $user->isDirty('name') ? $user->name : null,
+            $user->isDirty('email') ? $user->email : null,
+        );
+        $user->bitrix_synced_at = now();
+    }
+
+    private function setActiveInBitrix(User $actor, User $user, bool $active): void
+    {
+        if (! $user->bitrix_user_id) {
+            return;
+        }
+
+        $this->ensureSignedInWithBitrix($actor);
+        $this->bitrixUsers->setActive($actor, $user->bitrix_user_id, $active);
+        $user->bitrix_synced_at = now();
+    }
+
+    /** Bitrix requires the right to invite or edit users: the employee's own token. */
+    private function ensureSignedInWithBitrix(User $actor): void
+    {
+        if (! $actor->isLinkedToBitrix()) {
+            throw BitrixException::missingToken();
+        }
+    }
+
+    /** A Bitrix employee needs a department: the top of the company structure (they can be moved later). */
+    private function rootDepartmentId(): int
+    {
+        foreach ($this->portals->current()->departments ?? [] as $department) {
+            if (empty($department['PARENT'])) {
+                return (int) $department['ID'];
+            }
+        }
+
+        throw BitrixException::cannotSync('The Bitrix24 company structure is unknown; reinstall the app to load it.');
     }
 }
