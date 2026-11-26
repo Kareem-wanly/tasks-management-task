@@ -18,6 +18,7 @@ const TaskDetailsPage = lazy(() => import('@/features/tasks').then((m) => ({ def
 const UsersPage = lazy(() => import('@/features/users').then((m) => ({ default: m.UsersPage })));
 const RolesPage = lazy(() => import('@/features/roles').then((m) => ({ default: m.RolesPage })));
 const RoleFormPage = lazy(() => import('@/features/roles').then((m) => ({ default: m.RoleFormPage })));
+const SyncStatusPage = lazy(() => import('@/features/sync').then((m) => ({ default: m.SyncStatusPage })));
 
 export default function AppRoutes() {
   return (
@@ -54,6 +55,9 @@ export default function AppRoutes() {
             </Route>
             <Route element={<ProtectedRoute permission="roles.update" />}>
               <Route path="roles/:id" element={<RoleFormPage />} />
+            </Route>
+            <Route element={<ProtectedRoute permission="bitrix_sync.manage" />}>
+              <Route path="sync" element={<SyncStatusPage />} />
             </Route>
           </Route>
         </Route>

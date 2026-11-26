@@ -201,3 +201,30 @@ export interface AuthResponse {
 
 /** Laravel 422 body: field name → messages. */
 export type ValidationErrors = Record<string, string[]>;
+
+/** Bitrix24 step 5.1: where one imported entity stands. `stalled` = marked running long after the time limit. */
+export type BitrixSyncState = 'never' | 'running' | 'completed' | 'failed' | 'stalled';
+
+export type BitrixSyncMode = 'changes' | 'full';
+
+export interface BitrixSyncEntity {
+  /** users, projects, tasks, checklists, time, files, results, chat, or tasks-changes (the 5-minute sync). */
+  entity: string;
+  state: BitrixSyncState;
+  processed: number;
+  total: number;
+  error: string | null;
+  started_at: string | null;
+  last_synced_at: string | null;
+}
+
+export interface BitrixSyncStatus {
+  is_running: boolean;
+  entities: BitrixSyncEntity[];
+  /** Failed jobs of the bitrix queue. */
+  failed_jobs: number;
+  /** Our changes Bitrix answered with something else, last 24 hours. */
+  conflicts: number;
+  /** Our changes Bitrix never echoed back, last 24 hours. */
+  unconfirmed: number;
+}

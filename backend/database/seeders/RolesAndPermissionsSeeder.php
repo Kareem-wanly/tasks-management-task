@@ -42,6 +42,7 @@ class RolesAndPermissionsSeeder extends Seeder
             ['name' => 'tasks.assign', 'description' => 'Allows user to assign tasks'],
             ['name' => 'tasks.change_status', 'description' => 'Allows user to change task status'],
             ['name' => 'task_settings.manage', 'description' => 'Can manage task statuses and priorities'],
+            ['name' => 'bitrix_sync.manage', 'description' => 'Can see the Bitrix24 sync status and start a sync'],
 
             ['name' => 'comments.view', 'description' => 'Allows user to view comments'],
             ['name' => 'comments.create', 'description' => 'Allows user to create comments'],

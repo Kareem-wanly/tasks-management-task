@@ -10,6 +10,7 @@ use App\Enums\OutboundOpStatus;
 use App\Models\BitrixOutboundOp;
 use App\Models\User;
 use App\Repositories\Contracts\BitrixOutboundOpRepositoryInterface;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
 final class EloquentBitrixOutboundOpRepository implements BitrixOutboundOpRepositoryInterface
@@ -44,5 +45,12 @@ final class EloquentBitrixOutboundOpRepository implements BitrixOutboundOpReposi
             ->where('id', '<=', $op->id)
             ->update(['status' => $status->value, 'updated_at' => now()]);
         $op->status = $status;
+    }
+
+    public function countSentBetween(OutboundOpStatus $status, CarbonImmutable $from, CarbonImmutable $to): int
+    {
+        return BitrixOutboundOp::where('status', $status->value)
+            ->whereBetween('created_at', [$from, $to])
+            ->count();
     }
 }

@@ -29,6 +29,7 @@ use App\Jobs\Bitrix\ImportBitrixResultsJob;
 use App\Jobs\Bitrix\ImportBitrixTasksJob;
 use App\Jobs\Bitrix\ImportBitrixTimeJob;
 use App\Jobs\Bitrix\ImportBitrixUsersJob;
+use App\Jobs\Bitrix\SyncBitrixChangesJob;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -94,6 +95,11 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
         Bus::chain(array_map(fn (string $entity): object => $this->job($entity, $linkByEmail), $entities))
             ->onQueue(QueueName::Bitrix)
             ->dispatch();
+    }
+
+    public function queueChangesSync(): void
+    {
+        dispatch(new SyncBitrixChangesJob);
     }
 
     public function runImport(string $entity, bool $linkByEmail, ?Closure $onProgress = null): void
