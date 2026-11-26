@@ -111,7 +111,7 @@ class BitrixTaskChatTest extends TestCase
     {
         Sanctum::actingAs($this->colleague);
 
-        $this->postJson("/api/tasks/{$this->task->id}/chat", ['text' => 'On it'])
+        $this->postJson("/api/v1/tasks/{$this->task->id}/chat", ['text' => 'On it'])
             ->assertOk()
             ->assertJsonPath('data.0.text', 'On it')
             ->assertJsonPath('data.0.can_edit', true);
@@ -133,7 +133,7 @@ class BitrixTaskChatTest extends TestCase
             TaskChatMessage::create(['task_id' => $this->task->id, 'bitrix_message_id' => $bitrixId, 'author_id' => $this->colleague->id, 'text' => 'On it']);
         };
 
-        $this->postJson("/api/tasks/{$this->task->id}/chat", ['text' => 'On it'])->assertOk()->assertJsonCount(1, 'data');
+        $this->postJson("/api/v1/tasks/{$this->task->id}/chat", ['text' => 'On it'])->assertOk()->assertJsonCount(1, 'data');
 
         $this->assertSame(1, TaskChatMessage::count());
     }
@@ -141,13 +141,13 @@ class BitrixTaskChatTest extends TestCase
     public function test_the_author_edits_and_deletes_their_message_in_bitrix(): void
     {
         Sanctum::actingAs($this->colleague);
-        $this->postJson("/api/tasks/{$this->task->id}/chat", ['text' => 'Draft']);
+        $this->postJson("/api/v1/tasks/{$this->task->id}/chat", ['text' => 'Draft']);
         $message = TaskChatMessage::sole();
 
-        $this->putJson("/api/task-chat-messages/{$message->id}", ['text' => 'Final'])->assertOk()->assertJsonPath('data.0.text', 'Final');
+        $this->putJson("/api/v1/task-chat-messages/{$message->id}", ['text' => 'Final'])->assertOk()->assertJsonPath('data.0.text', 'Final');
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'im.message.update.json') && $r['auth'] === 'colleague-access' && $r['ID'] === 1001);
 
-        $this->deleteJson("/api/task-chat-messages/{$message->id}")->assertOk()->assertJsonCount(0, 'data');
+        $this->deleteJson("/api/v1/task-chat-messages/{$message->id}")->assertOk()->assertJsonCount(0, 'data');
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'im.message.delete.json') && $r['ID'] === 1001);
         $this->assertSame([], $this->messages);
     }
@@ -160,13 +160,13 @@ class BitrixTaskChatTest extends TestCase
         [$theirs, $system] = TaskChatMessage::orderBy('id')->get()->all();
 
         Sanctum::actingAs($this->colleague);
-        $this->putJson("/api/task-chat-messages/{$theirs->id}", ['text' => 'x'])->assertForbidden();
-        $this->deleteJson("/api/task-chat-messages/{$theirs->id}")->assertForbidden();
+        $this->putJson("/api/v1/task-chat-messages/{$theirs->id}", ['text' => 'x'])->assertForbidden();
+        $this->deleteJson("/api/v1/task-chat-messages/{$theirs->id}")->assertForbidden();
 
         // Not even an administrator rewrites Bitrix's own lines.
         Sanctum::actingAs($this->actor);
-        $this->putJson("/api/task-chat-messages/{$system->id}", ['text' => 'x'])->assertForbidden();
-        $this->deleteJson("/api/task-chat-messages/{$system->id}")->assertForbidden();
+        $this->putJson("/api/v1/task-chat-messages/{$system->id}", ['text' => 'x'])->assertForbidden();
+        $this->deleteJson("/api/v1/task-chat-messages/{$system->id}")->assertForbidden();
 
         Http::assertNotSent(fn (Request $r): bool => str_contains($r->url(), 'im.message.update') || str_contains($r->url(), 'im.message.delete'));
     }
@@ -213,14 +213,14 @@ class BitrixTaskChatTest extends TestCase
         $this->colleague->forceFill(['bitrix_access_token' => null, 'bitrix_refresh_token' => null])->save();
         Sanctum::actingAs($this->colleague->fresh());
 
-        $response = $this->get("/api/task-chat-messages/{$message->id}/files/202/download");
+        $response = $this->get("/api/v1/task-chat-messages/{$message->id}/files/202/download");
 
         $response->assertOk()->assertHeader('content-disposition', 'attachment; filename=plan.png');
         $this->assertSame('file-bytes', $response->streamedContent());
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'disk.file.get.json') && $r['auth'] === 'actor-access');
 
         // Only files of that message.
-        $this->get("/api/task-chat-messages/{$message->id}/files/999/download")->assertForbidden();
+        $this->get("/api/v1/task-chat-messages/{$message->id}/files/999/download")->assertForbidden();
     }
 
     public function test_a_task_outside_bitrix_keeps_its_chat_here(): void
@@ -228,10 +228,10 @@ class BitrixTaskChatTest extends TestCase
         $this->task->project->forceFill(['bitrix_group_id' => null])->save();
         $this->task->forceFill(['bitrix_task_id' => null])->save();
 
-        $this->postJson("/api/tasks/{$this->task->id}/chat", ['text' => 'Local only'])->assertOk();
+        $this->postJson("/api/v1/tasks/{$this->task->id}/chat", ['text' => 'Local only'])->assertOk();
         $message = TaskChatMessage::sole();
-        $this->putJson("/api/task-chat-messages/{$message->id}", ['text' => 'Local edit'])->assertJsonPath('data.0.text', 'Local edit');
-        $this->deleteJson("/api/task-chat-messages/{$message->id}")->assertJsonCount(0, 'data');
+        $this->putJson("/api/v1/task-chat-messages/{$message->id}", ['text' => 'Local edit'])->assertJsonPath('data.0.text', 'Local edit');
+        $this->deleteJson("/api/v1/task-chat-messages/{$message->id}")->assertJsonCount(0, 'data');
 
         Http::assertNothingSent();
     }
@@ -302,6 +302,6 @@ class BitrixTaskChatTest extends TestCase
 
     private function chat(): TestResponse
     {
-        return $this->getJson("/api/tasks/{$this->task->id}/chat");
+        return $this->getJson("/api/v1/tasks/{$this->task->id}/chat");
     }
 }

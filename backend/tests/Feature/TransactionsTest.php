@@ -54,7 +54,7 @@ class TransactionsTest extends TestCase
         $limited->roles()->attach($role);
         Sanctum::actingAs($limited);
 
-        $this->postJson('/api/roles', ['name' => 'Sneaky', 'permissions' => Permission::pluck('id')->all()])->assertForbidden();
+        $this->postJson('/api/v1/roles', ['name' => 'Sneaky', 'permissions' => Permission::pluck('id')->all()])->assertForbidden();
 
         $this->assertDatabaseMissing('roles', ['name' => 'Sneaky']);
     }
@@ -65,7 +65,7 @@ class TransactionsTest extends TestCase
         $this->failing(TaskRepositoryInterface::class, 'syncAuditors');
 
         $this->withoutExceptionHandling();
-        $this->assertThrows(fn () => $this->putJson("/api/tasks/{$this->task->id}/members", ['accomplice_ids' => [$colleague->id], 'auditor_ids' => [$colleague->id]]), RuntimeException::class, 'Simulated failure.');
+        $this->assertThrows(fn () => $this->putJson("/api/v1/tasks/{$this->task->id}/members", ['accomplice_ids' => [$colleague->id], 'auditor_ids' => [$colleague->id]]), RuntimeException::class, 'Simulated failure.');
 
         $this->assertSame(0, $this->task->accomplices()->count());
     }
@@ -76,7 +76,7 @@ class TransactionsTest extends TestCase
         $this->failing(TaskRepositoryInterface::class, 'addAuditor');
 
         $this->withoutExceptionHandling();
-        $this->assertThrows(fn () => $this->postJson("/api/tasks/{$this->task->id}/delegate", ['user_id' => $colleague->id]), RuntimeException::class, 'Simulated failure.');
+        $this->assertThrows(fn () => $this->postJson("/api/v1/tasks/{$this->task->id}/delegate", ['user_id' => $colleague->id]), RuntimeException::class, 'Simulated failure.');
 
         $this->assertSame($this->admin->id, $this->task->fresh()->assigned_to);
     }
@@ -90,7 +90,7 @@ class TransactionsTest extends TestCase
         $this->failing(TaskChecklistRepositoryInterface::class, 'reorder', fn (array $items) => $items[0]->update(['sort_index' => 99]));
 
         $this->withoutExceptionHandling();
-        $this->assertThrows(fn () => $this->postJson("/api/checklist-items/{$second->id}/move", ['after_id' => null]), RuntimeException::class, 'Simulated failure.');
+        $this->assertThrows(fn () => $this->postJson("/api/v1/checklist-items/{$second->id}/move", ['after_id' => null]), RuntimeException::class, 'Simulated failure.');
 
         $this->assertSame([1, 2], [$first->fresh()->sort_index, $second->fresh()->sort_index]);
     }

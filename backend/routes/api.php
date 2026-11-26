@@ -23,116 +23,127 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserRoleController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('throttle:5,1')->group(function (): void {
-    Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/login', [AuthController::class, 'login']);
-});
-
-// Bitrix24 calls this itself, so there is no user auth.
-Route::post('/bitrix/install', [BitrixInstallController::class, 'install']);
+/*
+ * Bitrix24 calls these itself, at the URLs registered in the app's settings
+ * there, so they stay outside the API version.
+ */
+// No user auth: Bitrix24 installs the app.
+Route::post('/bitrix/install', [BitrixInstallController::class, 'install'])->name('api.bitrix.install');
 // Verified by the application token inside the event, not by a user session.
-Route::post('/bitrix/events', [BitrixEventController::class, 'handle']);
-Route::post('/auth/bitrix/exchange', [BitrixAuthController::class, 'exchange'])->middleware('throttle:10,1');
-Route::post('/auth/bitrix/app-session', [BitrixAuthController::class, 'appSession'])->middleware('throttle:10,1');
+Route::post('/bitrix/events', [BitrixEventController::class, 'handle'])->name('api.bitrix.events');
 
-Route::middleware('auth:sanctum')->group(function (): void {
+/*
+ * The app's API, as the SPA calls it: /api/v1/...
+ */
+Route::prefix('v1')->name('api.v1.')->group(function (): void {
+    Route::middleware('throttle:5,1')->group(function (): void {
+        Route::post('/register', [AuthController::class, 'register'])->name('auth.register');
+        Route::post('/login', [AuthController::class, 'login'])->name('auth.login');
+    });
 
-    Route::get('/users/options', [UserController::class, 'options']);
-    Route::get('/projects/options', [ProjectController::class, 'options']);
+    // Sign-in with Bitrix24, called by the SPA (the OAuth redirect itself is in routes/web.php).
+    Route::middleware('throttle:10,1')->group(function (): void {
+        Route::post('/auth/bitrix/exchange', [BitrixAuthController::class, 'exchange'])->name('auth.bitrix.exchange');
+        Route::post('/auth/bitrix/app-session', [BitrixAuthController::class, 'appSession'])->name('auth.bitrix.app-session');
+    });
 
-    // 1. Authentication & Profile
-    Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/me', [AuthController::class, 'me']);
-    Route::put('/me', [AuthController::class, 'updateProfile']);
-    Route::put('/me/password', [AuthController::class, 'updatePassword']);
+    Route::middleware('auth:sanctum')->group(function (): void {
+        Route::get('/users/options', [UserController::class, 'options'])->name('users.options');
+        Route::get('/projects/options', [ProjectController::class, 'options'])->name('projects.options');
 
-    // 2. User & User Roles Management
-    Route::get('/users', [UserController::class, 'index']);
-    Route::post('/users', [UserController::class, 'store']);
-    Route::get('/users/{user}', [UserController::class, 'show']);
-    Route::put('/users/{user}', [UserController::class, 'update']);
-    // No delete: Bitrix24 can't delete users over REST, so they are deactivated.
-    Route::patch('/users/{user}/active', [UserController::class, 'setActive']);
+        // 1. Authentication & Profile
+        Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
+        Route::get('/me', [AuthController::class, 'me'])->name('me.show');
+        Route::put('/me', [AuthController::class, 'updateProfile'])->name('me.update');
+        Route::put('/me/password', [AuthController::class, 'updatePassword'])->name('me.password.update');
 
-    Route::get('/users/{user}/roles', [UserRoleController::class, 'index']);
-    Route::put('/users/{user}/roles', [UserRoleController::class, 'syncRoles']);
+        // 2. User & User Roles Management
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::post('/users', [UserController::class, 'store'])->name('users.store');
+        Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show');
+        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        // No delete: Bitrix24 can't delete users over REST, so they are deactivated.
+        Route::patch('/users/{user}/active', [UserController::class, 'setActive'])->name('users.active.update');
 
-    // 3. Roles & Permissions Management
-    Route::get('/permissions', [PermissionController::class, 'index']);
+        Route::get('/users/{user}/roles', [UserRoleController::class, 'index'])->name('users.roles.index');
+        Route::put('/users/{user}/roles', [UserRoleController::class, 'syncRoles'])->name('users.roles.sync');
 
-    Route::get('/roles', [RoleController::class, 'index']);
-    Route::post('/roles', [RoleController::class, 'store']);
-    Route::get('/roles/{role}', [RoleController::class, 'show']);
-    Route::put('/roles/{role}', [RoleController::class, 'update']);
-    Route::delete('/roles/{role}', [RoleController::class, 'destroy']);
-    Route::put('/roles/{role}/permissions', [RoleController::class, 'syncPermissions']);
+        // 3. Roles & Permissions Management
+        Route::get('/permissions', [PermissionController::class, 'index'])->name('permissions.index');
 
-    // 4. Projects Management & Members
-    Route::get('/projects', [ProjectController::class, 'index']);
-    Route::post('/projects', [ProjectController::class, 'store']);
-    Route::get('/projects/{project}', [ProjectController::class, 'show']);
-    Route::put('/projects/{project}', [ProjectController::class, 'update']);
-    Route::delete('/projects/{project}', [ProjectController::class, 'destroy']);
-    Route::match(['post', 'patch'], '/projects/{project}/archive', [ProjectController::class, 'toggleArchive']);
+        Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
+        Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
+        Route::get('/roles/{role}', [RoleController::class, 'show'])->name('roles.show');
+        Route::put('/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
+        Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
+        Route::put('/roles/{role}/permissions', [RoleController::class, 'syncPermissions'])->name('roles.permissions.sync');
 
-    Route::get('/projects/{project}/members', [ProjectController::class, 'members']);
-    Route::post('/projects/{project}/members', [ProjectController::class, 'addMember']);
-    Route::delete('/projects/{project}/members/{user}', [ProjectController::class, 'removeMember']);
+        // 4. Projects Management & Members
+        Route::get('/projects', [ProjectController::class, 'index'])->name('projects.index');
+        Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');
+        Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
+        Route::put('/projects/{project}', [ProjectController::class, 'update'])->name('projects.update');
+        Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
+        Route::match(['post', 'patch'], '/projects/{project}/archive', [ProjectController::class, 'toggleArchive'])->name('projects.archive.toggle');
 
-    // 5. Tasks Management
-    Route::get('/tasks', [TaskController::class, 'index']);
-    Route::post('/tasks', [TaskController::class, 'store']);
-    Route::get('/projects/{project}/tasks', [TaskController::class, 'indexByProject']);
-    Route::post('/projects/{project}/tasks', [TaskController::class, 'storeByProject']);
+        Route::get('/projects/{project}/members', [ProjectController::class, 'members'])->name('projects.members.index');
+        Route::post('/projects/{project}/members', [ProjectController::class, 'addMember'])->name('projects.members.store');
+        Route::delete('/projects/{project}/members/{user}', [ProjectController::class, 'removeMember'])->name('projects.members.destroy');
 
-    Route::get('/tasks/{task}', [TaskController::class, 'show']);
-    Route::put('/tasks/{task}', [TaskController::class, 'update']);
-    Route::delete('/tasks/{task}', [TaskController::class, 'destroy']);
-    Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus']);
-    Route::put('/tasks/{task}/members', [TaskMemberController::class, 'update']);
-    Route::post('/tasks/{task}/watch', [TaskMemberController::class, 'watch']);
-    Route::delete('/tasks/{task}/watch', [TaskMemberController::class, 'unwatch']);
-    Route::post('/tasks/{task}/delegate', [TaskMemberController::class, 'delegate']);
-    Route::get('/tasks/{task}/checklist', [TaskChecklistController::class, 'index']);
-    Route::post('/tasks/{task}/checklist', [TaskChecklistController::class, 'store']);
-    Route::patch('/checklist-items/{item}', [TaskChecklistController::class, 'update']);
-    Route::delete('/checklist-items/{item}', [TaskChecklistController::class, 'destroy']);
-    Route::post('/checklist-items/{item}/move', [TaskChecklistController::class, 'move']);
-    Route::get('/tasks/{task}/files', [TaskFileController::class, 'index']);
-    Route::post('/tasks/{task}/files', [TaskFileController::class, 'store']);
-    Route::delete('/task-files/{file}', [TaskFileController::class, 'destroy']);
-    Route::get('/task-files/{file}/download', [TaskFileController::class, 'download']);
-    Route::get('/tasks/{task}/history', [TaskHistoryController::class, 'index']);
-    Route::get('/tasks/{task}/results', [TaskResultController::class, 'index']);
-    Route::post('/tasks/{task}/results', [TaskResultController::class, 'store']);
-    Route::put('/task-results/{result}', [TaskResultController::class, 'update']);
-    Route::delete('/task-results/{result}', [TaskResultController::class, 'destroy']);
-    Route::get('/tasks/{task}/time', [TaskTimeController::class, 'index']);
-    Route::post('/tasks/{task}/time', [TaskTimeController::class, 'store']);
-    Route::put('/time-entries/{entry}', [TaskTimeController::class, 'update']);
-    Route::delete('/time-entries/{entry}', [TaskTimeController::class, 'destroy']);
-    Route::post('/tasks/{task}/timer', [TaskTimeController::class, 'start']);
-    Route::post('/tasks/{task}/timer/stop', [TaskTimeController::class, 'stop']);
+        // 5. Tasks Management
+        Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
+        Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
+        Route::get('/projects/{project}/tasks', [TaskController::class, 'indexByProject'])->name('projects.tasks.index');
+        Route::post('/projects/{project}/tasks', [TaskController::class, 'storeByProject'])->name('projects.tasks.store');
 
-    Route::get('/task-statuses', [TaskStatusController::class, 'index']);
-    Route::post('/task-statuses', [TaskStatusController::class, 'store']);
-    Route::put('/task-statuses/{taskStatus}', [TaskStatusController::class, 'update']);
-    Route::delete('/task-statuses/{taskStatus}', [TaskStatusController::class, 'destroy']);
+        Route::get('/tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
+        Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
+        Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
+        Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.status.update');
+        Route::put('/tasks/{task}/members', [TaskMemberController::class, 'update'])->name('tasks.members.update');
+        Route::post('/tasks/{task}/watch', [TaskMemberController::class, 'watch'])->name('tasks.watch.store');
+        Route::delete('/tasks/{task}/watch', [TaskMemberController::class, 'unwatch'])->name('tasks.watch.destroy');
+        Route::post('/tasks/{task}/delegate', [TaskMemberController::class, 'delegate'])->name('tasks.delegate');
+        Route::get('/tasks/{task}/checklist', [TaskChecklistController::class, 'index'])->name('tasks.checklist.index');
+        Route::post('/tasks/{task}/checklist', [TaskChecklistController::class, 'store'])->name('tasks.checklist.store');
+        Route::patch('/checklist-items/{item}', [TaskChecklistController::class, 'update'])->name('checklist-items.update');
+        Route::delete('/checklist-items/{item}', [TaskChecklistController::class, 'destroy'])->name('checklist-items.destroy');
+        Route::post('/checklist-items/{item}/move', [TaskChecklistController::class, 'move'])->name('checklist-items.move');
+        Route::get('/tasks/{task}/files', [TaskFileController::class, 'index'])->name('tasks.files.index');
+        Route::post('/tasks/{task}/files', [TaskFileController::class, 'store'])->name('tasks.files.store');
+        Route::delete('/task-files/{file}', [TaskFileController::class, 'destroy'])->name('task-files.destroy');
+        Route::get('/task-files/{file}/download', [TaskFileController::class, 'download'])->name('task-files.download');
+        Route::get('/tasks/{task}/history', [TaskHistoryController::class, 'index'])->name('tasks.history.index');
+        Route::get('/tasks/{task}/results', [TaskResultController::class, 'index'])->name('tasks.results.index');
+        Route::post('/tasks/{task}/results', [TaskResultController::class, 'store'])->name('tasks.results.store');
+        Route::put('/task-results/{result}', [TaskResultController::class, 'update'])->name('task-results.update');
+        Route::delete('/task-results/{result}', [TaskResultController::class, 'destroy'])->name('task-results.destroy');
+        Route::get('/tasks/{task}/time', [TaskTimeController::class, 'index'])->name('tasks.time.index');
+        Route::post('/tasks/{task}/time', [TaskTimeController::class, 'store'])->name('tasks.time.store');
+        Route::put('/time-entries/{entry}', [TaskTimeController::class, 'update'])->name('time-entries.update');
+        Route::delete('/time-entries/{entry}', [TaskTimeController::class, 'destroy'])->name('time-entries.destroy');
+        Route::post('/tasks/{task}/timer', [TaskTimeController::class, 'start'])->name('tasks.timer.start');
+        Route::post('/tasks/{task}/timer/stop', [TaskTimeController::class, 'stop'])->name('tasks.timer.stop');
 
-    Route::get('/task-priorities', [TaskPriorityController::class, 'index']);
-    Route::post('/task-priorities', [TaskPriorityController::class, 'store']);
-    Route::put('/task-priorities/{taskPriority}', [TaskPriorityController::class, 'update']);
-    Route::delete('/task-priorities/{taskPriority}', [TaskPriorityController::class, 'destroy']);
+        Route::get('/task-statuses', [TaskStatusController::class, 'index'])->name('task-statuses.index');
+        Route::post('/task-statuses', [TaskStatusController::class, 'store'])->name('task-statuses.store');
+        Route::put('/task-statuses/{taskStatus}', [TaskStatusController::class, 'update'])->name('task-statuses.update');
+        Route::delete('/task-statuses/{taskStatus}', [TaskStatusController::class, 'destroy'])->name('task-statuses.destroy');
 
-    // 6. Task chat (Bitrix24 step 4.7; replaced comments)
-    Route::get('/tasks/{task}/chat', [TaskChatController::class, 'index']);
-    Route::post('/tasks/{task}/chat', [TaskChatController::class, 'store']);
-    Route::put('/task-chat-messages/{message}', [TaskChatController::class, 'update']);
-    Route::delete('/task-chat-messages/{message}', [TaskChatController::class, 'destroy']);
-    Route::get('/task-chat-messages/{message}/files/{file}/download', [TaskChatController::class, 'download'])->whereNumber('file');
+        Route::get('/task-priorities', [TaskPriorityController::class, 'index'])->name('task-priorities.index');
+        Route::post('/task-priorities', [TaskPriorityController::class, 'store'])->name('task-priorities.store');
+        Route::put('/task-priorities/{taskPriority}', [TaskPriorityController::class, 'update'])->name('task-priorities.update');
+        Route::delete('/task-priorities/{taskPriority}', [TaskPriorityController::class, 'destroy'])->name('task-priorities.destroy');
 
-    // 7. Activity Logs
-    Route::get('/activities', [ProjectController::class, 'allActivities']);
-    Route::get('/projects/{project}/activities', [ProjectController::class, 'activities']);
+        // 6. Task chat (Bitrix24 step 4.7; replaced comments)
+        Route::get('/tasks/{task}/chat', [TaskChatController::class, 'index'])->name('tasks.chat.index');
+        Route::post('/tasks/{task}/chat', [TaskChatController::class, 'store'])->name('tasks.chat.store');
+        Route::put('/task-chat-messages/{message}', [TaskChatController::class, 'update'])->name('task-chat-messages.update');
+        Route::delete('/task-chat-messages/{message}', [TaskChatController::class, 'destroy'])->name('task-chat-messages.destroy');
+        Route::get('/task-chat-messages/{message}/files/{file}/download', [TaskChatController::class, 'download'])->whereNumber('file')->name('task-chat-messages.files.download');
 
+        // 7. Activity Logs
+        Route::get('/activities', [ProjectController::class, 'allActivities'])->name('activities.index');
+        Route::get('/projects/{project}/activities', [ProjectController::class, 'activities'])->name('projects.activities.index');
+    });
 });

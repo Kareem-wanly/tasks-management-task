@@ -75,7 +75,7 @@ class BitrixTaskMembersTest extends TestCase
     {
         Sanctum::actingAs($this->actor);
 
-        $this->putJson("/api/tasks/{$this->task->id}/members", [
+        $this->putJson("/api/v1/tasks/{$this->task->id}/members", [
             'accomplice_ids' => [$this->outsider->id],
             'auditor_ids' => [$this->member->id, $this->outsider->id],
         ])->assertOk()
@@ -95,7 +95,7 @@ class BitrixTaskMembersTest extends TestCase
         $this->bitrixTask['auditors'] = ['8'];
         Sanctum::actingAs($this->actor);
 
-        $this->putJson("/api/tasks/{$this->task->id}/members", ['accomplice_ids' => [], 'auditor_ids' => []])->assertOk();
+        $this->putJson("/api/v1/tasks/{$this->task->id}/members", ['accomplice_ids' => [], 'auditor_ids' => []])->assertOk();
 
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.update.json') && $r['fields']['AUDITORS'] === []);
         $this->assertSame([], $this->people('auditors'));
@@ -106,7 +106,7 @@ class BitrixTaskMembersTest extends TestCase
         $local = User::factory()->create(['bitrix_user_id' => null]);
         Sanctum::actingAs($this->actor);
 
-        $this->putJson("/api/tasks/{$this->task->id}/members", ['accomplice_ids' => [], 'auditor_ids' => [$local->id]])
+        $this->putJson("/api/v1/tasks/{$this->task->id}/members", ['accomplice_ids' => [], 'auditor_ids' => [$local->id]])
             ->assertUnprocessable();
 
         Http::assertNothingSent();
@@ -117,11 +117,11 @@ class BitrixTaskMembersTest extends TestCase
     {
         Sanctum::actingAs($this->member);
 
-        $this->postJson("/api/tasks/{$this->task->id}/watch")->assertOk();
+        $this->postJson("/api/v1/tasks/{$this->task->id}/watch")->assertOk();
         $this->assertSame([$this->member->id], $this->people('auditors'));
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.startwatch.json') && $r['auth'] === 'member-access');
 
-        $this->deleteJson("/api/tasks/{$this->task->id}/watch")->assertOk();
+        $this->deleteJson("/api/v1/tasks/{$this->task->id}/watch")->assertOk();
         $this->assertSame([], $this->people('auditors'));
     }
 
@@ -129,7 +129,7 @@ class BitrixTaskMembersTest extends TestCase
     {
         Sanctum::actingAs($this->member);
 
-        $this->postJson("/api/tasks/{$this->task->id}/delegate", ['user_id' => $this->outsider->id])->assertOk();
+        $this->postJson("/api/v1/tasks/{$this->task->id}/delegate", ['user_id' => $this->outsider->id])->assertOk();
 
         Http::assertSent(fn (Request $r): bool => str_ends_with($r->url(), 'tasks.task.delegate.json')
             && $r['auth'] === 'member-access' && $r['userId'] === 8);
@@ -143,7 +143,7 @@ class BitrixTaskMembersTest extends TestCase
         $this->task->auditors()->sync([$this->outsider->id]);
         Sanctum::actingAs($this->outsider);
 
-        $this->postJson("/api/tasks/{$this->task->id}/delegate", ['user_id' => $this->actor->id])->assertForbidden();
+        $this->postJson("/api/v1/tasks/{$this->task->id}/delegate", ['user_id' => $this->actor->id])->assertForbidden();
 
         Http::assertNothingSent();
     }
@@ -151,12 +151,12 @@ class BitrixTaskMembersTest extends TestCase
     public function test_accomplices_and_auditors_see_the_task_outside_its_project(): void
     {
         Sanctum::actingAs($this->outsider);
-        $this->getJson("/api/tasks/{$this->task->id}")->assertForbidden();
+        $this->getJson("/api/v1/tasks/{$this->task->id}")->assertForbidden();
 
         $this->task->auditors()->sync([$this->outsider->id]);
 
-        $this->getJson("/api/tasks/{$this->task->id}")->assertOk();
-        $this->getJson('/api/tasks')->assertJsonPath('data.0.id', $this->task->id);
+        $this->getJson("/api/v1/tasks/{$this->task->id}")->assertOk();
+        $this->getJson('/api/v1/tasks')->assertJsonPath('data.0.id', $this->task->id);
     }
 
     public function test_members_changed_in_bitrix_arrive_with_the_event(): void
@@ -173,7 +173,7 @@ class BitrixTaskMembersTest extends TestCase
     public function test_the_echo_of_our_member_change_is_confirmed(): void
     {
         Sanctum::actingAs($this->actor);
-        $this->putJson("/api/tasks/{$this->task->id}/members", ['accomplice_ids' => [], 'auditor_ids' => [$this->outsider->id]])->assertOk();
+        $this->putJson("/api/v1/tasks/{$this->task->id}/members", ['accomplice_ids' => [], 'auditor_ids' => [$this->outsider->id]])->assertOk();
 
         dispatch_sync(new SyncBitrixTask(15));
 
@@ -184,7 +184,7 @@ class BitrixTaskMembersTest extends TestCase
     public function test_a_member_change_in_bitrix_right_after_ours_is_a_conflict_bitrix_wins(): void
     {
         Sanctum::actingAs($this->actor);
-        $this->putJson("/api/tasks/{$this->task->id}/members", ['accomplice_ids' => [], 'auditor_ids' => [$this->outsider->id]])->assertOk();
+        $this->putJson("/api/v1/tasks/{$this->task->id}/members", ['accomplice_ids' => [], 'auditor_ids' => [$this->outsider->id]])->assertOk();
         $this->bitrixTask['auditors'] = ['8', '5'];
 
         dispatch_sync(new SyncBitrixTask(15));
@@ -199,7 +199,7 @@ class BitrixTaskMembersTest extends TestCase
         $this->task->forceFill(['project_id' => $local->id, 'bitrix_task_id' => null])->save();
         Sanctum::actingAs($this->actor);
 
-        $this->putJson("/api/tasks/{$this->task->id}/members", ['accomplice_ids' => [$this->member->id], 'auditor_ids' => []])->assertOk();
+        $this->putJson("/api/v1/tasks/{$this->task->id}/members", ['accomplice_ids' => [$this->member->id], 'auditor_ids' => []])->assertOk();
 
         Http::assertNothingSent();
         $this->assertSame([$this->member->id], $this->people('accomplices'));
