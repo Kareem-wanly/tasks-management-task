@@ -107,6 +107,23 @@ class AuthAndSecurityTest extends TestCase
             ->assertJsonValidationErrors(['assigned_to']);
     }
 
+    /** SEC-2: a project member who was deactivated still has the membership row. */
+    public function test_task_cannot_be_assigned_to_a_deactivated_project_member(): void
+    {
+        /** @var User $owner */
+        $owner = User::factory()->create();
+        $owner->roles()->attach(Role::where('name', 'Project Manager')->first());
+        $deactivated = User::factory()->create(['is_active' => false]);
+
+        $project = Project::create(['title' => 'Test Project', 'owner_id' => $owner->id, 'status' => 'active']);
+        $project->members()->attach($deactivated->id, ['role' => 'member']);
+
+        $this->actingAs($owner)
+            ->postJson("/api/v1/projects/{$project->id}/tasks", ['title' => 'Test Task', 'assigned_to' => $deactivated->id])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['assigned_to']);
+    }
+
     public function test_project_owner_can_be_deactivated(): void
     {
         $admin = User::where('email', 'admin@example.com')->first();

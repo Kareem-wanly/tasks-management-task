@@ -38,7 +38,8 @@ final class UpdateTaskRequest extends FormRequest
             'status' => ['sometimes', Rule::exists('task_statuses', 'key')],
             'priority' => ['sometimes', 'string', Rule::exists('task_priorities', 'key')],
             'due_date' => ['nullable', 'date'],
-            'assigned_to' => ['nullable', 'integer', 'exists:users,id', new ProjectMember($this->routeModel('task', Task::class)->project)],
+            // Active users only: a task without a project has no membership check (SEC-2).
+            'assigned_to' => ['nullable', 'integer', Rule::exists('users', 'id')->where('is_active', true), new ProjectMember($this->routeModel('task', Task::class)->project)],
             'parent_id' => ['nullable', 'integer', new ParentTask($this->actor(), $this->routeModel('task', Task::class))],
             'allow_time_tracking' => ['sometimes', 'boolean'],
             // Planned time in seconds (Bitrix TIME_ESTIMATE).

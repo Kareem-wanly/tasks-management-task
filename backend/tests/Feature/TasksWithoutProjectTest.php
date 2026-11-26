@@ -100,6 +100,29 @@ class TasksWithoutProjectTest extends TestCase
         $this->getJson("/api/v1/tasks/{$this->task->id}/chat")->assertForbidden();
     }
 
+    /** SEC-2: with no project there is no membership check, so the user itself must be active. */
+    public function test_a_new_task_without_a_project_is_not_assigned_to_a_deactivated_user(): void
+    {
+        $deactivated = User::factory()->create(['is_active' => false]);
+        Sanctum::actingAs($this->administrator());
+
+        $this->postJson('/api/v1/tasks', ['title' => 'Personal', 'assigned_to' => $deactivated->id])
+            ->assertUnprocessable()
+            ->assertOnlyJsonValidationErrors(['assigned_to']);
+        $this->assertDatabaseMissing('tasks', ['assigned_to' => $deactivated->id]);
+    }
+
+    public function test_a_task_without_a_project_is_not_reassigned_to_a_deactivated_user(): void
+    {
+        $deactivated = User::factory()->create(['is_active' => false]);
+        Sanctum::actingAs($this->administrator());
+
+        $this->putJson("/api/v1/tasks/{$this->task->id}", ['assigned_to' => $deactivated->id])
+            ->assertUnprocessable()
+            ->assertOnlyJsonValidationErrors(['assigned_to']);
+        $this->assertSame($this->assignee->id, $this->task->fresh()->assigned_to);
+    }
+
     public function test_the_assignee_sees_a_project_task_outside_its_project_as_in_bitrix(): void
     {
         $project = Project::forceCreate(['title' => 'P', 'status' => 'active', 'owner_id' => $this->creator->id]);
@@ -118,5 +141,14 @@ class TasksWithoutProjectTest extends TestCase
         $this->getJson('/api/v1/tasks')->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $projectTask->id);
         // The rest of the project stays hidden: membership still decides that.
         $this->getJson("/api/v1/tasks/{$otherTask->id}")->assertForbidden();
+    }
+
+    /** May create and assign any task, so a refusal can only come from validation. */
+    private function administrator(): User
+    {
+        $admin = User::factory()->create();
+        $admin->roles()->attach(Role::where('name', 'Administrator')->first());
+
+        return $admin;
     }
 }
