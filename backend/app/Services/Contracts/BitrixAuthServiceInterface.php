@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Contracts;
 
+use App\DTOs\Bitrix\BitrixCallbackDTO;
 use App\DTOs\Bitrix\BitrixFrameAuthDTO;
 use App\DTOs\Bitrix\ExchangeLoginCodeDTO;
 use App\Exceptions\Bitrix\BitrixLoginCodeExpiredException;
@@ -15,7 +16,7 @@ interface BitrixAuthServiceInterface
     public function authorizeUrl(string $state): string;
 
     /** OAuth: the code Bitrix sent back, for our portal. Returns a one-time sign-in code bound to $nonce. */
-    public function signInWithCode(string $code, mixed $domain, string $nonce): string;
+    public function signInWithCode(BitrixCallbackDTO $callback): string;
 
     /**
      * The app opened inside Bitrix: the tokens Bitrix's JS SDK gave the app

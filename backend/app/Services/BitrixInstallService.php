@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Bitrix\BitrixInstallDTO;
+use App\DTOs\Bitrix\BitrixInstallResultDTO;
+use App\Enums\BitrixInstallOutcome;
+use App\Enums\BitrixInstallSource;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Exceptions\Bitrix\BitrixInstallRefusedException;
 use App\Integrations\Bitrix24\BitrixPayload;
@@ -47,7 +50,29 @@ final readonly class BitrixInstallService implements BitrixInstallServiceInterfa
         private BitrixTokenRepositoryInterface $tokens,
     ) {}
 
-    public function installFromEvent(BitrixInstallDTO $install): void
+    public function install(BitrixInstallDTO $install): BitrixInstallResultDTO
+    {
+        if ($install->source === BitrixInstallSource::Event) {
+            $this->installFromEvent($install);
+
+            return BitrixInstallResultDTO::fromArray(['outcome' => BitrixInstallOutcome::EventInstalled]);
+        }
+
+        if ($install->source !== BitrixInstallSource::Page) {
+            return BitrixInstallResultDTO::fromArray(['outcome' => BitrixInstallOutcome::Unsupported]);
+        }
+
+        try {
+            $this->installFromPage($install);
+        } catch (BitrixInstallRefusedException $e) {
+            return BitrixInstallResultDTO::fromArray(['outcome' => BitrixInstallOutcome::PageRefused, 'message' => $e->getMessage(), 'status' => $e->status()]);
+        }
+
+        return BitrixInstallResultDTO::fromArray(['outcome' => BitrixInstallOutcome::PageInstalled]);
+    }
+
+    /** Bitrix24's ONAPPINSTALL event. */
+    private function installFromEvent(BitrixInstallDTO $install): void
     {
         $this->ensureOurPortal($install->domain);
 
@@ -71,7 +96,7 @@ final readonly class BitrixInstallService implements BitrixInstallServiceInterfa
      * The page request comes from a browser, so anyone could forge it: the
      * token is trusted only after Bitrix confirms it is our app's and an admin's.
      */
-    public function installFromPage(BitrixInstallDTO $install): void
+    private function installFromPage(BitrixInstallDTO $install): void
     {
         $this->ensureOurPortal($install->domain);
 

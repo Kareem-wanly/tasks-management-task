@@ -24,21 +24,13 @@ final class BitrixInstallRequest extends FormRequest
         return [];
     }
 
-    public function isInstallEvent(): bool
-    {
-        return $this->input('event') === 'ONAPPINSTALL';
-    }
-
-    public function isInstallPage(): bool
-    {
-        return $this->filled('AUTH_ID');
-    }
-
-    /** The install, from the event's auth block or from the page's parameters. */
+    /** The install, from the event's auth block or from the page's parameters; neither: unsupported. */
     public function toDto(): BitrixInstallDTO
     {
-        return $this->isInstallEvent()
-            ? BitrixInstallDTO::fromEvent((array) $this->input('auth', []), $this->input('data.LANGUAGE_ID'))
-            : BitrixInstallDTO::fromPage($this->all());
+        if ($this->input('event') === 'ONAPPINSTALL') {
+            return BitrixInstallDTO::fromEvent((array) $this->input('auth', []), $this->input('data.LANGUAGE_ID'));
+        }
+
+        return $this->filled('AUTH_ID') ? BitrixInstallDTO::fromPage($this->all()) : BitrixInstallDTO::unsupported();
     }
 }

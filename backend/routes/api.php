@@ -2,25 +2,25 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\BitrixAuthController;
-use App\Http\Controllers\BitrixEventController;
-use App\Http\Controllers\BitrixInstallController;
-use App\Http\Controllers\PermissionController;
-use App\Http\Controllers\ProjectController;
-use App\Http\Controllers\RoleController;
-use App\Http\Controllers\TaskChatController;
-use App\Http\Controllers\TaskChecklistController;
-use App\Http\Controllers\TaskController;
-use App\Http\Controllers\TaskFileController;
-use App\Http\Controllers\TaskHistoryController;
-use App\Http\Controllers\TaskMemberController;
-use App\Http\Controllers\TaskPriorityController;
-use App\Http\Controllers\TaskResultController;
-use App\Http\Controllers\TaskStatusController;
-use App\Http\Controllers\TaskTimeController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\UserRoleController;
+use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BitrixAuthController;
+use App\Http\Controllers\Api\V1\BitrixEventController;
+use App\Http\Controllers\Api\V1\BitrixInstallController;
+use App\Http\Controllers\Api\V1\PermissionController;
+use App\Http\Controllers\Api\V1\ProjectController;
+use App\Http\Controllers\Api\V1\RoleController;
+use App\Http\Controllers\Api\V1\TaskChatController;
+use App\Http\Controllers\Api\V1\TaskChecklistController;
+use App\Http\Controllers\Api\V1\TaskController;
+use App\Http\Controllers\Api\V1\TaskFileController;
+use App\Http\Controllers\Api\V1\TaskHistoryController;
+use App\Http\Controllers\Api\V1\TaskMemberController;
+use App\Http\Controllers\Api\V1\TaskPriorityController;
+use App\Http\Controllers\Api\V1\TaskResultController;
+use App\Http\Controllers\Api\V1\TaskStatusController;
+use App\Http\Controllers\Api\V1\TaskTimeController;
+use App\Http\Controllers\Api\V1\UserController;
+use App\Http\Controllers\Api\V1\UserRoleController;
 use Illuminate\Support\Facades\Route;
 
 /*
