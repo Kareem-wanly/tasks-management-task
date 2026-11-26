@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Step 5.1: { data: { is_running, entities, failed_jobs, conflicts, unconfirmed } }.
+ * Step 5.1: { data: { is_running, entities, failures, conflicts, unconfirmed } }.
  *
  * @property BitrixSyncStatusDTO $resource
  */
@@ -21,7 +21,7 @@ final class BitrixSyncStatusResource extends JsonResource
         return [
             'is_running' => $this->resource->isRunning(),
             'entities' => BitrixSyncEntityResource::collection($this->resource->entities),
-            'failed_jobs' => $this->resource->failedJobs,
+            'failures' => $this->resource->failures,
             'conflicts' => $this->resource->conflicts,
             'unconfirmed' => $this->resource->unconfirmed,
         ];

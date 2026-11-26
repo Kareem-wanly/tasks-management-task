@@ -32,7 +32,9 @@ export const queryKeys = {
     recent: (limit: number) => ['activities', 'recent', limit] as const,
   },
   bitrixSync: {
+    all: ['bitrix-sync'] as const,
     status: ['bitrix-sync', 'status'] as const,
+    failures: ['bitrix-sync', 'failures'] as const,
   },
   taskLookups: {
     statuses: ['task-lookups', 'statuses'] as const,

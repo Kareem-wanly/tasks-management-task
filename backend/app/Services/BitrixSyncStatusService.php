@@ -8,16 +8,20 @@ use App\DTOs\Bitrix\BitrixSyncEntityDTO;
 use App\DTOs\Bitrix\BitrixSyncStatusDTO;
 use App\DTOs\Bitrix\StartBitrixSyncDTO;
 use App\Enums\BitrixSyncMode;
+use App\Enums\BitrixSyncOperation;
 use App\Enums\OutboundOpStatus;
-use App\Enums\QueueName;
 use App\Enums\SyncCursorStatus;
 use App\Enums\SyncEntityState;
 use App\Exceptions\Bitrix\BitrixSyncAlreadyRunningException;
+use App\Jobs\Bitrix\SyncBitrixProjectJob;
+use App\Jobs\Bitrix\SyncBitrixTaskChatJob;
+use App\Jobs\Bitrix\SyncBitrixTaskJob;
 use App\Models\BitrixOutboundOp;
 use App\Models\BitrixSyncCursor;
+use App\Models\BitrixSyncFailure;
 use App\Repositories\Contracts\BitrixOutboundOpRepositoryInterface;
-use App\Repositories\Contracts\FailedJobRepositoryInterface;
 use App\Services\Contracts\BitrixImportServiceInterface;
+use App\Services\Contracts\BitrixSyncFailureServiceInterface;
 use App\Services\Contracts\BitrixSyncStatusServiceInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Cache\Repository as Cache;
@@ -46,7 +50,7 @@ final readonly class BitrixSyncStatusService implements BitrixSyncStatusServiceI
     public function __construct(
         private BitrixImportServiceInterface $import,
         private BitrixOutboundOpRepositoryInterface $outboundOps,
-        private FailedJobRepositoryInterface $failedJobs,
+        private BitrixSyncFailureServiceInterface $failures,
         private Cache $cache,
     ) {}
 
@@ -58,7 +62,7 @@ final readonly class BitrixSyncStatusService implements BitrixSyncStatusServiceI
 
         return new BitrixSyncStatusDTO(
             entities: array_map(fn (string $entity): BitrixSyncEntityDTO => $this->entity($entity, $cursors->get($entity), $now), self::ENTITIES),
-            failedJobs: $this->failedJobs->countOnQueue(QueueName::Bitrix->value),
+            failures: $this->failures->countOpen(),
             conflicts: $this->outboundOps->countSentBetween(OutboundOpStatus::Conflict, $recent, $now),
             // Still waiting inside the echo window is normal; only older ones count.
             unconfirmed: $this->outboundOps->countSentBetween(OutboundOpStatus::Sent, $recent, $now->subSeconds(BitrixOutboundOp::WINDOW_SECONDS)),
@@ -67,15 +71,8 @@ final readonly class BitrixSyncStatusService implements BitrixSyncStatusServiceI
 
     public function start(StartBitrixSyncDTO $request): BitrixSyncStatusDTO
     {
-        $status = $this->status();
-        if ($status->isRunning()) {
-            throw BitrixSyncAlreadyRunningException::running();
-        }
-        if ($this->isWaitingInQueue($status)) {
-            throw BitrixSyncAlreadyRunningException::queued();
-        }
-
-        $this->cache->put(self::REQUESTED_AT_KEY, CarbonImmutable::now()->startOfSecond()->getTimestamp(), self::REQUEST_EXPIRES_SECONDS);
+        $this->ensureNoImportPending();
+        $this->rememberImportRequest();
 
         match ($request->mode) {
             BitrixSyncMode::Changes => $this->import->queueChangesSync(),
@@ -83,6 +80,49 @@ final readonly class BitrixSyncStatusService implements BitrixSyncStatusServiceI
         };
 
         return $this->status();
+    }
+
+    public function retry(BitrixSyncFailure $failure): BitrixSyncFailure
+    {
+        // An import queued over a running or waiting one would race it, or be
+        // skipped by its overlap lock while the rest of its chain still ran.
+        $isImport = $failure->operation === BitrixSyncOperation::Import;
+        if ($isImport) {
+            $this->ensureNoImportPending();
+        }
+
+        $failure = $this->failures->markRetrying($failure);
+        $subject = $failure->subject;
+
+        match ($failure->operation) {
+            BitrixSyncOperation::Task => dispatch(new SyncBitrixTaskJob((int) $subject)),
+            BitrixSyncOperation::Project => dispatch(new SyncBitrixProjectJob((int) $subject)),
+            BitrixSyncOperation::TaskChat => dispatch(new SyncBitrixTaskChatJob((int) $subject)),
+            BitrixSyncOperation::Import => $this->retryImport($subject),
+        };
+
+        if ($isImport) {
+            $this->rememberImportRequest();
+        }
+
+        return $failure;
+    }
+
+    /** @throws BitrixSyncAlreadyRunningException */
+    private function ensureNoImportPending(): void
+    {
+        $status = $this->status();
+        if ($status->isRunning()) {
+            throw BitrixSyncAlreadyRunningException::running();
+        }
+        if ($this->isWaitingInQueue($status)) {
+            throw BitrixSyncAlreadyRunningException::queued();
+        }
+    }
+
+    private function rememberImportRequest(): void
+    {
+        $this->cache->put(self::REQUESTED_AT_KEY, CarbonImmutable::now()->startOfSecond()->getTimestamp(), self::REQUEST_EXPIRES_SECONDS);
     }
 
     /** The last request was queued, but no import has started since. */
@@ -100,6 +140,25 @@ final readonly class BitrixSyncStatusService implements BitrixSyncStatusServiceI
         }
 
         return true;
+    }
+
+    /**
+     * A pass of the full import is retried with the passes after it, as the
+     * chain it failed in never ran them; the changes sync is retried alone.
+     */
+    private function retryImport(string $entity): void
+    {
+        if ($entity === BitrixImportServiceInterface::TASKS_CHANGES) {
+            $this->import->queueChangesSync();
+
+            return;
+        }
+
+        $from = array_search($entity, BitrixImportServiceInterface::ORDER, true);
+        $this->import->queueImport(
+            $from === false ? [$entity] : array_slice(BitrixImportServiceInterface::ORDER, $from),
+            linkByEmail: false,
+        );
     }
 
     private function entity(string $entity, ?BitrixSyncCursor $cursor, CarbonImmutable $now): BitrixSyncEntityDTO

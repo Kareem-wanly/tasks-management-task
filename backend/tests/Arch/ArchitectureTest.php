@@ -159,10 +159,10 @@ arch('enums')
 arch('jobs are thin and queued')
     ->expect('App\Jobs')
     ->classes()
-    // TracksSyncProgress is the import jobs' shared trait.
-    ->toBeFinal()->ignoring('App\Jobs\Bitrix\TracksSyncProgress')
-    ->toHaveSuffix('Job')->ignoring('App\Jobs\Bitrix\TracksSyncProgress')
-    ->toImplement('Illuminate\Contracts\Queue\ShouldQueue')->ignoring('App\Jobs\Bitrix\TracksSyncProgress')
+    // TracksSyncProgress (import jobs) and RecordsSyncFailure (event jobs) are shared traits.
+    ->toBeFinal()->ignoring(['App\Jobs\Bitrix\TracksSyncProgress', 'App\Jobs\Bitrix\RecordsSyncFailure'])
+    ->toHaveSuffix('Job')->ignoring(['App\Jobs\Bitrix\TracksSyncProgress', 'App\Jobs\Bitrix\RecordsSyncFailure'])
+    ->toImplement('Illuminate\Contracts\Queue\ShouldQueue')->ignoring(['App\Jobs\Bitrix\TracksSyncProgress', 'App\Jobs\Bitrix\RecordsSyncFailure'])
     ->toOnlyBeUsedIn(['App\Services', 'App\Jobs', 'Tests'])
     ->not->toUse(['App\Repositories', 'App\Integrations', 'Illuminate\Support\Facades\DB']);
 
@@ -192,7 +192,7 @@ arch('only the gateways talk to external HTTP')
 // place nothing can be injected (the worker passes the exception only).
 arch('the container is reached only by providers')
     ->expect(['app', 'resolve'])
-    ->toOnlyBeUsedIn(['App\Providers', 'App\Jobs\Bitrix\TracksSyncProgress', 'Tests', 'Database']);
+    ->toOnlyBeUsedIn(['App\Providers', 'App\Jobs\Bitrix\TracksSyncProgress', 'App\Jobs\Bitrix\RecordsSyncFailure', 'App\Jobs\Bitrix\SyncBitrixChangesJob', 'Tests', 'Database']);
 
 arch('only the Bitrix repositories call the gateway')
     ->expect('App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface')
@@ -242,8 +242,9 @@ $repositoryOwners = [
     'BitrixOutboundOpRepositoryInterface' => ['ProjectService', 'TaskService', 'TaskMemberService', 'BitrixSyncStatusService'],
     'BitrixPortalRepositoryInterface' => ['BitrixEventService', 'BitrixInstallService', 'UserService'],
     'BitrixSyncCursorRepositoryInterface' => ['BitrixImportService'],
+    'BitrixSyncFailureRepositoryInterface' => ['BitrixSyncFailureService'],
     'BitrixTokenRepositoryInterface' => ['BitrixAuthService', 'BitrixInstallService'],
-    'FailedJobRepositoryInterface' => ['BitrixSyncStatusService'],
+    'FailedJobRepositoryInterface' => ['BitrixSyncFailureService'],
     'PermissionRepositoryInterface' => ['PermissionService'],
     'ProjectRepositoryInterface' => ['ProjectService'],
     'RoleRepositoryInterface' => ['RoleService'],

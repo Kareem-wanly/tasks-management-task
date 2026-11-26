@@ -39,7 +39,13 @@ trait TracksSyncProgress
     public function failed(?Throwable $exception): void
     {
         // The worker calls failed() with the exception only, so the service is resolved here (C.4: documented).
-        resolve(BitrixImportServiceInterface::class)->markFailed($this->cursorEntity(), $exception?->getMessage() ?: 'Unknown error');
+        resolve(BitrixImportServiceInterface::class)->markFailed($this->cursorEntity(), $exception, $this->job?->uuid(), $this->deadLetterSubject());
+    }
+
+    /** Which work a failure of this run belongs to on the status page (step 5.2): by default, its own pass. */
+    protected function deadLetterSubject(): string
+    {
+        return $this->cursorEntity();
     }
 
     /** The bitrix_sync_cursors row this run reports to. */

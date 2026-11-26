@@ -8,6 +8,7 @@ use App\Models\BitrixSyncCursor;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Support\Collection;
+use Throwable;
 
 /**
  * Bitrix24 → here, in bulk: the import of every record (first install, the
@@ -98,5 +99,11 @@ interface BitrixImportServiceInterface
     public function importChat(): void;
 
     /** Records a failed run on its cursor row (from the job's failed()); a re-run starts it again. */
-    public function markFailed(string $entity, string $error): void;
+    public function markFailed(string $entity, ?Throwable $exception, ?string $failedJobUuid = null, ?string $deadLetterSubject = null): void;
+
+    /**
+     * Step 5.2: the queued changes sync failed, usually because a pass inside it
+     * did (already recorded): its own failed_jobs row joins that failure.
+     */
+    public function markChangesSyncFailed(?Throwable $exception, ?string $failedJobUuid): void;
 }

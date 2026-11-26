@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Jobs\Bitrix;
 
+use App\Enums\BitrixSyncOperation;
 use App\Enums\QueueName;
 use App\Services\Contracts\BitrixSyncServiceInterface;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Log;
-use Throwable;
 
 /**
  * Step 3.4: brings one Bitrix24 group up to date after a group event.
@@ -19,7 +18,7 @@ use Throwable;
  */
 final class SyncBitrixProjectJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
-    use Queueable;
+    use Queueable, RecordsSyncFailure;
 
     public int $tries = 3;
 
@@ -51,9 +50,14 @@ final class SyncBitrixProjectJob implements ShouldBeUniqueUntilProcessing, Shoul
         $sync->syncProject($this->bitrixGroupId);
     }
 
-    /** The next event, or the nightly import, brings the project up to date. */
-    public function failed(?Throwable $exception): void
+    /** Failed after all its tries: a dead letter on the sync status page (step 5.2). */
+    protected function failureOperation(): BitrixSyncOperation
     {
-        Log::warning('Bitrix24 project sync failed.', ['bitrix_group_id' => $this->bitrixGroupId, 'error' => $exception?->getMessage()]);
+        return BitrixSyncOperation::Project;
+    }
+
+    protected function failureSubject(): string
+    {
+        return (string) $this->bitrixGroupId;
     }
 }

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\BitrixAuthController;
 use App\Http\Controllers\Api\V1\BitrixEventController;
 use App\Http\Controllers\Api\V1\BitrixInstallController;
 use App\Http\Controllers\Api\V1\BitrixSyncController;
+use App\Http\Controllers\Api\V1\BitrixSyncFailureController;
 use App\Http\Controllers\Api\V1\PermissionController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\RoleController;
@@ -150,5 +151,9 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         // 8. Bitrix24 sync status (step 5.1)
         Route::get('/bitrix/sync', [BitrixSyncController::class, 'show'])->name('bitrix-sync.show');
         Route::post('/bitrix/sync', [BitrixSyncController::class, 'start'])->middleware('throttle:6,1')->name('bitrix-sync.start');
+        // Dead letters (step 5.2)
+        Route::get('/bitrix/sync/failures', [BitrixSyncFailureController::class, 'index'])->name('bitrix-sync.failures.index');
+        Route::post('/bitrix/sync/failures/{failure}/retry', [BitrixSyncFailureController::class, 'retry'])->middleware('throttle:30,1')->name('bitrix-sync.failures.retry');
+        Route::delete('/bitrix/sync/failures/{failure}', [BitrixSyncFailureController::class, 'destroy'])->name('bitrix-sync.failures.destroy');
     });
 });
