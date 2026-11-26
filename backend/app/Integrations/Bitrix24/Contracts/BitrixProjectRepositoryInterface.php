@@ -45,4 +45,22 @@ interface BitrixProjectRepositoryInterface
      * @return list<string>
      */
     public function syncedColumns(array $columns): array;
+
+    /**
+     * Every workgroup, page by page, read with the service account as an admin.
+     *
+     * @param  callable(array<string, mixed>, int): void  $onPage  The page and the portal total.
+     * @return int The portal total.
+     */
+    public function eachGroupPage(callable $onPage): int;
+
+    /**
+     * The members of one page of groups (at most 50), in a single batch request.
+     * A group Bitrix refuses fails the whole call: without its members it would
+     * lose them here.
+     *
+     * @param  list<array<string, mixed>>  $groups
+     * @return array<int, array<int, mixed>> sonet_group.user.get result by group ID.
+     */
+    public function membersOf(array $groups): array;
 }

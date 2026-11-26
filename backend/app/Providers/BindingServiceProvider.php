@@ -54,6 +54,7 @@ final class BindingServiceProvider extends ServiceProvider
         ServiceContracts\AuthServiceInterface::class => Services\AuthService::class,
         ServiceContracts\BitrixAuthServiceInterface::class => Services\BitrixAuthService::class,
         ServiceContracts\BitrixSyncServiceInterface::class => Services\BitrixSyncService::class,
+        ServiceContracts\BitrixImportServiceInterface::class => Services\BitrixImportService::class,
         ServiceContracts\BitrixEventServiceInterface::class => Services\BitrixEventService::class,
         ServiceContracts\BitrixInstallServiceInterface::class => Services\BitrixInstallService::class,
         ServiceContracts\PermissionServiceInterface::class => Services\PermissionService::class,

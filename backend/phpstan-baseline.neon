@@ -1,12 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Cannot call method toDateTimeString\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Console/Commands/ImportFromBitrix.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>error" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -19,64 +13,10 @@ parameters:
 			path: app/Console/Commands/ImportFromBitrix.php
 
 		-
-			message: '#^Using nullsafe property access "\?\-\>status" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Console/Commands/ImportFromBitrix.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>total" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Console/Commands/ImportFromBitrix.php
-
-		-
-			message: '#^Cannot call method toDateTimeString\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Console/Commands/SyncBitrixChanges.php
-
-		-
-			message: '#^Cannot call method toImmutable\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Console/Commands/SyncBitrixChanges.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\TaskLookup\:\:\$is_system\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Console/Commands/SyncBitrixTaskLookups.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\TaskLookup\:\:\$key\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Console/Commands/SyncBitrixTaskLookups.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\TaskLookup\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Console/Commands/SyncBitrixTaskLookups.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\TaskLookup\:\:\$sort\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Console/Commands/SyncBitrixTaskLookups.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\TaskLookup\:\:\$is_system\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Requests/TaskLookupRequest.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\TaskLookup\:\:\$is_system\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Requests/UpdateTaskStatusLookupRequest.php
 
 		-
 			message: '#^Access to an undefined property App\\Http\\Resources\\ProjectResource\:\:\$created_at\.$#'
@@ -541,12 +481,6 @@ parameters:
 			path: app/Repositories/Eloquent/EloquentTaskFileRepository.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\TaskLookup\:\:\$key\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Repositories/Eloquent/EloquentTaskLookupRepository.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:finished\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -587,9 +521,3 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Services/TaskChecklistService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\TaskLookup\:\:\$is_system\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/TaskLookupService.php

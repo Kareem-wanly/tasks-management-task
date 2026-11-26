@@ -8,6 +8,7 @@ use App\Enums\ProjectMemberRole;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixProjectRepositoryInterface;
+use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;
 use App\Models\Project;
 use App\Models\User;
 use Carbon\CarbonInterface;
@@ -77,6 +78,37 @@ final readonly class BitrixProjectRepository implements BitrixProjectRepositoryI
     public function syncedColumns(array $columns): array
     {
         return array_values(array_intersect($columns, array_keys(self::FIELDS)));
+    }
+
+    public function eachGroupPage(callable $onPage): int
+    {
+        return $this->bitrix->eachPageAsService('socialnetwork.api.workgroup.list', [
+            'select' => BitrixProjectMapper::SELECT,
+            'order' => ['ID' => 'ASC'],
+            // Without it the list is limited to groups the service user can see.
+            'params' => ['IS_ADMIN' => 'Y'],
+        ], $onPage);
+    }
+
+    public function membersOf(array $groups): array
+    {
+        $commands = [];
+        foreach ($groups as $group) {
+            $commands["group_{$group['id']}"] = ['sonet_group.user.get', ['ID' => $group['id']]];
+        }
+
+        $batch = $this->bitrix->batchAsService($commands);
+
+        if (! empty($batch['result_error'])) {
+            throw BitrixException::fromResponse(reset($batch['result_error']), 200);
+        }
+
+        $members = [];
+        foreach ($groups as $group) {
+            $members[(int) $group['id']] = $batch['result']["group_{$group['id']}"] ?? [];
+        }
+
+        return $members;
     }
 
     /**

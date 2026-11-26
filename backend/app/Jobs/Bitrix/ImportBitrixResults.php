@@ -5,55 +5,28 @@ declare(strict_types=1);
 namespace App\Jobs\Bitrix;
 
 use App\Enums\QueueName;
-use App\Exceptions\Bitrix\BitrixException;
-use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
-use App\Repositories\Contracts\TaskRepositoryInterface;
-use App\Services\Contracts\TaskResultServiceInterface;
+use App\Services\Contracts\BitrixImportServiceInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Step 4.6: brings every Bitrix task's results up to date. Bitrix sends no
  * events for results, so this nightly pass (and opening a task) is how
  * results added there reach us. REST 3.0 has no batch: one call per task.
  */
-class ImportBitrixResults implements ShouldQueue
+final class ImportBitrixResults implements ShouldQueue
 {
     use Queueable, TracksSyncProgress;
 
-    public const ENTITY = 'results';
-
-    private const CHUNK = 50;
+    public const ENTITY = BitrixImportServiceInterface::RESULTS;
 
     public function __construct()
     {
         $this->onQueue(QueueName::Bitrix);
     }
 
-    public function handle(TaskResultServiceInterface $results, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $tasks): void
+    public function handle(BitrixImportServiceInterface $import): void
     {
-        $cursor = $cursors->start(self::ENTITY);
-        $total = $tasks->countInBitrix();
-        $failed = 0;
-
-        $tasks->chunkInBitrix(self::CHUNK, function ($chunk) use ($results, $cursor, $cursors, $total, &$failed): void {
-            foreach ($chunk as $task) {
-                try {
-                    $results->refreshFromBitrix($task);
-                } catch (BitrixException $e) {
-                    // One task Bitrix refuses must not stop the rest, nor wipe its list.
-                    if ($e->errorCode === BitrixException::UNREACHABLE) {
-                        throw $e;
-                    }
-                    $failed++;
-                }
-            }
-
-            $cursors->advance($cursor, $chunk->count(), $total);
-        });
-
-        $cursors->complete($cursor);
-        Log::info('Bitrix24 task results imported.', ['tasks' => $cursor->processed, 'failed' => $failed]);
+        $import->importResults();
     }
 }

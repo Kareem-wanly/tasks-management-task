@@ -40,6 +40,13 @@ final readonly class BitrixUserRepository implements BitrixUserRepositoryInterfa
         $this->bitrix->callAsUser($actor, 'user.update', ['ID' => $bitrixUserId, 'ACTIVE' => $active ? 'Y' : 'N']);
     }
 
+    public function eachPage(callable $onPage): int
+    {
+        // No ACTIVE filter: ACTIVE=true would drop deactivated users, and we
+        // need them to block their access here too.
+        return $this->bitrix->eachPageAsService('user.get', ['sort' => 'ID', 'order' => 'ASC'], $onPage);
+    }
+
     /**
      * Our single name field as Bitrix NAME / LAST_NAME: first word, then the rest.
      *

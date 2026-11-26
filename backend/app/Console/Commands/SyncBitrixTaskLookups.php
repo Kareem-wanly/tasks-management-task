@@ -4,12 +4,9 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Exceptions\Bitrix\BitrixCannotSyncException;
 use App\Exceptions\Bitrix\BitrixException;
-use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
-use App\Models\TaskLookup;
-use App\Models\TaskPriority;
-use App\Models\TaskStatus;
-use App\Repositories\Contracts\TaskLookupRepositoryInterface;
+use App\Services\Contracts\TaskLookupServiceInterface;
 use Illuminate\Console\Command;
 
 /**
@@ -17,70 +14,29 @@ use Illuminate\Console\Command;
  * renames our Bitrix-linked rows and adds any value we don't have yet.
  * Our own values (is_system = false) are never touched.
  */
-class SyncBitrixTaskLookups extends Command
+final class SyncBitrixTaskLookups extends Command
 {
     protected $signature = 'bitrix:sync-task-lookups';
 
     protected $description = 'Sync task statuses and priorities from Bitrix24';
 
-    public function handle(BitrixGatewayInterface $bitrix, TaskLookupRepositoryInterface $lookups): int
+    public function handle(TaskLookupServiceInterface $lookups): int
     {
         try {
-            $fields = $bitrix->callAsService('tasks.task.getFields')['result']['fields'] ?? [];
+            $rows = $lookups->syncFromBitrix();
+        } catch (BitrixCannotSyncException $e) {
+            $this->error($e->getMessage());
+
+            return self::FAILURE;
         } catch (BitrixException $e) {
             $this->error("Bitrix24 request failed: {$e->getMessage()}");
 
             return self::FAILURE;
         }
 
-        $statuses = $fields['STATUS']['values'] ?? null;
-        $priorities = $fields['PRIORITY']['values'] ?? null;
-
-        if (! is_array($statuses) || ! is_array($priorities)) {
-            $this->error('Bitrix24 did not return STATUS / PRIORITY values.');
-
-            return self::FAILURE;
-        }
-
-        $rows = [
-            ...$this->sync($lookups, TaskStatus::class, 'status', $statuses),
-            ...$this->sync($lookups, TaskPriority::class, 'priority', $priorities),
-        ];
-
         $this->table(['Type', 'Bitrix ID', 'Key', 'Name', 'Change'], $rows);
         $this->info('Task statuses and priorities are in sync with Bitrix24.');
 
         return self::SUCCESS;
-    }
-
-    /**
-     * @param  class-string<TaskLookup>  $model
-     * @param  array<int|string, string>  $values  Bitrix ID => name
-     * @return list<array{string, int, string, string, string}>
-     */
-    private function sync(TaskLookupRepositoryInterface $lookups, string $model, string $type, array $values): array
-    {
-        $rows = [];
-
-        foreach ($values as $bitrixId => $name) {
-            $bitrixId = (int) $bitrixId;
-            $lookup = $lookups->findSystem($model, $bitrixId);
-
-            if (! $lookup instanceof TaskLookup) {
-                $lookup = new $model(['key' => "bitrix_{$type}_{$bitrixId}", 'bitrix_id' => $bitrixId, 'color' => 'neutral']);
-                $lookup->is_system = true;
-                $lookup->sort = $lookups->nextSort($model);
-                $change = 'added';
-            } else {
-                $change = $lookup->name === $name ? 'unchanged' : 'renamed';
-            }
-
-            $lookup->name = $name;
-            $lookups->save($lookup);
-
-            $rows[] = [$type, $bitrixId, $lookup->key, $name, $change];
-        }
-
-        return $rows;
     }
 }

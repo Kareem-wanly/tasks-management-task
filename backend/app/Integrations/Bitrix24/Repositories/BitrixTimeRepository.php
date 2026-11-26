@@ -40,4 +40,24 @@ final readonly class BitrixTimeRepository implements BitrixTimeRepositoryInterfa
     {
         $this->bitrix->callAsUser($actor, 'task.elapseditem.delete', ['TASKID' => $bitrixTaskId, 'ITEMID' => $bitrixItemId]);
     }
+
+    public function listMany(array $bitrixTaskIds): array
+    {
+        $commands = [];
+        foreach ($bitrixTaskIds as $taskId => $bitrixTaskId) {
+            $commands["task_{$taskId}"] = ['task.elapseditem.getlist', ['TASKID' => $bitrixTaskId]];
+        }
+
+        $batch = $this->bitrix->batchAsService($commands);
+
+        $rows = [];
+        foreach (array_keys($bitrixTaskIds) as $taskId) {
+            $key = "task_{$taskId}";
+            $rows[$taskId] = isset($batch['result_error'][$key]) || ! isset($batch['result'][$key])
+                ? null
+                : array_values((array) $batch['result'][$key]);
+        }
+
+        return $rows;
+    }
 }

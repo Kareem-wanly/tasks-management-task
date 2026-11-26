@@ -21,6 +21,12 @@ trait TracksSyncProgress
 
     public function failed(?Throwable $exception): void
     {
-        resolve(BitrixSyncCursorRepositoryInterface::class)->fail(self::ENTITY, $exception?->getMessage() ?: 'Unknown error');
+        resolve(BitrixSyncCursorRepositoryInterface::class)->fail($this->cursorEntity(), $exception?->getMessage() ?: 'Unknown error');
+    }
+
+    /** The bitrix_sync_cursors row this run reports to. */
+    protected function cursorEntity(): string
+    {
+        return self::ENTITY;
     }
 }
