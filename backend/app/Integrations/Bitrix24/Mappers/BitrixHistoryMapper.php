@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24\Mappers;
 
+use App\Integrations\Bitrix24\BitrixPayload;
 use App\Models\TaskPriority;
 use App\Models\TaskStatus;
 use App\Models\User;
@@ -35,16 +36,21 @@ final readonly class BitrixHistoryMapper
      */
     public function entries(array $rows): array
     {
+        $rows = array_map(fn (array $row): BitrixPayload => BitrixPayload::of($row, 'tasks.task.history.list'), $rows);
         [$names, $ourIds] = $this->people($rows);
 
-        $entries = array_map(fn (array $row): array => [
-            'id' => (int) ($row['id'] ?? 0),
-            'field' => (string) ($row['field'] ?? ''),
-            'from' => $this->value((string) ($row['field'] ?? ''), $row['value']['from'] ?? null, $names),
-            'to' => $this->value((string) ($row['field'] ?? ''), $row['value']['to'] ?? null, $names),
-            'user' => $this->author($row['user'] ?? null, $names, $ourIds),
-            'created_at' => $this->date($row['createdDate'] ?? null),
-        ], $rows);
+        $entries = array_map(function (BitrixPayload $row) use ($names, $ourIds): array {
+            $field = $row->stringOrNull('field') ?? '';
+
+            return [
+                'id' => $row->intOrNull('id') ?? 0,
+                'field' => $field,
+                'from' => $this->value($field, $row->stringOrNull('value.from'), $names),
+                'to' => $this->value($field, $row->stringOrNull('value.to'), $names),
+                'user' => $this->author($row->payload('user'), $names, $ourIds),
+                'created_at' => $row->dateOrNull('createdDate')?->toIso8601String(),
+            ];
+        }, $rows);
 
         // Newest first, as the task page reads it.
         usort($entries, fn (array $a, array $b): int => [$b['created_at'], $b['id']] <=> [$a['created_at'], $a['id']]);
@@ -53,23 +59,23 @@ final readonly class BitrixHistoryMapper
     }
 
     /** @param  array<int, string>  $names  Bitrix user ID => name. */
-    private function value(string $field, mixed $value, array $names): ?string
+    private function value(string $field, ?string $value, array $names): ?string
     {
         if ($value === null || $value === '') {
             return null;
         }
 
         return match (true) {
-            $field === 'STATUS' => $this->lookups->keyForBitrix(TaskStatus::class, (int) $value) ?? (string) $value,
-            $field === 'PRIORITY' => $this->lookups->keyForBitrix(TaskPriority::class, (int) $value) ?? (string) $value,
+            $field === 'STATUS' => $this->lookups->keyForBitrix(TaskStatus::class, (int) $value) ?? $value,
+            $field === 'PRIORITY' => $this->lookups->keyForBitrix(TaskPriority::class, (int) $value) ?? $value,
             in_array($field, self::PEOPLE_FIELDS, true) => implode(', ', array_map(
-                fn (int $id) => $names[$id] ?? "Bitrix user {$id}",
+                fn (int $id): string => $names[$id] ?? "Bitrix user {$id}",
                 $this->ids($value),
             )),
             in_array($field, self::DATE_FIELDS, true) && is_numeric($value) => CarbonImmutable::createFromTimestamp((int) $value)->toIso8601String(),
             // Bitrix names lists made without a title BX_CHECKLIST_1, 2… and shows them as "Checklist 1".
-            str_starts_with($field, 'CHECKLIST_') => (string) preg_replace('/^BX_CHECKLIST_(\d+)$/', 'Checklist $1', (string) $value),
-            default => (string) $value,
+            str_starts_with($field, 'CHECKLIST_') => preg_replace('/^BX_CHECKLIST_(\d+)$/', 'Checklist $1', $value) ?? $value,
+            default => $value,
         };
     }
 
@@ -78,32 +84,31 @@ final readonly class BitrixHistoryMapper
      * @param  array<int, int>  $ourIds  Bitrix user ID => our user ID.
      * @return array{id: ?int, name: string}|null
      */
-    private function author(mixed $user, array $names, array $ourIds): ?array
+    private function author(BitrixPayload $user, array $names, array $ourIds): ?array
     {
-        if (! is_array($user) || empty($user['id'])) {
+        $bitrixId = $user->intOrNull('id');
+        if ($bitrixId === null || $bitrixId === 0) {
             return null;
         }
 
-        $bitrixId = (int) $user['id'];
-        $ourId = $ourIds[$bitrixId] ?? null;
-        $bitrixName = trim(($user['name'] ?? '').' '.($user['lastName'] ?? ''));
+        $bitrixName = trim(($user->stringOrNull('name') ?? '').' '.($user->stringOrNull('lastName') ?? ''));
 
-        return ['id' => $ourId, 'name' => $names[$bitrixId] ?? ($bitrixName !== '' ? $bitrixName : "Bitrix user {$bitrixId}")];
+        return ['id' => $ourIds[$bitrixId] ?? null, 'name' => $names[$bitrixId] ?? ($bitrixName !== '' ? $bitrixName : "Bitrix user {$bitrixId}")];
     }
 
     /**
      * Our IDs and names for every Bitrix user the rows mention, in two queries.
      *
-     * @param  list<array<string, mixed>>  $rows
+     * @param  list<BitrixPayload>  $rows
      * @return array{0: array<int, string>, 1: array<int, int>} [Bitrix ID => name, Bitrix ID => our ID]
      */
     private function people(array $rows): array
     {
         $bitrixIds = [];
         foreach ($rows as $row) {
-            $bitrixIds[] = (int) ($row['user']['id'] ?? 0);
-            if (in_array($row['field'] ?? '', self::PEOPLE_FIELDS, true)) {
-                array_push($bitrixIds, ...$this->ids($row['value']['from'] ?? ''), ...$this->ids($row['value']['to'] ?? ''));
+            $bitrixIds[] = $row->intOrNull('user.id') ?? 0;
+            if (in_array($row->stringOrNull('field'), self::PEOPLE_FIELDS, true)) {
+                array_push($bitrixIds, ...$this->ids($row->stringOrNull('value.from')), ...$this->ids($row->stringOrNull('value.to')));
             }
         }
 
@@ -112,9 +117,9 @@ final readonly class BitrixHistoryMapper
 
         $names = [];
         foreach ($ourIds as $bitrixId => $ourId) {
-            if ($user = $users->get($ourId)) {
-                /** @var User $user */
-                $names[(int) $bitrixId] = $user->name;
+            $user = $users->get($ourId);
+            if ($user instanceof User) {
+                $names[$bitrixId] = $user->name;
             }
         }
 
@@ -122,13 +127,8 @@ final readonly class BitrixHistoryMapper
     }
 
     /** @return list<int> */
-    private function ids(mixed $value): array
+    private function ids(?string $value): array
     {
-        return array_values(array_filter(array_map('intval', explode(',', (string) $value))));
-    }
-
-    private function date(mixed $value): ?string
-    {
-        return is_string($value) && $value !== '' ? CarbonImmutable::parse($value)->toIso8601String() : null;
+        return array_values(array_filter(array_map(fn (string $id): int => (int) $id, explode(',', $value ?? ''))));
     }
 }

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Http\Resources\Concerns\ResolvesViewer;
+use App\Models\TaskElapsedItem;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin TaskElapsedItem */
 final class TaskElapsedItemResource extends JsonResource
 {
     use ResolvesViewer;

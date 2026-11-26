@@ -49,7 +49,7 @@ interface BitrixProjectRepositoryInterface
     /**
      * Every workgroup, page by page, read with the service account as an admin.
      *
-     * @param  callable(array<string, mixed>, int): void  $onPage  The page and the portal total.
+     * @param  callable(list<array<string, mixed>>, int): void  $onPage  The page's groups and the portal total.
      * @return int The portal total.
      */
     public function eachGroupPage(callable $onPage): int;

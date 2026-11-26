@@ -139,7 +139,9 @@ final readonly class BitrixTaskRepository implements BitrixTaskRepositoryInterfa
             'select' => BitrixTaskMapper::SELECT,
             'filter' => $filter,
             'order' => ['ID' => 'ASC'],
-        ], $onPage);
+        ], function (array $page, int $total) use ($onPage): void {
+            $onPage(BitrixPayload::of($page, 'tasks.task.list')->rows('tasks'), $total);
+        });
     }
 
     public function fieldDefinitions(): array

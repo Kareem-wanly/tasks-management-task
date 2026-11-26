@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Step 4.4: one entry of a task's time log (Bitrix elapsed item).
  *
  * @property-read Task $task
+ * @property CarbonImmutable|null $created_date
  */
 class TaskElapsedItem extends Model
 {

@@ -78,3 +78,31 @@ it('fails a batch on the first command Bitrix refused', function (): void {
 
     answer(['result_error' => []])->failOnBatchError();
 });
+
+it('reads ISO dates, and an empty one as not there', function (): void {
+    $task = answer(['deadline' => '2026-11-22T12:00:00+03:00', 'closedDate' => '', 'createdDate' => false]);
+
+    expect($task->dateOrNull('deadline')?->utc()->toIso8601String())->toBe('2026-11-22T09:00:00+00:00')
+        ->and($task->dateOrNull('closedDate'))->toBeNull()
+        ->and($task->dateOrNull('createdDate'))->toBeNull();
+});
+
+it('gives dates in the app timezone for our columns', function (): void {
+    config(['app.timezone' => 'Asia/Damascus']);
+
+    expect(answer(['date' => '2026-11-22T09:00:00+00:00'])->localDateOrNull('date')?->format('Y-m-d H:i P'))
+        ->toBe('2026-11-22 12:00 +03:00');
+});
+
+it('compares a flag without failing on another type', function (): void {
+    $item = answer(['IS_COMPLETE' => 'Y', 'IS_DELETED' => true]);
+
+    expect($item->equals('IS_COMPLETE', 'Y'))->toBeTrue()
+        ->and($item->equals('IS_DELETED', 'Y'))->toBeFalse()
+        ->and($item->equals('MISSING', 'Y'))->toBeFalse();
+});
+
+it('reads text values with their keys', function (): void {
+    expect(answer(['values' => ['1' => 'Low', 2 => 'Normal']])->strings('values'))->toBe([1 => 'Low', 2 => 'Normal'])
+        ->and(fn (): array => answer(['values' => [['nested']]])->strings('values'))->toThrow(BitrixUnexpectedResponseException::class);
+});

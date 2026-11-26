@@ -61,7 +61,7 @@ final class EloquentTaskChecklistRepository implements TaskChecklistRepositoryIn
 
     public function reorder(array $items): void
     {
-        foreach (array_values($items) as $index => $item) {
+        foreach ($items as $index => $item) {
             $item->update(['sort_index' => $index + 1]);
         }
     }

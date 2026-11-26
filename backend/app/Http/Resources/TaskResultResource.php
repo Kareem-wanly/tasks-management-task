@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Http\Resources\Concerns\ResolvesViewer;
+use App\Models\TaskResult;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin TaskResult */
 final class TaskResultResource extends JsonResource
 {
     use ResolvesViewer;

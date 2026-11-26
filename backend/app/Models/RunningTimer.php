@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Step 4.4: an employee's running timer (at most one). Stopping it turns
  * the time since started_at into a time log entry in Bitrix.
+ *
+ * @property CarbonImmutable $started_at
  */
 class RunningTimer extends Model
 {

@@ -8,6 +8,7 @@ use App\DTOs\TaskLookup\SaveTaskLookupDTO;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Exceptions\TaskLookup\LookupFromBitrixException;
 use App\Exceptions\TaskLookup\LookupInUseException;
+use App\Integrations\Bitrix24\BitrixPayload;
 use App\Integrations\Bitrix24\Contracts\BitrixTaskRepositoryInterface;
 use App\Models\TaskLookup;
 use App\Models\TaskPriority;
@@ -80,17 +81,15 @@ final readonly class TaskLookupService implements TaskLookupServiceInterface
 
     public function syncFromBitrix(): array
     {
-        $fields = $this->bitrixTasks->fieldDefinitions();
-        $statuses = $fields['STATUS']['values'] ?? null;
-        $priorities = $fields['PRIORITY']['values'] ?? null;
+        $fields = BitrixPayload::of($this->bitrixTasks->fieldDefinitions(), 'tasks.task.getFields');
 
-        if (! is_array($statuses) || ! is_array($priorities)) {
+        if (! $fields->has('STATUS.values') || ! $fields->has('PRIORITY.values')) {
             throw BitrixException::cannotSync('Bitrix24 did not return STATUS / PRIORITY values.');
         }
 
         return [
-            ...$this->syncValues(TaskStatus::class, 'status', $statuses),
-            ...$this->syncValues(TaskPriority::class, 'priority', $priorities),
+            ...$this->syncValues(TaskStatus::class, 'status', $fields->strings('STATUS.values')),
+            ...$this->syncValues(TaskPriority::class, 'priority', $fields->strings('PRIORITY.values')),
         ];
     }
 

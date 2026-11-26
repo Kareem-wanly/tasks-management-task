@@ -61,16 +61,16 @@ final readonly class BitrixEventService implements BitrixEventServiceInterface
 
     private function taskJob(mixed $id): ?SyncBitrixTaskJob
     {
-        return (int) $id > 0 ? new SyncBitrixTaskJob((int) $id) : null;
+        return is_numeric($id) && (int) $id > 0 ? new SyncBitrixTaskJob((int) $id) : null;
     }
 
     private function chatJob(mixed $taskId): ?SyncBitrixTaskChatJob
     {
-        return (int) $taskId > 0 ? new SyncBitrixTaskChatJob((int) $taskId) : null;
+        return is_numeric($taskId) && (int) $taskId > 0 ? new SyncBitrixTaskChatJob((int) $taskId) : null;
     }
 
     private function projectJob(mixed $id): ?SyncBitrixProjectJob
     {
-        return (int) $id > 0 ? new SyncBitrixProjectJob((int) $id) : null;
+        return is_numeric($id) && (int) $id > 0 ? new SyncBitrixProjectJob((int) $id) : null;
     }
 }

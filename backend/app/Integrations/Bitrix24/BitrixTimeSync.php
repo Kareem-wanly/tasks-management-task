@@ -27,20 +27,21 @@ final readonly class BitrixTimeSync
     public function sync(Task $task, array $rows): void
     {
         $ours = $this->entries->bitrixEntries($task);
-        $users = $this->users->idsByBitrixIds(array_map(fn (array $r): int => (int) ($r['USER_ID'] ?? 0), $rows));
+        $rows = array_map(fn (array $row): BitrixPayload => BitrixPayload::of($row, 'task.elapseditem.getlist'), $rows);
+        $users = $this->users->idsByBitrixIds(array_map(fn (BitrixPayload $r): int => $r->intOrNull('USER_ID') ?? 0, $rows));
         $seen = [];
 
         foreach ($rows as $row) {
-            $bitrixId = (int) $row['ID'];
+            $bitrixId = $row->int('ID');
             $seen[] = $bitrixId;
 
             $item = $ours->get($bitrixId) ?? new TaskElapsedItem(['task_id' => $task->id, 'bitrix_item_id' => $bitrixId]);
             $item->fill([
-                'user_id' => $users[(int) ($row['USER_ID'] ?? 0)] ?? null,
-                'seconds' => (int) ($row['SECONDS'] ?? 0),
-                'comment' => ($row['COMMENT_TEXT'] ?? '') !== '' ? (string) $row['COMMENT_TEXT'] : null,
+                'user_id' => $users[$row->intOrNull('USER_ID') ?? 0] ?? null,
+                'seconds' => $row->intOrNull('SECONDS') ?? 0,
+                'comment' => ($row->stringOrNull('COMMENT_TEXT') ?? '') !== '' ? $row->stringOrNull('COMMENT_TEXT') : null,
                 // DATE_START/DATE_STOP come back shifted by the portal's offset; CREATED_DATE is right.
-                'created_date' => isset($row['CREATED_DATE']) ? \Illuminate\Support\Facades\Date::parse($row['CREATED_DATE'])->setTimezone(config('app.timezone')) : null,
+                'created_date' => $row->localDateOrNull('CREATED_DATE'),
             ]);
 
             if (! $item->exists || $item->isDirty()) {

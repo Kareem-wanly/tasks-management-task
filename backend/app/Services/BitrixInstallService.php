@@ -7,6 +7,7 @@ namespace App\Services;
 use App\DTOs\Bitrix\BitrixInstallDTO;
 use App\Exceptions\Bitrix\BitrixException;
 use App\Exceptions\Bitrix\BitrixInstallRefusedException;
+use App\Integrations\Bitrix24\BitrixPayload;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\BitrixAppRepositoryInterface;
 use App\Models\BitrixPortal;
@@ -91,7 +92,7 @@ final readonly class BitrixInstallService implements BitrixInstallServiceInterfa
             throw BitrixInstallRefusedException::tokenNotAccepted();
         }
 
-        if (! hash_equals((string) config('bitrix.client_id'), (string) ($app['CODE'] ?? ''))) {
+        if (! hash_equals($this->configText('bitrix.client_id'), BitrixPayload::of($app, 'app.info')->stringOrNull('CODE') ?? '')) {
             throw BitrixInstallRefusedException::tokenForAnotherApp();
         }
 
@@ -102,7 +103,7 @@ final readonly class BitrixInstallService implements BitrixInstallServiceInterfa
 
     private function ensureOurPortal(mixed $domain): void
     {
-        if (! is_string($domain) || ! hash_equals((string) config('bitrix.portal'), $domain)) {
+        if (! is_string($domain) || ! hash_equals($this->configText('bitrix.portal'), $domain)) {
             throw BitrixInstallRefusedException::unknownPortal();
         }
     }
@@ -143,21 +144,17 @@ final readonly class BitrixInstallService implements BitrixInstallServiceInterfa
 
     private function fetchPortalDetails(BitrixPortal $portal): void
     {
-        $batch = $this->bitrixApp->portalDetails($portal);
-
-        $result = $batch['result'] ?? [];
+        $batch = BitrixPayload::of($this->bitrixApp->portalDetails($portal), 'batch');
         $this->logBatchErrors($batch, 'details');
 
-        $me = $result['me'] ?? [];
-        $scopes = is_array($result['scope'] ?? null) ? array_values($result['scope']) : ($portal->scopes ?? []);
-        $isAdmin = (bool) ($result['admin'] ?? false);
+        $scopes = $batch->has('result.scope') ? array_values($batch->strings('result.scope')) : ($portal->scopes ?? []);
 
         $this->portals->update($portal, [
-            'app_info' => $result['app'] ?? null,
+            'app_info' => $batch->has('result.app') ? $batch->payload('result.app')->toArray() : null,
             'scopes' => $scopes,
-            'installer' => array_intersect_key($me, array_flip(['ID', 'NAME', 'LAST_NAME', 'EMAIL', 'WORK_POSITION'])) ?: null,
-            'installer_is_admin' => $isAdmin,
-            'departments' => $this->departments($portal, $result['departments'] ?? [], (int) ($batch['result_total']['departments'] ?? 0)),
+            'installer' => array_intersect_key($batch->payload('result.me')->toArray(), array_flip(['ID', 'NAME', 'LAST_NAME', 'EMAIL', 'WORK_POSITION'])) ?: null,
+            'installer_is_admin' => (bool) ($batch->payload('result')->toArray()['admin'] ?? false),
+            'departments' => $this->departments($portal, $batch->rows('result.departments'), $batch->intOrNull('result_total.departments') ?? 0),
         ]);
 
         $missing = array_values(array_diff(self::REQUIRED_SCOPES, $scopes));
@@ -181,23 +178,29 @@ final readonly class BitrixInstallService implements BitrixInstallServiceInterfa
 
     private function bindEvents(BitrixPortal $portal): void
     {
-        $handler = rtrim((string) config('bitrix.public_url'), '/').'/api/bitrix/events';
+        $handler = rtrim($this->configText('bitrix.public_url'), '/').'/api/bitrix/events';
 
-        $this->logBatchErrors($this->bitrixApp->bindEvents($portal, self::EVENTS, $handler), 'event.bind');
+        $this->logBatchErrors(BitrixPayload::of($this->bitrixApp->bindEvents($portal, self::EVENTS, $handler), 'event.bind'), 'event.bind');
     }
 
     /**
      * ERROR_CORE "Handler already binded" is expected on reinstall/update.
-     *
-     * @param  array<string, mixed>  $batch
      */
-    private function logBatchErrors(array $batch, string $stage): void
+    private function logBatchErrors(BitrixPayload $batch, string $stage): void
     {
-        $errors = array_filter((array) ($batch['result_error'] ?? []), fn (array $error): bool => ($error['error'] ?? '') !== 'ERROR_CORE');
+        $errors = array_filter($batch->payload('result_error')->toArray(), fn (mixed $error): bool => ! is_array($error) || ($error['error'] ?? '') !== 'ERROR_CORE');
 
         if ($errors !== []) {
             Log::warning("Bitrix24 install: some {$stage} calls failed.", ['errors' => $errors]);
         }
+    }
+
+    /** A setting that may be unset: then it matches nothing. */
+    private function configText(string $key): string
+    {
+        $value = config($key);
+
+        return is_string($value) ? $value : '';
     }
 
     /** @return list<string> */
