@@ -5,22 +5,19 @@ declare(strict_types=1);
 namespace App\Jobs\Bitrix;
 
 use App\Enums\QueueName;
-use App\Integrations\Bitrix24\BitrixDeletionGuard;
-use App\Integrations\Bitrix24\BitrixEchoGuard;
-use App\Integrations\Bitrix24\BitrixProjectSync;
-use App\Integrations\Bitrix24\BitrixRecordFetcher;
-use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;
-use App\Repositories\Contracts\ProjectRepositoryInterface;
+use App\Services\Contracts\BitrixSyncServiceInterface;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Step 3.4: brings one Bitrix24 group up to date after a group event.
  * Unique until it starts, so the events Bitrix sends for one change
  * collapse into one fetch (debounce).
  */
-class SyncBitrixProject implements ShouldBeUniqueUntilProcessing, ShouldQueue
+final class SyncBitrixProject implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Queueable;
 
@@ -28,6 +25,9 @@ class SyncBitrixProject implements ShouldBeUniqueUntilProcessing, ShouldQueue
 
     /** Seconds before each retry, e.g. while Bitrix is unreachable. */
     public array $backoff = [10, 60];
+
+    /** One group's fetch and save; well under $uniqueFor. */
+    public int $timeout = 90;
 
     /** Safety net: the lock never outlives a stuck job by much. */
     public int $uniqueFor = 120;
@@ -42,31 +42,14 @@ class SyncBitrixProject implements ShouldBeUniqueUntilProcessing, ShouldQueue
         return (string) $this->bitrixGroupId;
     }
 
-    public function handle(BitrixRecordFetcher $fetch, BitrixProjectSync $projects, BitrixProjectMapper $mapper, BitrixEchoGuard $echo, ProjectRepositoryInterface $projectRepository, BitrixDeletionGuard $guard): void
+    public function handle(BitrixSyncServiceInterface $sync): void
     {
-        $group = $fetch->group($this->bitrixGroupId);
+        $sync->syncProject($this->bitrixGroupId);
+    }
 
-        // Gone from Bitrix (deleted there): delete it here too. Only an admin
-        // service account sees every group, so "not found" proves nothing otherwise.
-        if ($group === null) {
-            if (! $echo->isProjectEcho($this->bitrixGroupId, null, false) && $guard->serviceAccountIsAdmin()) {
-                if (($project = $projectRepository->findByBitrixGroupId($this->bitrixGroupId)) instanceof \App\Models\Project) {
-                    $projectRepository->delete($project);
-                    $guard->recordDeleted('groups', [$this->bitrixGroupId], 'event');
-                }
-            }
-
-            return;
-        }
-
-        // Our own change coming back: already saved here.
-        if ($echo->isProjectEcho($this->bitrixGroupId, $mapper->attributes($group), $mapper->isClosed($group))) {
-            return;
-        }
-
-        $members = $fetch->members($this->bitrixGroupId);
-        $fetch->importMissingUsers([$mapper->ownerBitrixId($group), ...array_keys($mapper->members($members))]);
-
-        $projects->upsert($group, $members);
+    /** The next event, or the nightly import, brings the project up to date. */
+    public function failed(?Throwable $exception): void
+    {
+        Log::warning('Bitrix24 project sync failed.', ['bitrix_group_id' => $this->bitrixGroupId, 'error' => $exception?->getMessage()]);
     }
 }
