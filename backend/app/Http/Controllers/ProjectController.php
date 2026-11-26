@@ -15,6 +15,9 @@ use App\Http\Requests\ShowProjectRequest;
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\ToggleProjectArchiveRequest;
 use App\Http\Requests\UpdateProjectRequest;
+use App\Http\Resources\ActivityLogResource;
+use App\Http\Resources\ProjectMemberResource;
+use App\Http\Resources\ProjectOptionResource;
 use App\Http\Resources\ProjectResource;
 use App\Models\Project;
 use App\Models\User;
@@ -64,7 +67,7 @@ final class ProjectController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Project members retrieved successfully',
-            'data' => $this->projects->members($project),
+            'data' => ProjectMemberResource::collection($this->projects->members($project)),
         ]);
     }
 
@@ -72,7 +75,7 @@ final class ProjectController extends Controller
     {
         $project = $this->projects->addMember($request->actor(), $project, $request->toDto());
 
-        return response()->json(['success' => true, 'message' => 'Member added to project successfully', 'data' => $project]);
+        return response()->json(['success' => true, 'message' => 'Member added to project successfully', 'data' => new ProjectResource($project)]);
     }
 
     public function removeMember(RemoveProjectMemberRequest $request, Project $project, User $user): JsonResponse
@@ -80,7 +83,7 @@ final class ProjectController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Member removed from project successfully',
-            'data' => $this->projects->removeMember($request->actor(), $project, $user),
+            'data' => new ProjectResource($this->projects->removeMember($request->actor(), $project, $user)),
         ]);
     }
 
@@ -91,22 +94,22 @@ final class ProjectController extends Controller
         return response()->json([
             'success' => true,
             'message' => "Project status changed to {$project->status->value} successfully",
-            'data' => $project,
+            'data' => new ProjectResource($project),
         ]);
     }
 
     public function activities(ListProjectActivitiesRequest $request, Project $project): JsonResponse
     {
-        return $this->paginated($this->activityLog->forProject($project, $request->perPage()), 'Project activity logs retrieved successfully');
+        return $this->paginated($this->activityLog->forProject($project, $request->perPage()), ActivityLogResource::class, 'Project activity logs retrieved successfully');
     }
 
     public function allActivities(ListActivitiesRequest $request): JsonResponse
     {
-        return $this->paginated($this->activityLog->forUser($request->actor(), $request->perPage()), 'All activity logs retrieved successfully');
+        return $this->paginated($this->activityLog->forUser($request->actor(), $request->perPage()), ActivityLogResource::class, 'All activity logs retrieved successfully');
     }
 
-    public function options(ProjectOptionsRequest $request): JsonResponse
+    public function options(ProjectOptionsRequest $request): AnonymousResourceCollection
     {
-        return response()->json(['data' => $this->projects->options($request->actor(), $request->includeArchived())]);
+        return ProjectOptionResource::collection($this->projects->options($request->actor(), $request->includeArchived()));
     }
 }
