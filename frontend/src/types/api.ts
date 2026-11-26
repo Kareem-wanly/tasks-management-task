@@ -202,49 +202,16 @@ export interface AuthResponse {
 /** Laravel 422 body: field name → messages. */
 export type ValidationErrors = Record<string, string[]>;
 
-/** Bitrix24 step 5.1: where one imported entity stands. `stalled` = marked running long after the time limit. */
-export type BitrixSyncState = 'never' | 'running' | 'completed' | 'failed' | 'stalled';
-
-export type BitrixSyncMode = 'changes' | 'full';
-
-export interface BitrixSyncEntity {
-  /** users, projects, tasks, checklists, time, files, results, chat, or tasks-changes (the 5-minute sync). */
-  entity: string;
-  state: BitrixSyncState;
-  processed: number;
-  total: number;
-  error: string | null;
-  started_at: string | null;
-  last_synced_at: string | null;
-}
-
-export interface BitrixSyncStatus {
-  is_running: boolean;
-  entities: BitrixSyncEntity[];
-  /** Open dead letters: background work that failed after all its tries (step 5.2). */
-  failures: number;
-  /** Our changes Bitrix answered with something else, last 24 hours. */
-  conflicts: number;
-  /** Our changes Bitrix never echoed back, last 24 hours. */
-  unconfirmed: number;
-}
-
-/** Bitrix24 step 5.2: which background work failed. */
-export type BitrixSyncOperation = 'task' | 'project' | 'task_chat' | 'import';
-
-/** Only open failures are listed: `retrying` = queued again, closes when the work next succeeds. */
-export type BitrixSyncFailureStatus = 'pending' | 'retrying';
-
-export interface BitrixSyncFailure {
-  id: number;
-  operation: BitrixSyncOperation;
-  /** The Bitrix ID of the task or group, or the import entity (users, tasks, tasks-changes, ...). */
-  subject: string;
-  error: string;
-  attempts: number;
-  status: BitrixSyncFailureStatus;
-  last_failed_at: string;
-  retried_at: string | null;
-  /** False only while a retry waits for the worker; true again once it goes stale. */
-  can_retry: boolean;
-}
+// The Bitrix24 sync status page (steps 5.1–5.3) lives in bitrixSync.ts.
+export type {
+  BitrixReconciliation,
+  BitrixReconciliationCheck,
+  BitrixSyncEntity,
+  BitrixSyncFailure,
+  BitrixSyncFailureStatus,
+  BitrixSyncMode,
+  BitrixSyncOperation,
+  BitrixSyncState,
+  BitrixSyncStatus,
+  ReconciliationNightState,
+} from './bitrixSync';

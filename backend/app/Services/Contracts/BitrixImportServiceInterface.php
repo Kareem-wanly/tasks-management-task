@@ -80,7 +80,8 @@ interface BitrixImportServiceInterface
     public function importUsers(bool $linkByEmail): void;
 
     /** Every workgroup and its members; groups gone from Bitrix are deleted here (safely). */
-    public function importProjects(): void;
+    /** @param  bool  $reconcile  Compare with Bitrix afterwards (step 5.3); off inside the 5-minute changes sync. */
+    public function importProjects(bool $reconcile = true): void;
 
     /**
      * Every task (open ones first), deleting the ones gone from Bitrix (safely);

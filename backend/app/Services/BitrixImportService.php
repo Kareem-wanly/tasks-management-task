@@ -37,12 +37,14 @@ use App\Models\Task;
 use App\Models\User;
 use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
 use App\Services\Contracts\BitrixImportServiceInterface;
+use App\Services\Contracts\BitrixReconciliationServiceInterface;
 use App\Services\Contracts\BitrixSyncFailureServiceInterface;
 use App\Services\Contracts\ProjectServiceInterface;
 use App\Services\Contracts\TaskChatServiceInterface;
 use App\Services\Contracts\TaskFileServiceInterface;
 use App\Services\Contracts\TaskResultServiceInterface;
 use App\Services\Contracts\TaskServiceInterface;
+use App\Services\Contracts\UserServiceInterface;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Database\ConnectionInterface;
@@ -93,6 +95,8 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
         private TaskFileServiceInterface $files,
         private TaskResultServiceInterface $results,
         private BitrixSyncFailureServiceInterface $failures,
+        private UserServiceInterface $users,
+        private BitrixReconciliationServiceInterface $reconciliation,
     ) {}
 
     public function queueImport(array $entities, bool $linkByEmail): void
@@ -155,9 +159,11 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
     {
         $cursor = $this->cursors->start(self::USERS);
         $notLinked = 0;
+        $seen = [];
 
-        $total = $this->bitrixUsers->eachPage(function (array $rows, int $total) use ($linkByEmail, $cursor, &$notLinked): void {
+        $total = $this->bitrixUsers->eachPage(function (array $rows, int $total) use ($linkByEmail, $cursor, &$notLinked, &$seen): void {
             foreach ($rows as $row) {
+                $seen[] = BitrixPayload::of($row, 'user.get')->int('ID');
                 if (! $this->database->transaction(fn (): ?User => $this->userSync->handle($row, $linkByEmail)) instanceof User) {
                     $notLinked++;
                 }
@@ -165,11 +171,12 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
             $this->cursors->advance($cursor, count($rows), $total);
         });
 
+        $this->reconcile(self::USERS, $seen, fn (): array => $this->users->allBitrixIds());
         $this->complete($cursor);
         Log::info('Bitrix24 users imported.', ['imported' => $cursor->processed, 'not_linked' => $notLinked, 'portal_total' => $total]);
     }
 
-    public function importProjects(): void
+    public function importProjects(bool $reconcile = true): void
     {
         $cursor = $this->cursors->start(self::PROJECTS);
         $skipped = 0;
@@ -190,8 +197,15 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
             $this->cursors->advance($cursor, count($groups), $total);
         });
 
-        $deleted = $this->deleteMissingProjects($seen);
+        [$deleted, $stillInBitrix] = $this->deleteMissingProjects($seen);
 
+        if ($reconcile) {
+            // A project deleted here keeps its Bitrix group, closed (step 3.2): not a difference.
+            $this->reconcile(self::PROJECTS, [...$seen, ...$stillInBitrix], fn (): array => [
+                ...$this->projects->allBitrixGroupIds(),
+                ...array_intersect($this->projects->trashedBitrixGroupIds(), $seen),
+            ]);
+        }
         $this->complete($cursor);
         Log::info('Bitrix24 projects imported.', ['processed' => $cursor->processed, 'skipped' => $skipped, 'deleted' => $deleted, 'portal_total' => $total]);
     }
@@ -224,8 +238,15 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
             });
         }
 
-        $deleted = $delta ? 0 : $this->deleteMissingTasks($seen);
+        [$deleted, $stillInBitrix] = $delta ? [0, []] : $this->deleteMissingTasks($seen);
 
+        if (! $delta) {
+            // Tasks of a project deleted here stay in its closed group in Bitrix: not a difference.
+            $this->reconcile(self::TASKS, [...$seen, ...$stillInBitrix], fn (): array => [
+                ...$this->tasks->allBitrixIds(),
+                ...array_intersect($this->tasks->trashedBitrixIds(), $seen),
+            ]);
+        }
         $this->complete($cursor);
         Log::info($delta ? 'Bitrix24 task changes synced.' : 'Bitrix24 tasks imported.', [
             'processed' => $cursor->processed, 'skipped' => $skipped, 'deleted' => $deleted, 'portal_total' => $earlierTotal,
@@ -283,6 +304,22 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
     public function importChat(): void
     {
         $this->eachTask(self::CHAT, 'Bitrix24 task chats imported.', fn (Task $task) => $this->chat->refreshFromBitrix($task, complete: true));
+    }
+
+    /**
+     * Step 5.3: compares what the full listing returned with what we hold
+     * after the pass. An empty listing is more likely a Bitrix hiccup than an
+     * empty portal (the deletions skip it too): no check then.
+     *
+     * @param  list<int>  $seen  What the listing returned, plus what it missed but Bitrix confirmed still exists
+     *                           (changed while the pages were read): Bitrix holds those too.
+     * @param  callable(): list<int>  $localIds
+     */
+    private function reconcile(string $entity, array $seen, callable $localIds): void
+    {
+        if ($seen !== []) {
+            $this->reconciliation->record($entity, $seen, $localIds());
+        }
     }
 
     /** The pass finished: its cursor moves on, and an open failure of it is closed (step 5.2). */
@@ -400,21 +437,30 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
      * BitrixDeletionGuard).
      *
      * @param  list<int>  $seen
+     * @return array{int, list<int>} How many were deleted, and the missing ones Bitrix confirmed are still there.
      */
-    private function deleteMissingProjects(array $seen): int
+    private function deleteMissingProjects(array $seen): array
     {
         // An empty listing is more likely a Bitrix hiccup than an empty portal.
         if ($seen === []) {
-            return 0;
+            return [0, []];
         }
 
         $missing = array_values(array_diff($this->projects->allBitrixGroupIds(), $seen));
 
-        $gone = $this->deletions->confirmedGone($missing, fn (int $id): bool => $this->fetch->group($id) !== null, 'groups');
+        $stillThere = [];
+        $gone = $this->deletions->confirmedGone($missing, function (int $id) use (&$stillThere): bool {
+            $exists = $this->fetch->group($id) !== null;
+            if ($exists) {
+                $stillThere[] = $id;
+            }
+
+            return $exists;
+        }, 'groups');
         $deleted = $this->projects->removeAllGoneFromBitrix($gone);
         $this->deletions->recordDeleted('groups', $gone, 'import');
 
-        return $deleted;
+        return [$deleted, $stillThere];
     }
 
     /**
@@ -422,21 +468,30 @@ final readonly class BitrixImportService implements BitrixImportServiceInterface
      * once Bitrix confirms each is gone (see BitrixDeletionGuard).
      *
      * @param  list<int>  $seen
+     * @return array{int, list<int>} How many were deleted, and the missing ones Bitrix confirmed are still there.
      */
-    private function deleteMissingTasks(array $seen): int
+    private function deleteMissingTasks(array $seen): array
     {
         // An empty listing is more likely a Bitrix hiccup than an empty portal.
         if ($seen === []) {
-            return 0;
+            return [0, []];
         }
 
         // Compared here, not in SQL: a NOT IN with every Bitrix ID outgrows the placeholder limit.
         $missing = array_values(array_diff($this->tasks->allBitrixIds(), $seen));
 
-        $gone = $this->deletions->confirmedGone($missing, fn (int $id): bool => $this->fetch->task($id) !== null, 'tasks');
+        $stillThere = [];
+        $gone = $this->deletions->confirmedGone($missing, function (int $id) use (&$stillThere): bool {
+            $exists = $this->fetch->task($id) !== null;
+            if ($exists) {
+                $stillThere[] = $id;
+            }
+
+            return $exists;
+        }, 'tasks');
         $deleted = $this->tasks->removeAllGoneFromBitrix($gone);
         $this->deletions->recordDeleted('tasks', $gone, 'import');
 
-        return $deleted;
+        return [$deleted, $stillThere];
     }
 }

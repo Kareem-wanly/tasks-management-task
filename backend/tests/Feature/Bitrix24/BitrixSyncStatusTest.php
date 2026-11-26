@@ -195,3 +195,30 @@ it('accepts only the known modes', function (): void {
     $this->postJson('/api/v1/bitrix/sync', ['mode' => 'everything'])->assertUnprocessable()->assertJsonValidationErrors('mode');
     $this->postJson('/api/v1/bitrix/sync', [])->assertUnprocessable()->assertJsonValidationErrors('mode');
 });
+
+it('shows the nightly reconciliation of users, projects and tasks', function (): void {
+    Sanctum::actingAs(syncManager());
+    foreach ([2, 1] as $daysAgo) {
+        App\Models\BitrixReconciliation::create([
+            'entity' => 'tasks', 'bitrix_count' => 20, 'local_count' => 20, 'missing_here_count' => 0, 'extra_here_count' => 0,
+            'missing_here' => [], 'extra_here' => [], 'checked_at' => now()->subDays($daysAgo),
+        ]);
+    }
+    App\Models\BitrixReconciliation::create([
+        'entity' => 'tasks', 'bitrix_count' => 20, 'local_count' => 18, 'missing_here_count' => 2, 'extra_here_count' => 0,
+        'missing_here' => [27, 28], 'extra_here' => [], 'checked_at' => now(),
+    ]);
+
+    $response = $this->getJson('/api/v1/bitrix/sync')->assertOk();
+
+    expect($response->json('data.reconciliation.*.entity'))->toBe(['users', 'projects', 'tasks'])
+        ->and($response->json('data.reconciliation.0'))->toMatchArray(['entity' => 'users', 'clean_nights' => 0, 'latest' => null])
+        ->and($response->json('data.reconciliation.0.nights.*.state'))->toBe(array_fill(0, 7, 'none'))
+        ->and($response->json('data.reconciliation.2.latest'))->toBe([
+            'checked_at' => now()->toIso8601String(), 'bitrix_count' => 20, 'local_count' => 18,
+            'missing_here_count' => 2, 'extra_here_count' => 0, 'missing_here' => [27, 28], 'extra_here' => [],
+        ])
+        ->and($response->json('data.reconciliation.2.clean_nights'))->toBe(0)
+        ->and($response->json('data.reconciliation.2.nights.*.state'))->toBe(['none', 'none', 'none', 'none', 'clean', 'clean', 'differences'])
+        ->and($response->json('data.reconciliation.2.nights.6.date'))->toBe(now()->toDateString());
+});

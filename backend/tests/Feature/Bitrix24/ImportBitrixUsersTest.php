@@ -8,6 +8,7 @@ use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\BitrixToken;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use App\Jobs\Bitrix\ImportBitrixUsersJob;
+use App\Models\BitrixReconciliation;
 use App\Models\Role;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -186,6 +187,18 @@ class ImportBitrixUsersTest extends TestCase
         $this->expectException(BitrixException::class);
 
         $this->import();
+    }
+
+    /** Step 5.3: a linked account the portal no longer lists shows as extra here. */
+    public function test_reconciliation_compares_portal_users_with_linked_accounts(): void
+    {
+        User::factory()->create(['bitrix_user_id' => 50]);
+        $this->fakePortal([$this->row(1), $this->row(2)]);
+
+        $this->import();
+
+        $check = BitrixReconciliation::where('entity', 'users')->sole();
+        $this->assertSame([2, 3, 0, [50]], [$check->bitrix_count, $check->local_count, $check->missing_here_count, $check->extra_here]);
     }
 
     private function row(int $id, array $overrides = []): array

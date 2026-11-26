@@ -60,6 +60,14 @@ interface ProjectServiceInterface
      */
     public function allBitrixGroupIds(): array;
 
+    /**
+     * Step 5.3: the Bitrix IDs of projects deleted here. Deleting archives the
+     * group, so Bitrix still lists it (closed): that is not a difference.
+     *
+     * @return list<int>
+     */
+    public function trashedBitrixGroupIds(): array;
+
     /** Deletes our copy of a group deleted in Bitrix (with its tasks), here only. */
     public function removeGoneFromBitrix(Project $project): void;
 

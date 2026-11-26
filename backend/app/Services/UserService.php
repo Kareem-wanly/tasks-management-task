@@ -137,6 +137,11 @@ final readonly class UserService implements UserServiceInterface
         return $this->users->findMany($userIds);
     }
 
+    public function allBitrixIds(): array
+    {
+        return $this->users->allBitrixIds();
+    }
+
     private function inviteInBitrix(User $actor, User $user): void
     {
         $this->ensureSignedInWithBitrix($actor);

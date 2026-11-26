@@ -119,6 +119,11 @@ final readonly class TaskService implements TaskServiceInterface
         return $this->tasks->allBitrixIds();
     }
 
+    public function trashedBitrixIds(): array
+    {
+        return $this->tasks->trashedBitrixIds();
+    }
+
     public function countInBitrix(): int
     {
         return $this->tasks->countInBitrix();

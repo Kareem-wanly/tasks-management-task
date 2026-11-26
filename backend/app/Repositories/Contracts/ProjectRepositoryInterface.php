@@ -75,6 +75,13 @@ interface ProjectRepositoryInterface
     public function allBitrixIds(): array;
 
     /**
+     * The Bitrix IDs of our deleted projects.
+     *
+     * @return list<int>
+     */
+    public function trashedBitrixIds(): array;
+
+    /**
      * Deletes our copies of these Bitrix groups.
      *
      * @param  list<int>  $bitrixGroupIds

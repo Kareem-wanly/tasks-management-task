@@ -161,6 +161,11 @@ final class EloquentProjectRepository implements ProjectRepositoryInterface
         return self::toIntList(Project::whereNotNull('bitrix_group_id')->pluck('bitrix_group_id'));
     }
 
+    public function trashedBitrixIds(): array
+    {
+        return self::toIntList(Project::onlyTrashed()->whereNotNull('bitrix_group_id')->pluck('bitrix_group_id'));
+    }
+
     public function deleteByBitrixIds(array $bitrixGroupIds): int
     {
         $gone = Project::whereIn('bitrix_group_id', $bitrixGroupIds)->get();

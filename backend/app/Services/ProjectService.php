@@ -182,6 +182,11 @@ final readonly class ProjectService implements ProjectServiceInterface
         return $this->projects->allBitrixIds();
     }
 
+    public function trashedBitrixGroupIds(): array
+    {
+        return $this->projects->trashedBitrixIds();
+    }
+
     public function removeGoneFromBitrix(Project $project): void
     {
         $this->projects->delete($project);
