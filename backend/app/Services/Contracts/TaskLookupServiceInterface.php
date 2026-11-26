@@ -41,4 +41,18 @@ interface TaskLookupServiceInterface
      * @throws \App\Exceptions\Bitrix\BitrixException When Bitrix fails, or gives no values.
      */
     public function syncFromBitrix(): array;
+
+    /**
+     * Our key for a Bitrix value (a Bitrix row beats our own value that sends the same number).
+     *
+     * @param  class-string<TaskLookup>  $model
+     */
+    public function keyForBitrix(string $model, int $bitrixId): ?string;
+
+    /**
+     * The Bitrix value a key of ours is sent as.
+     *
+     * @param  class-string<TaskLookup>  $model
+     */
+    public function bitrixIdForKey(string $model, ?string $key): ?int;
 }

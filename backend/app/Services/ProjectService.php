@@ -8,7 +8,6 @@ use App\DTOs\Project\AddProjectMemberDTO;
 use App\DTOs\Project\CreateProjectDTO;
 use App\DTOs\Project\ProjectFiltersDTO;
 use App\DTOs\Project\UpdateProjectDTO;
-use App\Enums\ActivityAction;
 use App\Enums\OutboundOpAction;
 use App\Enums\OutboundOpEntity;
 use App\Enums\ProjectMemberRole;
@@ -21,11 +20,11 @@ use App\Integrations\Bitrix24\BitrixFingerprint;
 use App\Integrations\Bitrix24\Contracts\BitrixProjectRepositoryInterface;
 use App\Models\Project;
 use App\Models\User;
-use App\Repositories\Contracts\ActivityLogRepositoryInterface;
 use App\Repositories\Contracts\BitrixOutboundOpRepositoryInterface;
 use App\Repositories\Contracts\ProjectRepositoryInterface;
-use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Services\Contracts\ActivityLogServiceInterface;
 use App\Services\Contracts\ProjectServiceInterface;
+use App\Services\Contracts\UserServiceInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Collection;
@@ -47,8 +46,8 @@ final readonly class ProjectService implements ProjectServiceInterface
 
     public function __construct(
         private ProjectRepositoryInterface $projects,
-        private UserRepositoryInterface $users,
-        private ActivityLogRepositoryInterface $activities,
+        private UserServiceInterface $users,
+        private ActivityLogServiceInterface $activities,
         private BitrixProjectRepositoryInterface $bitrixProjects,
         private BitrixOutboundOpRepositoryInterface $ops,
         private BitrixFingerprint $fingerprints,
@@ -146,9 +145,10 @@ final readonly class ProjectService implements ProjectServiceInterface
             throw new ProjectMemberAlreadyAddedException;
         }
 
-        $this->addMemberInBitrix($actor, $project, $this->users->findOrFail($userId), $role);
+        $user = $this->users->findOrFail($userId);
+        $this->addMemberInBitrix($actor, $project, $user, $role);
         $this->projects->attachMember($project, $userId, $role);
-        $this->log($actor, $project, ActivityAction::MemberAdded, "User ID {$userId} was added to project '{$project->title}'.");
+        $this->activities->logMemberAdded($actor, $project, $user);
 
         return $this->projects->freshWithMembers($project);
     }
@@ -161,19 +161,9 @@ final readonly class ProjectService implements ProjectServiceInterface
 
         $this->removeMemberInBitrix($actor, $project, $member);
         $this->projects->detachMember($project, $member->id);
-        $this->log($actor, $project, ActivityAction::MemberRemoved, "{$member->name} was removed from project '{$project->title}'.");
+        $this->activities->logMemberRemoved($actor, $project, $member);
 
         return $this->projects->freshWithMembers($project);
-    }
-
-    private function log(User $actor, Project $project, ActivityAction $action, string $description): void
-    {
-        $this->activities->create([
-            'user_id' => $actor->id,
-            'project_id' => $project->id,
-            'action' => $action,
-            'description' => $description,
-        ]);
     }
 
     /** New projects are Bitrix projects; the creator becomes the group owner. */

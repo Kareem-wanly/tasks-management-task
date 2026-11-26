@@ -10,10 +10,10 @@ use App\Exceptions\Project\ProjectMemberNotFoundException;
 use App\Integrations\Bitrix24\BitrixFingerprint;
 use App\Integrations\Bitrix24\Contracts\BitrixProjectRepositoryInterface;
 use App\Models\Project;
-use App\Repositories\Contracts\ActivityLogRepositoryInterface;
 use App\Repositories\Contracts\BitrixOutboundOpRepositoryInterface;
 use App\Repositories\Contracts\ProjectRepositoryInterface;
-use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Services\Contracts\ActivityLogServiceInterface;
+use App\Services\Contracts\UserServiceInterface;
 use App\Services\ProjectService;
 use Illuminate\Database\ConnectionInterface;
 
@@ -23,8 +23,8 @@ beforeEach(function (): void {
 
     $this->service = new ProjectService(
         $this->projects,
-        Mockery::mock(UserRepositoryInterface::class),
-        Mockery::mock(ActivityLogRepositoryInterface::class),
+        Mockery::mock(UserServiceInterface::class),
+        Mockery::mock(ActivityLogServiceInterface::class),
         $this->bitrixProjects,
         Mockery::mock(BitrixOutboundOpRepositoryInterface::class),
         resolve(BitrixFingerprint::class),

@@ -86,3 +86,25 @@ it('logs a deleted project without metadata, as before', function (): void {
         'description' => "Project 'Launch' was deleted.",
     ]);
 });
+
+it('logs a member added to a project by name, under who added them', function (): void {
+    $member = (new User)->forceFill(['id' => 16, 'name' => 'Abdulkarim Wanly']);
+
+    $this->service->logMemberAdded($this->actor, $this->project, $member);
+
+    expect($this->written)->toBe([
+        'user_id' => 4,
+        'project_id' => 3,
+        'action' => ActivityAction::MemberAdded,
+        'description' => "Abdulkarim Wanly was added to project 'Launch'.",
+    ]);
+});
+
+it('logs a member removed from a project by name', function (): void {
+    $member = (new User)->forceFill(['id' => 16, 'name' => 'Abdulkarim Wanly']);
+
+    $this->service->logMemberRemoved($this->actor, $this->project, $member);
+
+    expect($this->written)->action->toBe(ActivityAction::MemberRemoved)
+        ->description->toBe("Abdulkarim Wanly was removed from project 'Launch'.");
+});

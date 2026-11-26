@@ -123,6 +123,20 @@ final readonly class UserService implements UserServiceInterface
         return $this->users->createApiToken($user, $name);
     }
 
+    public function findOrFail(int $id): User
+    {
+        return $this->users->findOrFail($id);
+    }
+
+    /**
+     * @param  list<int>  $userIds
+     * @return Collection<int, User>
+     */
+    public function findMany(array $userIds): Collection
+    {
+        return $this->users->findMany($userIds);
+    }
+
     private function inviteInBitrix(User $actor, User $user): void
     {
         $this->ensureSignedInWithBitrix($actor);

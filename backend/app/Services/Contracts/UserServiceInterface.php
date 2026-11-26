@@ -43,4 +43,13 @@ interface UserServiceInterface
 
     /** A new API (Sanctum) token for the user; returns its plain text. */
     public function issueApiToken(User $user, string $name): string;
+
+    /** Throws ModelNotFoundException (404) when there is none. */
+    public function findOrFail(int $id): User;
+
+    /**
+     * @param  list<int>  $userIds
+     * @return Collection<int, User>
+     */
+    public function findMany(array $userIds): Collection;
 }

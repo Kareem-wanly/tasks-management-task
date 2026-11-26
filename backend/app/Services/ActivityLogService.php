@@ -67,6 +67,26 @@ final readonly class ActivityLogService implements ActivityLogServiceInterface
         $this->logProject($project, $actor, ActivityAction::ProjectDeleted, 'deleted', null);
     }
 
+    public function logMemberAdded(User $actor, Project $project, User $member): void
+    {
+        $this->logMembership($actor, $project, ActivityAction::MemberAdded, "{$member->name} was added to project '{$project->title}'.");
+    }
+
+    public function logMemberRemoved(User $actor, Project $project, User $member): void
+    {
+        $this->logMembership($actor, $project, ActivityAction::MemberRemoved, "{$member->name} was removed from project '{$project->title}'.");
+    }
+
+    private function logMembership(User $actor, Project $project, ActivityAction $action, string $description): void
+    {
+        $this->activities->create([
+            'user_id' => $actor->id,
+            'project_id' => $project->id,
+            'action' => $action,
+            'description' => $description,
+        ]);
+    }
+
     /**
      * Without a signed-in user (an import, a Bitrix event) the entry goes to the task's creator.
      *
