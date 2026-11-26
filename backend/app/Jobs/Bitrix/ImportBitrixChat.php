@@ -6,9 +6,9 @@ namespace App\Jobs\Bitrix;
 
 use App\Enums\QueueName;
 use App\Exceptions\Bitrix\BitrixException;
-use App\Integrations\Bitrix24\BitrixChatPusher;
 use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
 use App\Repositories\Contracts\TaskRepositoryInterface;
+use App\Services\Contracts\TaskChatServiceInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -31,7 +31,7 @@ class ImportBitrixChat implements ShouldQueue
         $this->onQueue(QueueName::Bitrix);
     }
 
-    public function handle(BitrixChatPusher $chat, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $tasks): void
+    public function handle(TaskChatServiceInterface $chat, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $tasks): void
     {
         $cursor = $cursors->start(self::ENTITY);
         $total = $tasks->countInBitrix();
@@ -40,7 +40,7 @@ class ImportBitrixChat implements ShouldQueue
         $tasks->chunkInBitrix(self::CHUNK, function ($chunk) use ($chat, $cursor, $cursors, $total, &$failed): void {
             foreach ($chunk as $task) {
                 try {
-                    $chat->refresh($task, complete: true);
+                    $chat->refreshFromBitrix($task, complete: true);
                 } catch (BitrixException $e) {
                     // One chat Bitrix refuses must not stop the rest, nor wipe its messages.
                     if ($e->errorCode === BitrixException::UNREACHABLE) {

@@ -15,6 +15,7 @@ class RunningTimer extends Model
 {
     protected $fillable = ['user_id', 'task_id', 'started_at'];
 
+    /** @return BelongsTo<Task, $this> */
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class);

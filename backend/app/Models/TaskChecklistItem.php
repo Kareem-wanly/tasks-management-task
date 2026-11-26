@@ -15,6 +15,7 @@ class TaskChecklistItem extends Model
 {
     protected $fillable = ['task_id', 'bitrix_item_id', 'parent_id', 'title', 'is_complete', 'sort_index'];
 
+    /** @return BelongsTo<Task, $this> */
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class);

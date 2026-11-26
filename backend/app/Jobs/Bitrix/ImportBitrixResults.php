@@ -6,9 +6,9 @@ namespace App\Jobs\Bitrix;
 
 use App\Enums\QueueName;
 use App\Exceptions\Bitrix\BitrixException;
-use App\Integrations\Bitrix24\BitrixResultPusher;
 use App\Repositories\Contracts\BitrixSyncCursorRepositoryInterface;
 use App\Repositories\Contracts\TaskRepositoryInterface;
+use App\Services\Contracts\TaskResultServiceInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -31,7 +31,7 @@ class ImportBitrixResults implements ShouldQueue
         $this->onQueue(QueueName::Bitrix);
     }
 
-    public function handle(BitrixResultPusher $results, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $tasks): void
+    public function handle(TaskResultServiceInterface $results, BitrixSyncCursorRepositoryInterface $cursors, TaskRepositoryInterface $tasks): void
     {
         $cursor = $cursors->start(self::ENTITY);
         $total = $tasks->countInBitrix();
@@ -40,7 +40,7 @@ class ImportBitrixResults implements ShouldQueue
         $tasks->chunkInBitrix(self::CHUNK, function ($chunk) use ($results, $cursor, $cursors, $total, &$failed): void {
             foreach ($chunk as $task) {
                 try {
-                    $results->refresh($task);
+                    $results->refreshFromBitrix($task);
                 } catch (BitrixException $e) {
                     // One task Bitrix refuses must not stop the rest, nor wipe its list.
                     if ($e->errorCode === BitrixException::UNREACHABLE) {

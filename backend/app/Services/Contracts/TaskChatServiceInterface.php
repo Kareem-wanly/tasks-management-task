@@ -24,4 +24,10 @@ interface TaskChatServiceInterface
 
     /** A file sent in the chat in Bitrix (the request checks it belongs to the message). */
     public function download(TaskChatMessage $message, int $bitrixFileId): FileDownloadDTO;
+
+    /**
+     * Brings our copy of the chat up to date: the newest page, or with
+     * $complete the whole chat (the nightly import).
+     */
+    public function refreshFromBitrix(Task $task, bool $complete = false): void;
 }

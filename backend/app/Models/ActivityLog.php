@@ -39,6 +39,7 @@ class ActivityLog extends Model
         return $this->belongsTo(Project::class);
     }
 
+    /** @return BelongsTo<Task, $this> */
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class);
