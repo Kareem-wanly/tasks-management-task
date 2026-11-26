@@ -8,6 +8,7 @@ use App\Exceptions\Bitrix\BitrixException;
 use App\Integrations\Bitrix24\Contracts\BitrixOAuthGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use App\Integrations\Bitrix24\Contracts\TokenManagerInterface;
+use App\Repositories\Contracts\BitrixTokenRepositoryInterface;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
@@ -19,7 +20,10 @@ final readonly class TokenManager implements TokenManagerInterface
 
     private const LOCK_SECONDS = 15;
 
-    public function __construct(private BitrixOAuthGatewayInterface $oauth) {}
+    public function __construct(
+        private BitrixOAuthGatewayInterface $oauth,
+        private BitrixTokenRepositoryInterface $tokens,
+    ) {}
 
     /**
      * Bitrix revokes a refresh token as soon as it is used, so the refresh
@@ -60,7 +64,7 @@ final readonly class TokenManager implements TokenManagerInterface
             }
 
             $fresh = $this->oauth->refresh($current->refreshToken);
-            $holder->storeBitrixToken($fresh);
+            $this->tokens->store($holder, $fresh);
 
             return $fresh;
         } finally {

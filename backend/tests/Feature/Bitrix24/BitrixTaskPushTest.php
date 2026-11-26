@@ -43,7 +43,7 @@ class BitrixTaskPushTest extends TestCase
 
         $this->actor = User::factory()->create(['bitrix_user_id' => 5]);
         $this->actor->roles()->attach($admin);
-        $this->actor->storeBitrixToken(new BitrixToken('actor-access', 'actor-refresh', CarbonImmutable::now()->addHour()));
+        $this->giveBitrixToken($this->actor, new BitrixToken('actor-access', 'actor-refresh', CarbonImmutable::now()->addHour()));
         $this->assignee = User::factory()->create(['bitrix_user_id' => 6]);
 
         $this->project = Project::forceCreate(['title' => 'P', 'status' => 'active', 'owner_id' => $this->actor->id, 'bitrix_group_id' => 3]);

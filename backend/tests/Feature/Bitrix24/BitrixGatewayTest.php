@@ -10,6 +10,7 @@ use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixOAuthGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
 use App\Repositories\Contracts\BitrixPortalRepositoryInterface;
+use App\Repositories\Contracts\BitrixTokenRepositoryInterface;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
@@ -35,6 +36,14 @@ final class BitrixGatewayTest extends TestCase
             'bitrix.oauth_server' => 'https://oauth.bitrix.info',
         ]);
         Sleep::fake();
+        // The test owners (holder()) keep a refreshed token in memory: no database here.
+        $this->app->instance(BitrixTokenRepositoryInterface::class, new class implements BitrixTokenRepositoryInterface
+        {
+            public function store(HasBitrixToken $holder, BitrixToken $token): void
+            {
+                $holder->token = $token;
+            }
+        });
     }
 
     public function test_token_about_to_expire_is_refreshed_and_stored(): void
@@ -337,11 +346,6 @@ final class BitrixGatewayTest extends TestCase
             public function bitrixToken(): ?BitrixToken
             {
                 return $this->token;
-            }
-
-            public function storeBitrixToken(BitrixToken $token): void
-            {
-                $this->token = $token;
             }
 
             public function bitrixTokenLockKey(): string

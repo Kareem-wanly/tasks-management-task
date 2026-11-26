@@ -50,6 +50,9 @@ interface TaskRepositoryInterface
 
     public function find(int $id): ?Task;
 
+    /** An accomplice or auditor of the task. */
+    public function hasMember(Task $task, User $user): bool;
+
     /** Re-reads the task's columns from the database. */
     public function reload(Task $task): void;
 

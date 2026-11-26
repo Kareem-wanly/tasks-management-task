@@ -39,7 +39,7 @@ class BitrixUserPushTest extends TestCase
 
         $this->admin = User::factory()->create(['bitrix_user_id' => 5]);
         $this->admin->roles()->attach(Role::where('name', 'Administrator')->first());
-        $this->admin->storeBitrixToken(new BitrixToken('admin-access', 'admin-refresh', CarbonImmutable::now()->addHour()));
+        $this->giveBitrixToken($this->admin, new BitrixToken('admin-access', 'admin-refresh', CarbonImmutable::now()->addHour()));
 
         Http::fake(function (Request $request) {
             if ($this->refuse) {

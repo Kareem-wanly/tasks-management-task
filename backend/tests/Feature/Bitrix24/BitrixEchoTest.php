@@ -47,7 +47,7 @@ class BitrixEchoTest extends TestCase
 
         $this->actor = User::factory()->create(['bitrix_user_id' => 5]);
         $this->actor->roles()->attach(Role::where('name', 'Administrator')->first());
-        $this->actor->storeBitrixToken(new BitrixToken('actor-access', 'actor-refresh', CarbonImmutable::now()->addHour()));
+        $this->giveBitrixToken($this->actor, new BitrixToken('actor-access', 'actor-refresh', CarbonImmutable::now()->addHour()));
         $this->useBitrixServiceAccount($this->actor);
 
         $this->task = Task::forceCreate([

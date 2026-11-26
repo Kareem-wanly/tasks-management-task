@@ -250,7 +250,7 @@ class BitrixTimeTest extends TestCase
     {
         $user = User::factory()->create(['bitrix_user_id' => $bitrixId]);
         $user->roles()->attach($role);
-        $user->storeBitrixToken(new BitrixToken("{$name}-access", "{$name}-refresh", CarbonImmutable::now()->addHour()));
+        $this->giveBitrixToken($user, new BitrixToken("{$name}-access", "{$name}-refresh", CarbonImmutable::now()->addHour()));
 
         return $user;
     }

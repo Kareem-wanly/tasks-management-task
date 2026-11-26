@@ -52,11 +52,6 @@ class BitrixPortal extends Model implements HasBitrixToken
         'installed_at' => 'datetime',
     ];
 
-    public static function current(): ?self
-    {
-        return static::where('domain', config('bitrix.portal'))->first();
-    }
-
     public function bitrixToken(): ?BitrixToken
     {
         if (! $this->access_token || ! $this->refresh_token) {
@@ -71,16 +66,6 @@ class BitrixPortal extends Model implements HasBitrixToken
             memberId: $this->member_id,
             scopes: $this->scopes ?? [],
         );
-    }
-
-    public function storeBitrixToken(BitrixToken $token): void
-    {
-        $this->forceFill([
-            'access_token' => $token->accessToken,
-            'refresh_token' => $token->refreshToken,
-            'token_expires_at' => $token->expiresAt,
-            'scopes' => $token->scopes !== [] ? $token->scopes : $this->scopes,
-        ])->save();
     }
 
     public function bitrixTokenLockKey(): string

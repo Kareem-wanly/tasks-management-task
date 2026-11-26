@@ -93,7 +93,7 @@ class FormRequestsTest extends TestCase
         BitrixPortal::forceCreate(['member_id' => 'm', 'domain' => 'portal.test', 'application_token' => 't', 'departments' => [['ID' => '1']]]);
         $admin = $this->admin();
         $admin->forceFill(['bitrix_user_id' => 1])->save();
-        $admin->storeBitrixToken(new BitrixToken('a', 'r', CarbonImmutable::now()->addHour()));
+        $this->giveBitrixToken($admin, new BitrixToken('a', 'r', CarbonImmutable::now()->addHour()));
         Sanctum::actingAs($admin);
         Http::fake(['*' => Http::response(['result' => 77])]);
 

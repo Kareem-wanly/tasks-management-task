@@ -16,6 +16,7 @@ use App\Integrations\Bitrix24\BitrixUserSync;
 use App\Integrations\Bitrix24\Contracts\BitrixAppRepositoryInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixOAuthGatewayInterface;
 use App\Models\User;
+use App\Repositories\Contracts\BitrixTokenRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Contracts\BitrixAuthServiceInterface;
 use Carbon\CarbonImmutable;
@@ -40,6 +41,7 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
 
     public function __construct(
         private BitrixOAuthGatewayInterface $oauth,
+        private BitrixTokenRepositoryInterface $tokens,
         private BitrixAppRepositoryInterface $bitrixApp,
         private BitrixUserSync $users,
         private UserRepositoryInterface $userRepository,
@@ -145,7 +147,7 @@ final readonly class BitrixAuthService implements BitrixAuthServiceInterface
             throw new BitrixSignInException('inactive');
         }
 
-        $user->storeBitrixToken($token);
+        $this->tokens->store($user, $token);
 
         return $user;
     }

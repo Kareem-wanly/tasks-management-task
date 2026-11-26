@@ -14,8 +14,6 @@ interface HasBitrixToken
 {
     public function bitrixToken(): ?BitrixToken;
 
-    public function storeBitrixToken(BitrixToken $token): void;
-
     /**
      * Unique per token owner, so only one process refreshes it at a time.
      */

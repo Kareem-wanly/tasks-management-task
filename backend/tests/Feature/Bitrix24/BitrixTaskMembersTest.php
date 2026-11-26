@@ -208,7 +208,7 @@ class BitrixTaskMembersTest extends TestCase
     {
         $user = User::factory()->create(['bitrix_user_id' => $bitrixId, 'name' => ucfirst($name)]);
         $user->roles()->attach(Role::where('name', $role)->first());
-        $user->storeBitrixToken(new BitrixToken("{$name}-access", "{$name}-refresh", CarbonImmutable::now()->addHour()));
+        $this->giveBitrixToken($user, new BitrixToken("{$name}-access", "{$name}-refresh", CarbonImmutable::now()->addHour()));
 
         return $user;
     }
