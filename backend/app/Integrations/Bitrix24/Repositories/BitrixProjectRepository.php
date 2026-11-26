@@ -6,6 +6,7 @@ namespace App\Integrations\Bitrix24\Repositories;
 
 use App\Enums\ProjectMemberRole;
 use App\Exceptions\Bitrix\BitrixException;
+use App\Integrations\Bitrix24\BitrixPayload;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixProjectRepositoryInterface;
 use App\Integrations\Bitrix24\Mappers\BitrixProjectMapper;
@@ -36,7 +37,7 @@ final readonly class BitrixProjectRepository implements BitrixProjectRepositoryI
         $fields = $this->fields($project, array_keys(self::FIELDS));
         $fields['PROJECT'] = 'Y';
 
-        $groupId = (int) ($this->bitrix->callAsUser($actor, 'sonet_group.create', $fields)['result'] ?? 0);
+        $groupId = BitrixPayload::of($this->bitrix->callAsUser($actor, 'sonet_group.create', $fields), 'sonet_group.create')->intOrNull('result') ?? 0;
 
         return $groupId ?: throw BitrixException::cannotSync('Bitrix24 did not return the new project.');
     }
@@ -92,20 +93,19 @@ final readonly class BitrixProjectRepository implements BitrixProjectRepositoryI
 
     public function membersOf(array $groups): array
     {
+        $groupIds = array_map(fn (array $group): int => BitrixPayload::of($group, 'socialnetwork.api.workgroup.list')->int('id'), $groups);
+
         $commands = [];
-        foreach ($groups as $group) {
-            $commands["group_{$group['id']}"] = ['sonet_group.user.get', ['ID' => $group['id']]];
+        foreach ($groupIds as $groupId) {
+            $commands["group_{$groupId}"] = ['sonet_group.user.get', ['ID' => $groupId]];
         }
 
-        $batch = $this->bitrix->batchAsService($commands);
-
-        if (! empty($batch['result_error'])) {
-            throw BitrixException::fromResponse(reset($batch['result_error']), 200);
-        }
+        $batch = BitrixPayload::of($this->bitrix->batchAsService($commands), 'sonet_group.user.get');
+        $batch->failOnBatchError();
 
         $members = [];
-        foreach ($groups as $group) {
-            $members[(int) $group['id']] = $batch['result']["group_{$group['id']}"] ?? [];
+        foreach ($groupIds as $groupId) {
+            $members[$groupId] = $batch->rows("result.group_{$groupId}");
         }
 
         return $members;

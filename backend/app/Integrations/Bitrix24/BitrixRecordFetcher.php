@@ -31,9 +31,10 @@ final readonly class BitrixRecordFetcher
      */
     public function task(int $id): ?array
     {
-        $task = $this->bitrix->callAsService('tasks.task.get', ['taskId' => $id, 'select' => BitrixTaskMapper::SELECT])['result']['task'] ?? null;
+        $task = BitrixPayload::of($this->bitrix->callAsService('tasks.task.get', ['taskId' => $id, 'select' => BitrixTaskMapper::SELECT]), 'tasks.task.get')
+            ->payload('result.task');
 
-        return is_array($task) && $task !== [] ? $task : null;
+        return $task->isEmpty() ? null : $task->toRow();
     }
 
     /**
@@ -41,17 +42,19 @@ final readonly class BitrixRecordFetcher
      */
     public function group(int $id): ?array
     {
-        return $this->bitrix->callAsService('socialnetwork.api.workgroup.list', [
+        $group = BitrixPayload::of($this->bitrix->callAsService('socialnetwork.api.workgroup.list', [
             'filter' => ['ID' => $id],
             'select' => BitrixProjectMapper::SELECT,
             'params' => ['IS_ADMIN' => 'Y'],
-        ])['result']['workgroups'][0] ?? null;
+        ]), 'socialnetwork.api.workgroup.list')->payload('result.workgroups.0');
+
+        return $group->isEmpty() ? null : $group->toRow();
     }
 
     /** @return list<array<string, mixed>> */
     public function members(int $groupId): array
     {
-        return $this->bitrix->callAsService('sonet_group.user.get', ['ID' => $groupId])['result'] ?? [];
+        return BitrixPayload::of($this->bitrix->callAsService('sonet_group.user.get', ['ID' => $groupId]), 'sonet_group.user.get')->rows('result');
     }
 
     /**
@@ -66,7 +69,7 @@ final readonly class BitrixRecordFetcher
         $known = array_keys($this->userRepository->idsByBitrixIds($bitrixIds));
 
         foreach (array_diff($bitrixIds, $known) as $bitrixId) {
-            foreach ($this->bitrix->callAsService('user.get', ['FILTER' => ['ID' => $bitrixId]])['result'] ?? [] as $row) {
+            foreach (BitrixPayload::of($this->bitrix->callAsService('user.get', ['FILTER' => ['ID' => $bitrixId]]), 'user.get')->rows('result') as $row) {
                 $this->users->upsert($row);
             }
         }

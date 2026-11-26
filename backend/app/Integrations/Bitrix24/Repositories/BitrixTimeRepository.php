@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24\Repositories;
 
+use App\Integrations\Bitrix24\BitrixPayload;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixTimeRepositoryInterface;
 use App\Models\User;
@@ -14,9 +15,8 @@ final readonly class BitrixTimeRepository implements BitrixTimeRepositoryInterfa
 
     public function list(int $bitrixTaskId): array
     {
-        $rows = $this->bitrix->callAsService('task.elapseditem.getlist', ['TASKID' => $bitrixTaskId])['result'] ?? [];
-
-        return is_array($rows) ? array_values($rows) : [];
+        return BitrixPayload::of($this->bitrix->callAsService('task.elapseditem.getlist', ['TASKID' => $bitrixTaskId]), 'task.elapseditem.getlist')
+            ->rows('result');
     }
 
     public function add(User $actor, int $bitrixTaskId, int $seconds, ?string $comment): void
@@ -48,14 +48,11 @@ final readonly class BitrixTimeRepository implements BitrixTimeRepositoryInterfa
             $commands["task_{$taskId}"] = ['task.elapseditem.getlist', ['TASKID' => $bitrixTaskId]];
         }
 
-        $batch = $this->bitrix->batchAsService($commands);
+        $batch = BitrixPayload::of($this->bitrix->batchAsService($commands), 'task.elapseditem.getlist');
 
         $rows = [];
         foreach (array_keys($bitrixTaskIds) as $taskId) {
-            $key = "task_{$taskId}";
-            $rows[$taskId] = isset($batch['result_error'][$key]) || ! isset($batch['result'][$key])
-                ? null
-                : array_values((array) $batch['result'][$key]);
+            $rows[$taskId] = $batch->batchRows("task_{$taskId}");
         }
 
         return $rows;

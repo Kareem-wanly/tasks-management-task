@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Integrations\Bitrix24\Repositories;
 
+use App\Integrations\Bitrix24\BitrixPayload;
 use App\Integrations\Bitrix24\Contracts\BitrixAppRepositoryInterface;
 use App\Integrations\Bitrix24\Contracts\BitrixGatewayInterface;
 use App\Integrations\Bitrix24\Contracts\HasBitrixToken;
@@ -50,9 +51,8 @@ final readonly class BitrixAppRepository implements BitrixAppRepositoryInterface
         $departments = $firstPage;
 
         for ($start = self::DEPARTMENTS_PAGE_SIZE; $start < $total; $start += self::DEPARTMENTS_PAGE_SIZE) {
-            /** @var list<array<string, mixed>> $page department.get rows */
-            $page = $this->bitrix->callAsUser($portal, 'department.get', ['START' => $start])['result'] ?? [];
-            $departments = [...$departments, ...$page];
+            $page = BitrixPayload::of($this->bitrix->callAsUser($portal, 'department.get', ['START' => $start]), 'department.get');
+            $departments = [...$departments, ...$page->rows('result')];
         }
 
         return $departments;

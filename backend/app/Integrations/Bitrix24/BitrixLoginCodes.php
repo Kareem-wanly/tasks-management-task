@@ -43,11 +43,14 @@ final class BitrixLoginCodes
     {
         $issued = Cache::pull($this->key($code));
 
-        if (! is_array($issued) || ! hash_equals((string) ($issued['nonce'] ?? ''), hash('sha256', $nonce))) {
+        $boundTo = is_array($issued) ? ($issued['nonce'] ?? null) : null;
+        $userId = is_array($issued) ? ($issued['user_id'] ?? null) : null;
+
+        if (! is_string($boundTo) || ! is_int($userId) || ! hash_equals($boundTo, hash('sha256', $nonce))) {
             return null;
         }
 
-        return User::query()->find((int) ($issued['user_id'] ?? 0));
+        return User::query()->find($userId);
     }
 
     public static function isNonce(mixed $value): bool
